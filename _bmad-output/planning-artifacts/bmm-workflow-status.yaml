@@ -1,0 +1,154 @@
+# BMM Workflow Status - Dashboard Pro Bain
+# Generated: 2026-01-25
+# Last Updated: 2026-01-26
+# Track: BMad Method (Brownfield)
+
+project: "dashboard probain"
+project_type: "web-application"
+selected_track: "bmad-method"
+field_type: "brownfield"
+workflow_path: "method-brownfield.yaml"
+
+# STATUS DEFINITIONS:
+# - required: Must be completed to progress
+# - optional: Can be completed but not required
+# - recommended: Strongly suggested but not required
+# - conditional: Required only if certain conditions met
+# - {file-path}: Completed - file created at path
+# - skipped: Optional workflow that was skipped
+
+workflow_status:
+  # Phase 0: Documentation (Brownfield Prerequisite)
+  phase_0_documentation:
+    document-project: "docs/index.md"  # COMPLETED - Exhaustive scan
+
+  # Phase 1: Analysis (Optional - User Selected)
+  phase_1_analysis:
+    brainstorm: optional  # User selected - NEXT
+    research: optional    # User selected
+
+  # Phase 2: Planning
+  phase_2_planning:
+    prd: required
+    create-ux-design: conditional  # if_has_ui - decide after PRD
+
+  # Phase 3: Solutioning
+  phase_3_solutioning:
+    create-architecture: required
+    create-epics-and-stories: required
+    test-design: optional
+    implementation-readiness: required
+
+  # Phase 4: Implementation
+  phase_4_implementation:
+    sprint-planning: required
+
+# Generated documentation
+documentation_outputs:
+  - "docs/index.md"           # Master index
+  - "docs/tech-stack.md"      # Technology analysis
+  - "docs/api-layer.md"       # Hooks and API patterns
+  - "docs/ui-components.md"   # UI component inventory
+  - "docs/source-tree.md"     # Annotated source tree
+  - "docs/project-scan-report.json"  # Scan state
+
+# Next action
+next_workflow: "brainstorm"
+next_agent: "analyst"
+next_command: "/bmad:core:workflows:brainstorming"
+
+# Alternatively skip to PRD:
+# next_workflow: "prd"
+# next_command: "/bmad:bmm:workflows:prd"
+
+# Notes
+notes:
+  - "Brownfield project with existing React/TypeScript/Supabase codebase"
+  - "Two applications: pro-bain-app (user app) + admin-dashboard"
+  - "CLAUDE.md documentation exists in both projects"
+  - "User selected: brainstorm + research discovery workflows"
+  - "Exhaustive scan completed 2026-01-25"
+  - "~150 source files, ~15,000 LOC estimated"
+
+# Implementation Log (2026-01-26)
+implementation_log:
+  "2026-01-26_session1":
+    session: "BMAD Party Mode - Onboarding Formateur"
+    features_implemented:
+      - name: "Onboarding formateur modulaire"
+        description: "6 étapes: Welcome, Organization, Logo, Description, Location, Complete"
+        files_created:
+          - "src/components/onboarding/TrainerOnboardingFlow.tsx"
+          - "src/components/onboarding/steps/TrainerWelcome.tsx"
+          - "src/components/onboarding/steps/TrainerOrganization.tsx"
+          - "src/components/onboarding/steps/TrainerLogo.tsx"
+          - "src/components/onboarding/steps/TrainerDescription.tsx"
+          - "src/components/onboarding/steps/TrainerLocation.tsx"
+          - "src/components/onboarding/steps/TrainerComplete.tsx"
+        files_modified:
+          - "src/components/onboarding/OnboardingWizard.tsx"
+        tables_used:
+          - "profiles"
+          - "trainer_profiles"
+        status: "complete"
+      - name: "UX Improvements"
+        description: "Headers améliorés, suppression boutons retour, orthographe Probain"
+        files_modified: 19
+        status: "complete"
+    commit:
+      hash: "4d9b8f3"
+      message: "feat: onboarding formateur modulaire + améliorations UX"
+      stats: "20 files changed, 876 insertions(+), 156 deletions(-)"
+    documentation:
+      - "_bmad-output/implementation-artifacts/changelog-2026-01-26.md"
+      - "_bmad-output/planning-artifacts/architecture.md (updated)"
+
+  "2026-01-26_session2":
+    session: "Landing Page & Pages Légales"
+    features_implemented:
+      - name: "Correction logos landing page"
+        description: "Logo footer et header corrigés avec le bon logo PROBAIN AQUATIC NETWORK"
+        files_modified:
+          - "src/pages/Index.tsx"
+        logo_file: "32069037-2f3a-44ac-9105-33ae1d029573.png"
+        status: "complete"
+      - name: "Instagram footer"
+        description: "Suppression LinkedIn, Instagram unique avec lien probain.ch"
+        files_modified:
+          - "src/pages/Index.tsx"
+        link: "instagram.com/probain.ch"
+        icon: "Lucide React Instagram"
+        status: "complete"
+      - name: "Pages légales"
+        description: "Création CGU et Politique de confidentialité conformes LPD suisse"
+        files_created:
+          - "src/pages/TermsOfUse.tsx"
+          - "src/pages/PrivacyPolicy.tsx"
+        files_modified:
+          - "src/App.tsx"
+          - "src/pages/Index.tsx"
+        routes:
+          - "/terms"
+          - "/privacy"
+        status: "complete"
+      - name: "Scroll-to-top fix"
+        description: "Navigation vers pages légales scroll en haut de page"
+        files_modified:
+          - "src/pages/TermsOfUse.tsx"
+          - "src/pages/PrivacyPolicy.tsx"
+        status: "complete"
+    commits:
+      - hash: "6550b81"
+        message: "fix: correct footer logo"
+      - hash: "54bcab1"
+        message: "fix: same logo in header and footer"
+      - hash: "bf2e842"
+        message: "fix: footer Instagram only with correct link"
+      - hash: "b3afd7b"
+        message: "feat: pages CGU et politique de confidentialité"
+      - hash: "befbab6"
+        message: "fix: use Lucide React Instagram icon in footer"
+    documentation:
+      - "_bmad-output/implementation-artifacts/changelog-2026-01-26.md (updated)"
+      - "_bmad-output/planning-artifacts/bmm-workflow-status.yaml (updated)"
+      - "_bmad-output/planning-artifacts/prd.md (updated)"
