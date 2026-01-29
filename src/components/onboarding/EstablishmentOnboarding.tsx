@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CANTONS_SUISSES, OnboardingFormData } from "./OnboardingWizard";
+import { usePhotoPicker } from "@/hooks/usePhotoPicker";
+import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
 import {
   Select,
   SelectContent,
@@ -28,6 +30,10 @@ export const EstablishmentOnboarding = ({
   uploading 
 }: EstablishmentOnboardingProps) => {
   const [step, setStep] = useState(0);
+
+  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+    onFileSelected: handleAvatarUpload,
+  });
 
   const isStepValid = () => {
     switch (step) {
@@ -82,26 +88,38 @@ export const EstablishmentOnboarding = ({
                   </AvatarFallback>
                 </Avatar>
                 
-                <label
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={openPicker}
+                  onKeyDown={(e) => e.key === 'Enter' && openPicker()}
                   className={`absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg
                            cursor-pointer transition-opacity
                            ${formData.avatarUrl ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
-                  htmlFor="avatar-upload"
                 >
                   <Upload className="w-6 h-6 text-white" />
-                  <input
-                    type="file"
-                    id="avatar-upload"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                </label>
+                </div>
+                {/* Desktop fallback input */}
+                <input
+                  ref={desktopInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelected}
+                  disabled={uploading}
+                  className="hidden"
+                />
               </div>
               <p className="text-sm text-gray-500">
                 Cliquez sur l'image pour télécharger une photo
               </p>
+              <PhotoPickerSheet
+                open={isPickerOpen}
+                onOpenChange={setPickerOpen}
+                onFileSelected={handleFileSelected}
+                uploading={uploading}
+                cameraFacing="environment"
+                title="Photo"
+              />
             </div>
           </div>
         );

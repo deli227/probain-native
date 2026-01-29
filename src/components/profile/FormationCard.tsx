@@ -12,6 +12,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, memo } from "react";
 import { PDFViewerDialog } from "./PDFViewerDialog";
 import * as z from "zod";
+import type { RecyclingInfo } from "@/utils/recyclingConfig";
+import { getRecyclingLabel } from "@/utils/recyclingUtils";
 
 interface FormationCardProps {
   formation: {
@@ -21,12 +23,14 @@ interface FormationCardProps {
     start_date: string;
     end_date?: string;
     document_url?: string;
+    recycling_organization?: string | null;
   };
   onUpdate: (id: string, values: z.infer<typeof formationFormSchema>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  recyclingInfo?: RecyclingInfo;
 }
 
-export const FormationCard = memo(function FormationCard({ formation, onUpdate, onDelete }: FormationCardProps) {
+export const FormationCard = memo(function FormationCard({ formation, onUpdate, onDelete, recyclingInfo }: FormationCardProps) {
   const isMobile = useIsMobile();
   const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
@@ -40,6 +44,7 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
       startDate: new Date(formation.start_date),
       endDate: formation.end_date ? new Date(formation.end_date) : undefined,
       customCertification: formation.title.startsWith("Autre: ") ? formation.title.substring(7) : undefined,
+      recyclingOrganization: formation.recycling_organization || undefined,
     },
   });
 
@@ -123,8 +128,16 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
           </SheetContent>
         </Sheet>
 
-        {/* Barre latérale colorée - bleu pour les formations */}
-        <div className="w-2 rounded-l-2xl bg-gradient-to-b from-blue-500 to-indigo-600 flex-shrink-0" />
+        {/* Barre latérale colorée - couleur selon statut recyclage */}
+        <div className={`w-2 rounded-l-2xl flex-shrink-0 ${
+          recyclingInfo?.status === 'expired'
+            ? 'bg-gradient-to-b from-red-500 to-red-700'
+            : recyclingInfo?.status === 'expiring_soon'
+              ? 'bg-gradient-to-b from-amber-400 to-orange-600'
+              : recyclingInfo?.status === 'reminder'
+                ? 'bg-gradient-to-b from-sky-400 to-blue-500'
+                : 'bg-gradient-to-b from-blue-500 to-indigo-600'
+        }`} />
 
         {/* Contenu */}
         <div className="flex-1 p-4 flex flex-col">
@@ -142,7 +155,7 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
             </h3>
           </div>
 
-          {/* Footer avec dates */}
+          {/* Footer avec dates et statut recyclage */}
           <div className="pt-3 mt-auto border-t border-gray-100">
             <div className="text-xs space-y-1">
               <div>
@@ -154,9 +167,34 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
                   <span className="font-semibold text-emerald-600">
                     Recyclé le {formatDate(formation.end_date)}
+                    {formation.recycling_organization && (
+                      <span className="text-gray-500 font-normal"> chez {formation.recycling_organization}</span>
+                    )}
                   </span>
                 </div>
               )}
+              {recyclingInfo && (() => {
+                const label = getRecyclingLabel(recyclingInfo);
+                if (!label) return null;
+                const dotColor =
+                  recyclingInfo.status === 'expired' ? 'bg-red-500' :
+                  recyclingInfo.status === 'expiring_soon' ? 'bg-orange-500' :
+                  recyclingInfo.status === 'reminder' ? 'bg-sky-500' :
+                  'bg-emerald-500';
+                const textColor =
+                  recyclingInfo.status === 'expired' ? 'text-red-600' :
+                  recyclingInfo.status === 'expiring_soon' ? 'text-orange-600' :
+                  recyclingInfo.status === 'reminder' ? 'text-sky-600' :
+                  'text-emerald-600';
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${dotColor} ${recyclingInfo.status !== 'valid' ? 'animate-pulse' : ''} flex-shrink-0`} />
+                    <span className={`font-semibold ${textColor}`}>
+                      {label}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

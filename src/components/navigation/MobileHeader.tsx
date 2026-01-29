@@ -6,6 +6,7 @@ import { NotificationsPopup } from "@/components/shared/NotificationsPopup";
 import { useRescuerNotifications } from "@/hooks/use-rescuer-notifications";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useFluxNotifications } from "@/hooks/useFluxNotifications";
+import { useRecyclingReminders } from "@/hooks/use-recycling-reminders";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -34,6 +35,7 @@ export const MobileHeader = memo(({ profileType }: MobileHeaderProps) => {
   } = useRescuerNotifications();
   const { unreadCount: unreadMessages } = useUnreadMessages();
   const { newPostsCount, markAsSeen: markFluxAsSeen } = useFluxNotifications();
+  const { expiredCount: recyclingExpiredCount, expiringSoonCount: recyclingExpiringSoonCount, reminderCount: recyclingReminderCount } = useRecyclingReminders();
 
   // Route du profil selon le type
   const getProfileRoute = () => {
@@ -101,11 +103,14 @@ export const MobileHeader = memo(({ profileType }: MobileHeaderProps) => {
       onMarkFormationsAsSeen={markFormationsAsSeen}
       onMarkJobsAsSeen={markJobsAsSeen}
       onMarkAllAsSeen={markAllAsSeen}
+      recyclingExpiredCount={recyclingExpiredCount}
+      recyclingExpiringSoonCount={recyclingExpiringSoonCount}
+      recyclingReminderCount={recyclingReminderCount}
     />
   );
 
   return (
-    <header className="bg-primary text-white md:hidden sticky top-0 z-40" role="banner">
+    <header className="bg-primary text-white md:hidden sticky top-0 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }} role="banner">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}

@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { safeGetUser } from "@/utils/asyncHelpers";
+import { usePhotoPicker } from "@/hooks/usePhotoPicker";
+import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
 
 interface ProfileHeaderProps {
   firstName: string;
@@ -122,6 +124,10 @@ export const ProfileHeader = ({
     }
   };
 
+  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+    onFileSelected: handleAvatarUpload,
+  });
+
   return (
     <div className="relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-r from-primary to-probain-blue opacity-90" />
@@ -147,23 +153,27 @@ export const ProfileHeader = ({
           </Avatar>
           
           {onAvatarUpdate && (
-            <label 
-              className="absolute inset-0 flex items-center justify-center bg-black/50 
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={openPicker}
+              onKeyDown={(e) => e.key === 'Enter' && openPicker()}
+              className="absolute inset-0 flex items-center justify-center bg-black/50
                        opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300
                        rounded-full"
-              htmlFor="avatar-upload"
             >
               <Upload className="w-8 h-8 text-white transform transition-transform group-hover:scale-110" />
-              <input
-                type="file"
-                id="avatar-upload"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                disabled={uploading}
-                className="hidden"
-              />
-            </label>
+            </div>
           )}
+          {/* Desktop fallback input */}
+          <input
+            ref={desktopInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelected}
+            disabled={uploading}
+            className="hidden"
+          />
         </div>
         
         <div className="text-white text-center md:max-w-3xl lg:max-w-4xl animate-fade-in">
@@ -256,6 +266,17 @@ export const ProfileHeader = ({
           )}
         </div>
       </div>
+
+      {onAvatarUpdate && (
+        <PhotoPickerSheet
+          open={isPickerOpen}
+          onOpenChange={setPickerOpen}
+          onFileSelected={handleFileSelected}
+          uploading={uploading}
+          cameraFacing="user"
+          title="Photo de profil"
+        />
+      )}
     </div>
   );
 };

@@ -528,6 +528,7 @@ export type Database = {
           end_date: string | null
           id: string
           organization: string
+          recycling_organization: string | null
           region: Database["public"]["Enums"]["training_region"] | null
           start_date: string
           title: string
@@ -540,6 +541,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           organization: string
+          recycling_organization?: string | null
           region?: Database["public"]["Enums"]["training_region"] | null
           start_date: string
           title: string
@@ -552,6 +554,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           organization?: string
+          recycling_organization?: string | null
           region?: Database["public"]["Enums"]["training_region"] | null
           start_date?: string
           title?: string

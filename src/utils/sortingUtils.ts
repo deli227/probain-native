@@ -4,24 +4,30 @@
  * Ordre des brevets (du plus haut au plus bas):
  * 1. Expert BLS AED (le plus élevé)
  * 2. Expert Pool
- * 3. Module Rivière
- * 4. Module Lac
- * 5. Pro Pool
- * 6. BLS AED
- * 7. Plus Pool
- * 8. Base Pool (le plus bas)
+ * 3. Expert Lac
+ * 4. Expert Rivière
+ * 5. Module Rivière
+ * 6. Module Lac
+ * 7. Pro Pool
+ * 8. BLS AED
+ * 9. Plus Pool
+ * 10. Base Pool (le plus bas)
  */
 
-// Mapping des priorités de certification (1 = plus haut, 8 = plus bas)
+// Mapping des priorités de certification (1 = plus haut, 10 = plus bas)
 export const CERTIFICATION_PRIORITY: Record<string, number> = {
   'Expert BLS AED': 1,
+  'Expert BLS-AED': 1,
   'Expert Pool': 2,
-  'Module Rivière': 3,
-  'Module Lac': 4,
-  'Pro Pool': 5,
-  'BLS AED': 6,
-  'Plus Pool': 7,
-  'Base Pool': 8,
+  'Expert Lac': 3,
+  'Expert Rivière': 4,
+  'Module Rivière': 5,
+  'Module Lac': 6,
+  'Pro Pool': 7,
+  'BLS AED': 8,
+  'BLS-AED': 8,
+  'Plus Pool': 9,
+  'Base Pool': 10,
 };
 
 // Priorité par défaut pour les brevets non reconnus (affichés en dernier)

@@ -2,6 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/utils/logger";
 
+/**
+ * Trouve le trainer_id à partir du nom d'organisation.
+ * Cherche dans trainer_profiles (formateurs inscrits).
+ * Retourne null si aucun formateur inscrit ne correspond.
+ */
+export async function findTrainerIdByOrganizationName(
+  organizationName: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("trainer_profiles")
+    .select("id")
+    .eq("organization_name", organizationName)
+    .limit(1)
+    .maybeSingle();
+  return data?.id || null;
+}
+
 export interface Organization {
   id: string;
   organization_name: string;

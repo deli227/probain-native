@@ -232,47 +232,58 @@ const AddExperience = () => {
         aria-hidden="true"
       />
 
-      {/* Panneau style Sheet */}
-      <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
-        {/* Header avec bouton fermer */}
-        <div className="sticky top-0 z-10 bg-white border-b px-6 py-4">
+      {/* Panneau style Sheet - Dark Theme avec orbes */}
+      <div className="relative z-10 w-full sm:max-w-lg bg-[#0a1628] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
+        {/* Orbes lumineux animés */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse-glow" />
+          <div className="absolute top-1/3 -right-32 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-float-slow" />
+          <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-violet-500/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '2s' }} />
+        </div>
+
+        {/* Header avec bouton fermer - gradient */}
+        <div className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-light px-6 py-4 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-white">
                 Ajouter une expérience
               </h2>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Ajoutez une nouvelle expérience professionnelle à votre profil
+              <p className="text-sm text-white/70 mt-0.5">
+                Ajoutez une nouvelle expérience professionnelle
               </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={handleClose}
-              className="rounded-full hover:bg-gray-100"
+              className="rounded-full hover:bg-white/10 text-white"
               disabled={isSubmitting || uploadState.status === 'uploading'}
             >
-              <X className="h-5 w-5 text-gray-500" />
+              <X className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
         {/* Contenu scrollable - avec padding bottom pour BottomTabBar mobile */}
-        <div className="overflow-y-auto max-h-[calc(90vh-140px)] px-6 py-4 pb-24 md:pb-4">
+        <div className="relative overflow-y-auto max-h-[calc(90vh-140px)] px-6 py-6 pb-24 md:pb-6">
           <Form {...form}>
             <div className="space-y-6">
-              <ExperienceForm
-                form={form}
-                externalTrigger={triggerFileSelect}
-                externalFile={selectedFile}
-                externalUploadState={uploadState}
-                onExternalReset={handleResetFile}
-              />
+              {/* Card glassmorphism pour le formulaire */}
+              <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-5 border border-white/10">
+                <ExperienceForm
+                  form={form}
+                  darkMode={true}
+                  externalTrigger={triggerFileSelect}
+                  externalFile={selectedFile}
+                  externalUploadState={uploadState}
+                  onExternalReset={handleResetFile}
+                />
+              </div>
 
               <Button
                 type="button"
                 onClick={handleButtonClick}
-                className="w-full h-12 text-base font-medium"
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl shadow-lg hover:shadow-cyan-500/25 transition-all duration-300"
                 disabled={isSubmitting || uploadState.status === 'uploading' || isComplete}
               >
                 {isComplete ? (
@@ -294,7 +305,7 @@ const AddExperience = () => {
         </div>
 
         {/* Safe area pour iPhone - plus de marge pour le BottomTabBar */}
-        <div className="h-20 md:h-0 bg-white" />
+        <div className="h-20 md:h-0 bg-[#0a1628]" />
       </div>
     </div>
   );

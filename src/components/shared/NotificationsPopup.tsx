@@ -1,6 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Mail, Newspaper, GraduationCap, Briefcase, X, CheckCheck } from "lucide-react";
+import { Bell, Mail, Newspaper, GraduationCap, Briefcase, X, CheckCheck, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 type ProfileType = 'maitre_nageur' | 'formateur' | 'etablissement';
@@ -18,6 +18,10 @@ interface NotificationsPopupProps {
   onMarkFormationsAsSeen?: () => Promise<void>;
   onMarkJobsAsSeen?: () => Promise<void>;
   onMarkAllAsSeen?: () => Promise<void>;
+  // Alertes recyclage (Rescuer uniquement)
+  recyclingExpiredCount?: number;
+  recyclingExpiringSoonCount?: number;
+  recyclingReminderCount?: number;
 }
 
 // Routes de mail selon le type de profil
@@ -39,15 +43,19 @@ export const NotificationsPopup = ({
   onMarkFormationsAsSeen,
   onMarkJobsAsSeen,
   onMarkAllAsSeen,
+  recyclingExpiredCount = 0,
+  recyclingExpiringSoonCount = 0,
+  recyclingReminderCount = 0,
 }: NotificationsPopupProps) => {
   const navigate = useNavigate();
 
   // Rescuer voit formations et jobs, les autres non
   const isRescuer = profileType === 'maitre_nageur';
+  const totalRecyclingAlerts = recyclingExpiredCount + recyclingExpiringSoonCount + recyclingReminderCount;
 
   // Calcul du total selon le type de profil
   const totalNotifications = isRescuer
-    ? unreadMessages + newFluxPosts + newFormationsCount + newJobsCount
+    ? unreadMessages + newFluxPosts + newFormationsCount + newJobsCount + totalRecyclingAlerts
     : unreadMessages + newFluxPosts;
 
   const handleMailClick = () => {
@@ -85,10 +93,11 @@ export const NotificationsPopup = ({
   };
 
   // Pour Trainer/Establishment, on ne montre le bouton que si flux > 0
-  // Pour Rescuer, on le montre si totalNotifications > 0
-  const showMarkAllButton = isRescuer
-    ? totalNotifications > 0
-    : newFluxPosts > 0;
+  // Pour Rescuer, on le montre si des notifs dismissibles existent (pas recyclage)
+  const dismissibleNotifications = isRescuer
+    ? unreadMessages + newFluxPosts + newFormationsCount + newJobsCount
+    : newFluxPosts;
+  const showMarkAllButton = dismissibleNotifications > 0;
 
   return (
     <Popover open={isOpen} onOpenChange={onOpenChange}>
@@ -190,6 +199,43 @@ export const NotificationsPopup = ({
                       <Badge className="bg-green-500 text-white text-xs">
                         New
                       </Badge>
+                    </div>
+                  </div>
+                )}
+
+                {/* Alertes recyclage - Rescuer uniquement */}
+                {isRescuer && totalRecyclingAlerts > 0 && (
+                  <div
+                    className="p-3 bg-orange-50 hover:bg-orange-100 cursor-pointer transition-colors rounded-lg border border-orange-200"
+                    onClick={() => {
+                      onOpenChange(false);
+                      navigate("/profile");
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-orange-500 text-white p-2 rounded-full">
+                          <AlertTriangle className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-orange-800">
+                            {recyclingExpiredCount > 0 && (
+                              <>{recyclingExpiredCount} recyclage{recyclingExpiredCount > 1 ? 's' : ''} expiré{recyclingExpiredCount > 1 ? 's' : ''}</>
+                            )}
+                            {recyclingExpiredCount > 0 && recyclingExpiringSoonCount > 0 && ' · '}
+                            {recyclingExpiringSoonCount > 0 && (
+                              <>{recyclingExpiringSoonCount} à renouveler bientôt</>
+                            )}
+                            {(recyclingExpiredCount > 0 || recyclingExpiringSoonCount > 0) && recyclingReminderCount > 0 && ' · '}
+                            {recyclingReminderCount > 0 && (
+                              <>{recyclingReminderCount} rappel{recyclingReminderCount > 1 ? 's' : ''}</>
+                            )}
+                          </p>
+                          <p className="text-xs text-orange-600">
+                            Voir vos formations
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

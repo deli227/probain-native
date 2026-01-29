@@ -15,6 +15,7 @@ interface SimpleFileUploadProps {
   disabled?: boolean;
   acceptedTypes?: string[];
   maxSize?: number;
+  darkMode?: boolean;
   onFileSelectStart?: () => void;
   onFileSelectEnd?: () => void;
   onFileSelected?: () => void;
@@ -37,6 +38,7 @@ export const SimpleFileUpload = ({
   disabled = false,
   acceptedTypes = ['application/pdf'],
   maxSize = 5 * 1024 * 1024,
+  darkMode = false,
   onFileSelectStart,
   onFileSelectEnd,
   onFileSelected,
@@ -137,19 +139,21 @@ export const SimpleFileUpload = ({
   }, [form, name, reset]);
 
   const getContainerClassName = () => {
-    const base = "relative w-full min-h-[5rem] border rounded-md transition-colors duration-200";
+    const base = darkMode
+      ? "relative w-full min-h-[5rem] border rounded-xl transition-colors duration-200 bg-white/5"
+      : "relative w-full min-h-[5rem] border rounded-md transition-colors duration-200";
 
     if (effectiveIsUploading) {
-      return cn(base, "border-yellow-500 bg-yellow-50/30");
+      return cn(base, darkMode ? "border-yellow-400/50 bg-yellow-500/10" : "border-yellow-500 bg-yellow-50/30");
     }
 
     switch (effectiveStatus) {
       case 'success':
-        return cn(base, "border-green-500 bg-green-50/30");
+        return cn(base, darkMode ? "border-green-400/50 bg-green-500/10" : "border-green-500 bg-green-50/30");
       case 'error':
-        return cn(base, "border-red-500 bg-red-50/30");
+        return cn(base, darkMode ? "border-red-400/50 bg-red-500/10" : "border-red-500 bg-red-50/30");
       default:
-        return cn(base, "border-dashed");
+        return cn(base, darkMode ? "border-dashed border-white/20" : "border-dashed");
     }
   };
 
@@ -219,7 +223,7 @@ export const SimpleFileUpload = ({
       name={name}
       render={({ field }) => (
         <FormItem className="space-y-2">
-          <FormLabel>{label}</FormLabel>
+          <FormLabel className={darkMode ? "text-sm text-white/70" : ""}>{label}</FormLabel>
           <FormControl>
             <div className="space-y-4">
               <div
@@ -260,8 +264,8 @@ export const SimpleFileUpload = ({
 
                 {effectiveStatus === 'idle' && !effectiveFile ? (
                   <div className="w-full h-full min-h-[5rem] flex flex-col items-center justify-center gap-2 cursor-pointer relative">
-                    <Upload className="h-6 w-6" />
-                    <span className="text-sm text-center px-2">
+                    <Upload className={cn("h-6 w-6", darkMode && "text-white/60")} />
+                    <span className={cn("text-sm text-center px-2", darkMode && "text-white/60")}>
                       {isMobile ? "Touchez pour sélectionner un PDF" : "Cliquez pour sélectionner un PDF"}
                     </span>
                   </div>
@@ -270,8 +274,8 @@ export const SimpleFileUpload = ({
                     <div className="flex items-center gap-3">
                       {effectiveIsUploading ? (
                         <div className="flex items-center gap-3">
-                          <Loader2 className="h-10 w-10 text-yellow-500 animate-spin" />
-                          <div className="text-sm">
+                          <Loader2 className={cn("h-10 w-10 animate-spin", darkMode ? "text-yellow-400" : "text-yellow-500")} />
+                          <div className={cn("text-sm", darkMode && "text-white/80")}>
                             Upload en cours ({effectiveProgress}%)...
                           </div>
                         </div>
@@ -283,16 +287,16 @@ export const SimpleFileUpload = ({
                             effectiveStatus === 'success' && "text-green-500"
                           )} />
                           <div className="flex flex-col">
-                            <span className="font-medium text-sm">
+                            <span className={cn("font-medium text-sm", darkMode && "text-white")}>
                               {effectiveFile?.name || field.value?.name || "Fichier sélectionné"}
                             </span>
                             {(effectiveFile || field.value) && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className={cn("text-xs", darkMode ? "text-white/50" : "text-muted-foreground")}>
                                 {((effectiveFile?.size || field.value?.size || 0) / 1024 / 1024).toFixed(2)} MB
                               </span>
                             )}
                             {effectiveIsFileReady && (
-                              <span className="text-xs text-green-600">
+                              <span className={cn("text-xs", darkMode ? "text-green-400" : "text-green-600")}>
                                 Document prêt à l'emploi
                               </span>
                             )}
@@ -305,7 +309,12 @@ export const SimpleFileUpload = ({
                       <button
                         type="button"
                         onClick={handleEffectiveReset}
-                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border hover:bg-gray-50"
+                        className={cn(
+                          "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border",
+                          darkMode
+                            ? "border-white/20 text-white/80 hover:bg-white/10"
+                            : "hover:bg-gray-50"
+                        )}
                         disabled={disabled}
                       >
                         <X className="h-4 w-4 mr-1" />

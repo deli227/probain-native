@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ImagePlus, ChevronLeft, Upload } from "lucide-react";
+import { usePhotoPicker } from "@/hooks/usePhotoPicker";
+import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
 
 interface TrainerLogoProps {
   logoUrl: string;
@@ -18,6 +20,10 @@ export const TrainerLogo = ({
   onNext,
   onBack,
 }: TrainerLogoProps) => {
+  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+    onFileSelected: onLogoUpload,
+  });
+
   return (
     <div className="flex-1 flex flex-col px-6 pt-4 animate-slide-up">
       {/* Bouton retour */}
@@ -64,11 +70,14 @@ export const TrainerLogo = ({
             </div>
           )}
 
-          <label
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={openPicker}
+            onKeyDown={(e) => e.key === 'Enter' && openPicker()}
             className={`absolute inset-0 flex items-center justify-center bg-black/50 rounded-2xl
                      cursor-pointer transition-all duration-300
                      ${logoUrl ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
-            htmlFor="logo-upload"
           >
             <div className="text-center">
               <Upload className="w-8 h-8 text-white mx-auto mb-2" />
@@ -76,15 +85,16 @@ export const TrainerLogo = ({
                 {uploading ? "Chargement..." : "Choisir un logo"}
               </span>
             </div>
-            <input
-              type="file"
-              id="logo-upload"
-              accept="image/*"
-              onChange={onLogoUpload}
-              disabled={uploading}
-              className="hidden"
-            />
-          </label>
+          </div>
+          {/* Desktop fallback input */}
+          <input
+            ref={desktopInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelected}
+            disabled={uploading}
+            className="hidden"
+          />
         </div>
 
         <p className="text-white/40 text-sm mt-4 text-center">
@@ -102,6 +112,15 @@ export const TrainerLogo = ({
           {logoUrl ? "CONTINUER" : "PASSER CETTE ÉTAPE"}
         </Button>
       </div>
+
+      <PhotoPickerSheet
+        open={isPickerOpen}
+        onOpenChange={setPickerOpen}
+        onFileSelected={handleFileSelected}
+        uploading={uploading}
+        cameraFacing="environment"
+        title="Logo de l'organisme"
+      />
     </div>
   );
 };

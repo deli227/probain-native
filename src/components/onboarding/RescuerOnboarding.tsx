@@ -8,6 +8,8 @@ import { fr } from 'date-fns/locale';
 import { CalendarIcon, Upload, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CANTONS_SUISSES, OnboardingFormData } from "./OnboardingWizard";
+import { usePhotoPicker } from "@/hooks/usePhotoPicker";
+import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
 import {
   Select,
   SelectContent,
@@ -40,6 +42,10 @@ export const RescuerOnboarding = ({
   const [currentMonth, setCurrentMonth] = useState<Date>(
     formData.birthDate ? new Date(formData.birthDate) : new Date(1990, 0, 1)
   );
+
+  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+    onFileSelected: handleAvatarUpload,
+  });
 
   // Génération d'une liste d'années depuis 1920 jusqu'à l'année actuelle
   const years = Array.from({ length: new Date().getFullYear() - 1920 + 1 }, (_, i) => 1920 + i).reverse();
@@ -271,25 +277,37 @@ export const RescuerOnboarding = ({
                   </AvatarFallback>
                 </Avatar>
                 
-                <label 
-                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full 
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={openPicker}
+                  onKeyDown={(e) => e.key === 'Enter' && openPicker()}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full
                            opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
-                  htmlFor="avatar-upload"
                 >
                   <Upload className="w-6 h-6 text-white" />
-                  <input
-                    type="file"
-                    id="avatar-upload"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                </label>
+                </div>
+                {/* Desktop fallback input */}
+                <input
+                  ref={desktopInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelected}
+                  disabled={uploading}
+                  className="hidden"
+                />
               </div>
               <p className="text-sm text-gray-500">
                 Cliquez sur l'image pour télécharger une photo
               </p>
+              <PhotoPickerSheet
+                open={isPickerOpen}
+                onOpenChange={setPickerOpen}
+                onFileSelected={handleFileSelected}
+                uploading={uploading}
+                cameraFacing="user"
+                title="Photo de profil"
+              />
             </div>
           </div>
         );

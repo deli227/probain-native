@@ -69,7 +69,7 @@ export const OnboardingShell = ({ children, variant = "rescuer" }: OnboardingShe
       <div className="absolute bottom-40 right-20 w-40 h-40 bg-white/5 rounded-full blur-xl animate-float-slow" />
 
       {/* Contenu principal */}
-      <div className="relative z-10 min-h-screen flex flex-col">
+      <div className="relative z-10 min-h-screen flex flex-col safe-top">
         {children}
       </div>
     </div>

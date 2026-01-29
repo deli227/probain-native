@@ -9,6 +9,7 @@ import { useEffect, useMemo } from "react";
 import * as z from "zod";
 import { formationFormSchema } from "./forms/FormationForm";
 import { sortCertificationsByLevel } from "@/utils/sortingUtils";
+import { getRecyclingInfo } from "@/utils/recyclingUtils";
 
 export const FormationCarousel = () => {
   const { formations, fetchFormations, updateFormation, deleteFormation } = useFormations();
@@ -68,6 +69,7 @@ export const FormationCarousel = () => {
                       formation={formation}
                       onUpdate={handleUpdate}
                       onDelete={handleDelete}
+                      recyclingInfo={getRecyclingInfo(formation)}
                     />
                   </CarouselItem>
                 ))}
@@ -83,6 +85,7 @@ export const FormationCarousel = () => {
                 formation={formation}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
+                recyclingInfo={getRecyclingInfo(formation)}
               />
             ))}
           </div>
