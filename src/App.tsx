@@ -8,14 +8,14 @@ import { ProfileRouter } from "@/components/shared/ProfileRouter";
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
 import { InstallPWAPrompt } from "@/components/shared/InstallPWAPrompt";
 import { OfflineIndicator } from "@/components/shared/OfflineIndicator";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/shared/ErrorBoundary";
 import { useAppResume } from "@/hooks/useAppResume";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { queryClient, persister } from "@/lib/queryClient";
 import { lazyRetry } from "@/utils/lazyRetry";
 
 // Navbars - chargées immédiatement car souvent utilisées
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/navbar/Navbar";
 import TrainerNavbar from "@/components/navbar/TrainerNavbar";
 import RescuerNavbar from "@/components/navbar/RescuerNavbar";
 import EstablishmentNavbar from "@/components/navbar/EstablishmentNavbar";

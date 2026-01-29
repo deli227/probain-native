@@ -1,7 +1,9 @@
-# CLAUDE.md - Pro Bain App
+# CLAUDE.md - Pro Bain Native App
 
-> Application PWA principale pour Pro Bain Connect
-> Pour les règles générales, voir `@../CLAUDE.md` et `@../project-context.md`
+> Application PWA native pour Pro Bain Connect (version iOS/Android via Despia)
+> Pour les regles de developpement: voir `project-context.md`
+> Pour le framework natif: voir `docs/despia.md`
+> Pour l'historique de developpement: voir `docs/development-log.md`
 
 ---
 
@@ -53,10 +55,44 @@
 | `useJobPostings` | `use-job-postings.ts` | Offres d'emploi |
 | `useDocumentUpload` | `use-document-upload.ts` | Upload CV/documents |
 | `useFlux` | `useFlux.ts` | Posts du flux |
+| `useTrainerStudents` | `use-trainer-students.ts` | State + fetch page "Mes Eleves" |
 | `useRescuerNotifications` | `use-rescuer-notifications.ts` | Notifications |
 | `useAppResume` | `useAppResume.ts` | Gestion PWA background |
 | `useMobile` | `use-mobile.tsx` | Détection mobile |
 | `useToast` | `use-toast.ts` | Notifications toast |
+
+---
+
+## Pattern de Decoupe Composant (reference: TrainerStudents)
+
+Les gros composants (>300 lignes) sont decoupes en sous-dossier avec barrel export :
+
+```
+src/components/profile/
+  TrainerStudents.tsx              → Re-export (2 lignes)
+  trainer-students/
+    index.ts                       → Barrel export
+    types.ts                       → Types + helpers partages
+    RecyclingStatusBadge.tsx       → Badge statut recyclage
+    StudentFormationCard.tsx       → Carte formation formateur
+    StudentExternalFormationCard.tsx → Carte formation externe
+    CompactHeader.tsx              → Header avec compteurs
+    EmptyState.tsx                 → Etat vide
+    StudentCard.tsx                → Carte eleve
+    StudentList.tsx                → Liste avec selection
+    StudentDetailSheet.tsx         → Sheet detail eleve
+    FilterPanel.tsx                → Panneau filtres brevet/source
+    TrainerStudentsPage.tsx        → Orchestrateur JSX principal
+```
+
+Le hook custom `src/hooks/use-trainer-students.ts` contient toute la logique (state, fetch, filtres, handlers).
+
+**Regles de decoupe :**
+- Le fichier original devient un re-export (`export { X } from './x'`)
+- Les imports externes (App.tsx) ne changent JAMAIS
+- Types partages dans `types.ts`, composants feuilles extraits en premier
+- Hook custom pour state + data fetching
+- Build verifie apres chaque extraction
 
 ---
 
@@ -123,58 +159,391 @@ export const queryClient = new QueryClient({
 
 ---
 
+## Architecture Globale
+
+```
+App.tsx
+  └── ErrorBoundary (root)
+      └── PersistQueryClientProvider (TanStack Query + localStorage 24h)
+          └── ProfileProvider (contexte global profil)
+              └── AppRoutes
+                  ├── Routes publiques: /, /auth, /terms, /privacy
+                  ├── Routes onboarding: /select-profile-type, /onboarding
+                  └── Routes protegees (DashboardLayout)
+                      ├── ErrorBoundary (inner, resetKey=pathname)
+                      ├── Suspense + lazyRetry()
+                      └── Pages lazy-loaded par route
+```
+
+### Flux d'Authentification (PKCE)
+1. Inscription: email+password → Supabase envoie email → lien avec `?token_hash=...&type=signup`
+2. App detecte token_hash → `verifyOtp()` → profil cree dans `profiles`
+3. Redirect vers selection type de profil → onboarding → dashboard
+4. Login: email+password → session → `onAuthStateChange` → `useFullProfile` → redirect profil
+
+### Layout Responsive
+```
+Mobile (< 768px):
+  MobileHeader (56px sticky top)
+  Content (pb-20 pour tab bar)
+  BottomTabBar (76px fixed bottom, safe-area)
+
+Desktop (>= 768px):
+  Sidebar (256px fixed left)
+  Content (pl-64)
+```
+
+---
+
 ## Contexte Global
 
 ```typescript
 // src/contexts/ProfileContext.tsx
-interface ProfileContextValue {
+interface ExtendedProfileContextType {
+  // Etat
   profileTypeSelected: boolean;
   onboardingCompleted: boolean;
   profileType: 'maitre_nageur' | 'formateur' | 'etablissement' | null;
   loading: boolean;
   profileVerified: boolean;
   isOnline: boolean;
-  updateProfileType: (type: string) => Promise<void>;
+
+  // Donnees profil complet (via useFullProfile)
+  fullProfile: FullProfileData | null;
+  baseProfile: BaseProfile | null;
+  rescuerProfile: RescuerProfile | null;
+  trainerProfile: TrainerProfile | null;
+  establishmentProfile: EstablishmentProfile | null;
+
+  // Actions
+  updateProfileType: (type) => Promise<boolean>;
+  refreshProfile: () => Promise<void>;
+  updateProfileOptimistic: (updates) => void;
 }
 ```
 
+**Persistence localStorage:**
+- `probain_profile_type` / `probain_profile_selected` / `probain_onboarding_completed`
+- `PROBAIN_QUERY_CACHE` (TanStack Query persister)
+
 ---
 
-## Fichiers Critiques
+## Roles et Permissions
 
-| Fichier | Rôle |
+### Sauveteur (`maitre_nageur`)
+- Profil, formations, experiences, disponibilites
+- Recherche d'emploi et formations
+- Messagerie: **reception uniquement**
+- Onglets: Profil, Emplois, Formations, Messages, Flux
+
+### Formateur (`formateur`)
+- Profil organisme, cours, suivi eleves
+- Messagerie: **bidirectionnelle**
+- Onglets: Profil, Eleves, Messages, Flux
+
+### Etablissement (`etablissement`)
+- Profil, offres d'emploi, annonces
+- Recherche de sauveteurs
+- Messagerie: **bidirectionnelle**
+- Onglets: Profil, Annonces, Sauveteurs, Messages, Flux
+
+---
+
+## Composants par Dossier
+
+### `components/navigation/`
+| Fichier | Role |
 |---------|------|
-| `src/App.tsx` | Router, lazy loading, PersistQueryClientProvider |
-| `src/contexts/ProfileContext.tsx` | État global utilisateur |
-| `src/contexts/hooks/useProfileState.ts` | Hook interne profil |
-| `src/lib/queryClient.ts` | TanStack Query avec persistence |
-| `src/hooks/useProfileQuery.ts` | Hook profil avec cache |
-| `src/hooks/useAppResume.ts` | Gestion PWA background |
-| `src/integrations/supabase/client.ts` | Client Supabase |
-| `src/integrations/supabase/types.ts` | Types auto-générés |
-| `src/utils/constants.ts` | Constantes (LOGO_PATH, PWA_*) |
-| `src/components/shared/ProfileRouter.tsx` | Redirection par type |
-| `src/components/ui/sheet.tsx` | Sheet avec fix mobile |
+| `BottomTabBar.tsx` | Navigation mobile (5 onglets par type profil, badges, haptic) |
+| `MobileHeader.tsx` | Header sticky (logo, menu settings, cloche notifications) |
+| `Sidebar.tsx` | Navigation desktop (256px, liens par profil, deconnexion) |
+
+### `components/auth/`
+| Fichier | Role |
+|---------|------|
+| `AuthForm.tsx` | Login/signup, PKCE flow, verification email, social login |
+| `PasswordStrengthIndicator.tsx` | Validation visuelle mot de passe |
+| `SignupSteps.tsx` | Wizard inscription multi-etapes |
+| `SocialLoginButtons.tsx` | OAuth Google/GitHub |
+
+### `components/profile/`
+| Fichier | Role |
+|---------|------|
+| `ProfileForm.tsx` | Edition profil sauveteur (dark theme) |
+| `ProfileHeader.tsx` | Avatar, nom, stats |
+| `ProfileCompletion.tsx` | Checklist completude profil |
+| `ProfileStats.tsx` | Pourcentage completion |
+| `RescuerProfileHeader.tsx` | Header specifique sauveteur |
+| `TrainerProfile.tsx` | Dashboard formateur complet |
+| `TrainerStudents.tsx` | Gestion eleves (filtre, formations externes, recyclage) |
+| `TrainerCourses.tsx` | Cours publies par le formateur |
+| `EstablishmentProfile.tsx` | Dashboard etablissement |
+| `EstablishmentJobPostings.tsx` | Offres d'emploi de l'etablissement |
+| `FormationCard.tsx` | Carte formation (PDF, recyclage) |
+| `FormationCarousel.tsx` | Carousel horizontal formations |
+| `ExperienceCard.tsx` | Carte experience pro |
+| `ExperienceCarousel.tsx` | Carousel horizontal experiences |
+| `AvailabilitySection.tsx` | Picker de disponibilites |
+| `AddFormationSheet.tsx` | Modal ajout formation |
+| `SendMessageDialog.tsx` | Composer un message |
+| `SendRescuerMessageDialog.tsx` | Message vers sauveteur |
+| `PDFViewerDialog.tsx` | Visionneuse PDF inline |
+| `CourseParticipantsDialog.tsx` | Participants d'un cours |
+| `JobPostingCard.tsx` / `JobPostingDialog.tsx` | Offre d'emploi |
+| `MyCourses.tsx` / `AvailableCourses.tsx` | Cours formateur |
+| `ErrorState.tsx` / `LoadingState.tsx` | Etats placeholder |
+
+### `components/profile/forms/`
+| Fichier | Role |
+|---------|------|
+| `PersonalInfoForm.tsx` | Nom, email, telephone (darkMode prop) |
+| `AddressForm.tsx` | Rue, ville, canton (darkMode prop) |
+| `FormationForm.tsx` | Ajout/edition formation (CalendarModal) |
+| `ExperienceForm.tsx` | Ajout/edition experience (CalendarModal) |
+| `TrainerProfileForm.tsx` | Edition profil formateur (dark theme) |
+| `EstablishmentProfileForm.tsx` | Edition profil etablissement |
+| `JobPostingsForm.tsx` | Creation offre d'emploi |
+| `OrganizationForm.tsx` | Details organisme |
+| `FileUploadField.tsx` | Picker document/photo |
+
+### `components/shared/`
+| Fichier | Role |
+|---------|------|
+| `ErrorBoundary.tsx` | Capture erreurs React, auto-recovery via resetKey |
+| `ProfileRouter.tsx` | Redirect vers le bon profil selon le type |
+| `LoadingScreen.tsx` | Ecran chargement plein page |
+| `OfflineIndicator.tsx` | Banniere hors-ligne |
+| `InstallPWAPrompt.tsx` | Prompt installation PWA |
+| `NotificationsPopup.tsx` | Dropdown notifications (gate isReady) |
+| `NotificationBell.tsx` | Icone cloche avec badge |
+| `CalendarModal.tsx` | Calendrier interactif francais |
+| `PhotoPickerSheet.tsx` | Picker photo mobile |
+| `SimpleFileUpload.tsx` | Upload fichier basique |
+| `PullToRefresh.tsx` | Pull-to-refresh mobile |
+
+### `components/mailbox/`
+| Fichier | Role |
+|---------|------|
+| `RescuerMailbox.tsx` | Messagerie lecture seule (sauveteurs) |
+| `EstablishmentMailbox.tsx` | Messagerie bidirectionnelle |
+| `MessageCard.tsx` | Carte message individuel |
+| `MessageDialog.tsx` | Detail message modal |
+
+### `components/formations/`
+| Fichier | Role |
+|---------|------|
+| `SSSFormationsList.tsx` | Liste formations SSS (cache externe) |
+| `SSSCalendarEmbed.tsx` | Calendrier SSS integre |
+| `TrainerCoursesList.tsx` | Cours publies du formateur |
+
+### `components/onboarding/`
+Wizard 6 etapes par type (voir section Onboarding ci-dessous).
+
+### `components/skeletons/`
+| Fichier | Role |
+|---------|------|
+| `ProfileSkeleton.tsx` | Placeholder shimmer profil |
+| `PostSkeleton.tsx` | Placeholder shimmer post flux |
+
+### `components/ui/` (31 composants Shadcn/UI)
+Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, calendar, card, carousel, checkbox, dialog, form, input, label, popover, radio-group, rich-text-editor, select, separator, sheet, skeleton, switch, tabs, textarea, toast, toaster, toggle, tooltip, moving-border, neon-button, lazy-image.
+
+---
+
+## Hooks Complets
+
+| Hook | Table Supabase | Role |
+|------|---------------|------|
+| `useFullProfile` | profiles + *_profiles | Source de verite profil complet, optimistic updates |
+| `useProfileQuery` | profiles | Profil de base avec cache |
+| `useFormations` | formations, trainer_students | CRUD formations + sync liens formateur |
+| `useExperiences` | experiences | CRUD experiences pro |
+| `useAvailabilities` | availabilities | CRUD dates disponibles |
+| `useJobPostings` | job_postings | CRUD offres emploi |
+| `useFlux` | flux_posts, flux_likes, flux_comments | Feed social, likes, commentaires, real-time |
+| `useDocumentUpload` | Storage bucket | Upload PDF (max 20MB) |
+| `useFileUpload` | Storage bucket | Upload fichiers generique |
+| `useRescuerNotifications` | sss_formations_cache, job_postings | Compteurs nouvelles formations/emplois, real-time |
+| `useUnreadMessages` | internal_messages | Badge messages non lus, real-time |
+| `useFluxNotifications` | flux_posts | Badge nouveaux posts (localStorage last_seen) |
+| `useNotificationPreferences` | notification_preferences | Toggle notifs (recyclage, email, push) |
+| `useAppResume` | - | Gestion PWA background (refresh >60s) |
+| `usePullToRefresh` | - | Pull-to-refresh mobile |
+| `usePhotoPicker` | - | Picker photo natif/web |
+| `useCalendarModal` | - | Etat calendrier modal |
+| `useTabReset` | - | Scroll top sur re-clic onglet |
+| `useMobile` | - | Detection mobile (< 768px) |
+| `useToast` | - | Systeme toast en memoire |
+| `useOrganizations` | trainer_profiles | Liste organismes formateurs |
+| `useEstablishmentProfile` | establishment_profiles | Profil etablissement |
+| `useSSSFormations` | sss_formations_cache | Cache formations SSS externes |
+| `useRecyclingReminders` | formations | Alertes recyclage certifications |
+
+---
+
+## Utilitaires (`src/utils/`)
+
+| Fichier | Role |
+|---------|------|
+| `constants.ts` | LOGO_PATH, PWA_NAME, PWA_THEME_COLOR, etc. |
+| `lazyRetry.ts` | Wrapper lazy() avec retry + auto-reload |
+| `asyncHelpers.ts` | withTimeout(), safeGetUser(), safeQuery() avec retry |
+| `logger.ts` | Logger dev/prod (log/info = dev only, warn/error = always) |
+| `swissCantons.ts` | 26 cantons suisses avec villes |
+| `formationCategories.ts` | 4 categories de formation SSS |
+| `recyclingUtils.ts` | Statut recyclage (not_due, due_soon, overdue) |
+| `recyclingConfig.ts` | Config recyclage par type certification |
+| `sortingUtils.ts` | Tri formations, emplois |
+| `authErrors.ts` | Traduction erreurs Supabase → messages FR |
+| `navigation.ts` | Helpers navigation |
+| `registerServiceWorker.ts` | Enregistrement service worker PWA |
+
+---
+
+## Real-Time (Supabase Subscriptions)
+
+| Table | Evenements | Utilise par |
+|-------|-----------|-------------|
+| `internal_messages` | INSERT, UPDATE, DELETE | useUnreadMessages |
+| `flux_posts` | INSERT, UPDATE | useFlux |
+| `sss_formations_cache` | INSERT | useRescuerNotifications |
+| `job_postings` | INSERT | useRescuerNotifications |
+
+---
+
+## Strategie de Cache
+
+| Couche | Mecanisme | Duree |
+|--------|-----------|-------|
+| TanStack Query | staleTime | 5 minutes |
+| TanStack Query | gcTime | 24 heures |
+| localStorage persister | PROBAIN_QUERY_CACHE | Survit fermeture app |
+| localStorage profil | probain_profile_* | Fallback si query echoue |
+| sessionStorage | probain_profile_loaded_session | Survit remount, pas fermeture |
+
+---
+
+## Tables Supabase Principales
+
+| Table | Role |
+|-------|------|
+| `profiles` | Table centrale utilisateurs (liee a auth.users) |
+| `rescuer_profiles` | Extension sauveteur (phone, canton, brevet, avatar) |
+| `trainer_profiles` | Extension formateur (organization_name, certifications) |
+| `establishment_profiles` | Extension etablissement (pool_types, opening_hours) |
+| `formations` | Certifications auto-declarees par sauveteurs |
+| `experiences` | Experiences professionnelles |
+| `availabilities` | Dates de disponibilite |
+| `job_postings` | Offres d'emploi des etablissements |
+| `trainer_courses` | Cours publies par formateurs |
+| `course_registrations` | Inscriptions aux cours |
+| `trainer_students` | Relations formateur-eleve (JAMAIS supprimees) |
+| `internal_messages` | Messagerie interne |
+| `notifications` | Notifications systeme |
+| `notification_preferences` | Preferences notifs (email, push, recyclage) |
+| `flux_posts` | Posts du fil d'actualites |
+| `flux_likes` / `flux_comments` | Interactions sur les posts |
+| `sss_formations_cache` | Cache formations SSS (scraper GitHub Actions) |
+| `user_notification_status` | Timestamps derniere consultation |
+| `admins` / `admin_audit_logs` | Administration |
+| `account_claim_requests` | Reclamations de comptes |
+
+---
+
+## Lib (`src/lib/`)
+
+| Fichier | Role |
+|---------|------|
+| `queryClient.ts` | TanStack Query config + persister localStorage |
+| `native.ts` | Bridge Despia natif (haptics, biometrics, share, push) |
+| `utils.ts` | `cn()` = clsx + tailwind-merge |
 
 ---
 
 ## Points d'Attention
 
 ### Messagerie
-- Sauveteurs: réception uniquement
-- Formateurs/Établissements: bidirectionnelle
+- Sauveteurs: reception uniquement
+- Formateurs/Etablissements: bidirectionnelle
+- Apres envoi d'un message, TOUJOURS invalider le cache: `queryClient.invalidateQueries({ queryKey: ["messages"] })`
 
 ### Onboarding
 - Tous champs optionnels (bouton "Passer")
 - Envoyer `null` au lieu de `""` pour champs vides
-- Données dans `profiles` ET profil spécifique
+- Donnees dans `profiles` ET profil specifique
+- Nom organisation formateur: verrouille apres onboarding (disabled + cadenas)
 
-### PWA
-- `refetchOnWindowFocus: false` (évite requêtes intempestives)
+### PWA / App Resume
+- `refetchOnWindowFocus: false` (evite requetes intempestives)
 - `MIN_HIDDEN_DURATION = 60` secondes avant refresh
+- Si session expiree au resume: `signOut()` propre (voir `useAppResume.ts`)
+- Lazy loading via `lazyRetry()` avec retry + auto-reload (protection chunks invalides apres deploiement)
 
 ### Lazy Loading
+Utiliser `lazyRetry()` de `src/utils/lazyRetry.ts` (PAS `React.lazy()` directement).
 Named exports: `.then(m => ({ default: m.ComponentName }))`
+
+### Notifications
+- Badge de la cloche: gated par `isNotificationsReady` (attend toutes les sources)
+- `notifyRecycling` default `false` pendant le chargement (pas `true`)
+- Ne PAS utiliser de toast succes dans un Sheet (Radix Dialog focus management)
+
+---
+
+## Pieges Techniques Connus
+
+### Radix Dialog + Toast = Sheet qui se ferme
+Le Toast cree un portail DOM en dehors du Sheet. Le Sheet detecte l'interaction exterieure via `onFocusOutside` et ferme. **Solution**: pas de toast succes dans un Sheet, le Switch qui change suffit.
+
+### Heritage CSS traverse position:fixed
+Un composant `position: fixed` reste enfant DOM de son parent. Si le parent a `text-white`, le fixed l'herite. **Solution**: forcer `text-gray-900` sur le conteneur blanc du modal.
+
+### Hooks React et return conditionnel
+TOUS les hooks doivent etre appeles AVANT tout `return` conditionnel. Sinon: "Rendered more hooks than during the previous render".
+
+### useRef pour listener stable
+Pour lire un state dans un callback sans re-souscrire au listener: stocker dans un `useRef`, lire `ref.current` dans le callback, garder deps `[]`.
+
+### Debounce asymetrique pour layout
+Passer a `true` immediatement, retarder `false` de 300ms. Evite les demontages transitoires quand `session` est momentanement `null`.
+
+### window.open() bloque sur mobile
+Appeler `window.open()` uniquement dans un `onClick` direct (geste utilisateur). Jamais dans `useEffect` ou callback async.
+
+---
+
+## Z-Index Hierarchy
+
+| Composant | Z-Index |
+|-----------|---------|
+| CalendarModal overlay | `z-[100]` |
+| Bottom Tab Bar | `z-[60]` |
+| FAB bouton message | `z-[55]` |
+| Sheet overlay | `z-50` |
+| Sheet header | `z-20` |
+
+---
+
+## Dark Mode Pattern
+
+```
+Background: #0a1628
+Orbes: bg-blue-500/20, bg-cyan-500/15, bg-violet-500/10 (blur-3xl)
+Card: backdrop-blur-xl bg-white/10 border-white/10
+Input: bg-white/10 border-white/20 text-white placeholder:text-white/40
+Label: text-white/70
+Focus: ring-cyan-400/30 border-cyan-400/50
+Bouton save: from-cyan-500 to-blue-600
+```
+
+---
+
+## Deploiement
+
+| Environnement | URL | Methode |
+|---------------|-----|---------|
+| **Native (staging)** | https://pro-bain-native-test.vercel.app | Vercel |
+| **Web (production)** | probain.ch | Netlify (autre repo) |
 
 ---
 
@@ -189,5 +558,13 @@ npm run lint
 
 ---
 
-*Pour DB, migrations, triggers: voir `@../docs/database-schema.md`*
-*Pour règles générales: voir `@../project-context.md`*
+## Documentation
+
+| Document | Contenu |
+|----------|---------|
+| `project-context.md` | Regles de developpement, conventions, securite |
+| `docs/data-models.md` | Schema base de donnees Supabase complet |
+| `docs/despia.md` | Framework natif iOS/Android (Despia) |
+| `docs/development-log.md` | Historique sessions, bugs resolus, patterns |
+| `docs/workflow-guide.md` | Guide workflow BMAD quotidien |
+| `docs/config/netlify.toml` | Config Netlify (reference web app) |

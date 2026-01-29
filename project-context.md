@@ -1,22 +1,18 @@
 # Pro-Bain Connect - Contexte Projet
 
-> Ce fichier contient les règles critiques que l'IA DOIT suivre lors de tout développement.
-> Dernière mise à jour : 27 janvier 2026
+> Ce fichier contient les regles critiques que l'IA DOIT suivre lors de tout developpement.
+> Derniere mise a jour : 29 janvier 2026
 >
 > **Document d'architecture complet:** `_bmad-output/planning-artifacts/architecture.md`
 
 ---
 
-## 📋 Vue d'Ensemble
+## Vue d'Ensemble
 
-**Pro-Bain Connect** est une plateforme de mise en relation dans le domaine de la sécurité aquatique en Suisse.
+**Pro-Bain Connect** est une plateforme de mise en relation dans le domaine de la securite aquatique en Suisse.
 
-### Applications
-| App | Chemin | Description |
-|-----|--------|-------------|
-| **pro-bain-app** | `/pro-bain-app` | Application principale (React 18) |
-| **admin-dashboard** | `/admin-dashboard` | Interface admin (React 19) |
-| **supabase-mcp-server** | `/supabase-mcp-server` | Serveur MCP migrations |
+Ce repo contient l'**application native** (PWA via Despia pour iOS/Android), deployee sur Vercel.
+Un repo separe contient la version web (probain.ch, deployee sur Netlify).
 
 ### Types d'Utilisateurs
 - **Sauveteurs** (`maitre_nageur`) : Recherche d'emploi, profil, certifications
@@ -29,34 +25,29 @@
 
 ### 1. Structure des Fichiers
 ```
-pro-bain-app/
-├── src/
-│   ├── components/     # Composants React
-│   │   ├── ui/         # Shadcn/UI (ne pas modifier sauf demande explicite)
-│   │   ├── profile/    # Composants profil
-│   │   ├── navbar/     # Navbars par type utilisateur
-│   │   ├── onboarding/ # Onboarding (voir structure ci-dessous)
-│   │   └── ...
-│   ├── hooks/          # Hooks personnalisés (use-*.ts)
-│   ├── pages/          # Pages principales
-│   ├── contexts/       # Contextes React
-│   └── integrations/   # Supabase types et client
-└── supabase/
-    ├── migrations/     # TOUTES les migrations SQL ici
-    └── functions/      # Edge Functions (delete-user, etc.)
-
-# Onboarding Structure (Ajouté 27/01/2026)
-src/components/onboarding/
-├── OnboardingShell.tsx          # Layout avec animations vagues
-├── OnboardingProgress.tsx       # Indicateur progression (dots)
-├── RescuerOnboardingFlow.tsx    # Orchestrateur sauveteur (6 étapes)
-└── steps/
-    ├── RescuerWelcome.tsx       # Bienvenue
-    ├── RescuerIdentity.tsx      # Prénom/Nom (skippable)
-    ├── RescuerBirthdate.tsx     # Date naissance (skippable)
-    ├── RescuerPhoto.tsx         # Photo profil
-    ├── RescuerLocation.tsx      # Canton (skippable)
-    └── RescuerComplete.tsx      # Confirmation
+src/
+├── components/          # Composants React
+│   ├── ui/              # Shadcn/UI (ne pas modifier sauf demande explicite)
+│   ├── auth/            # Authentification
+│   ├── formations/      # Formations SSS et formateur
+│   ├── mailbox/         # Messagerie
+│   ├── navbar/          # Navbars par type utilisateur + Navbar principal
+│   ├── navigation/      # BottomTabBar, MobileHeader, Sidebar
+│   ├── onboarding/      # Onboarding (steps/ pour chaque etape)
+│   ├── profile/         # Composants profil (forms/, cartes, dialogues)
+│   ├── shared/          # Composants partages (ErrorBoundary, LoadingScreen, etc.)
+│   └── skeletons/       # Composants skeleton pour chargement
+├── contexts/            # Contextes React (ProfileContext)
+├── hooks/               # Hooks personnalises (use-*.ts)
+├── integrations/        # Supabase types et client
+├── layouts/             # DashboardLayout
+├── lib/                 # queryClient, native.ts, utils
+├── pages/               # Pages principales
+├── types/               # Types TypeScript
+└── utils/               # Utilitaires (constants, lazyRetry, etc.)
+supabase/
+├── migrations/          # TOUTES les migrations SQL ici
+└── functions/           # Edge Functions (delete-user, sss-scraper, etc.)
 ```
 
 ### 2. Conventions de Code
@@ -196,22 +187,24 @@ Types : `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-### Fichiers de Documentation
 | Fichier | Description |
 |---------|-------------|
-| `DOCUMENTATION.md` | Doc principale du projet |
-| `docs/index.md` | Index de la documentation générée |
-| `docs/data-models.md` | Schéma base de données |
-| `docs/project-structure-analysis.md` | Analyse structure |
-| `project-context.md` | Ce fichier (règles IA) |
+| `CLAUDE.md` | Instructions AI, hooks, routes, patterns techniques |
+| `project-context.md` | Ce fichier (regles de developpement) |
+| `docs/data-models.md` | Schema base de donnees Supabase |
+| `docs/despia.md` | Framework natif iOS/Android |
+| `docs/development-log.md` | Historique sessions, bugs resolus |
+| `docs/workflow-guide.md` | Guide workflow BMAD |
+| `docs/config/netlify.toml` | Config Netlify (reference web app) |
 
-### Mise à Jour Documentation
-Après chaque fonctionnalité majeure, mettre à jour :
-1. Ce fichier si nouvelles règles
-2. `DOCUMENTATION.md` si architecture change
+### Mise a Jour Documentation
+Apres chaque fonctionnalite majeure, mettre a jour :
+1. Ce fichier si nouvelles regles
+2. `CLAUDE.md` si nouveaux patterns ou routes
 3. `docs/data-models.md` si nouvelles tables
+4. `docs/development-log.md` si session significative
 
 ---
 
@@ -227,30 +220,12 @@ Après chaque fonctionnalité majeure, mettre à jour :
 - ✅ Notifications
 - ✅ Dashboard Admin
 
-### Phase 2 - Stabilisation (Priorités)
+### Prochaines Priorites
 1. [ ] Activer TypeScript strict + corriger erreurs critiques
-2. [ ] Ajouter ErrorBoundary global + hook useErrorHandler
-3. [ ] Régénérer types Supabase (`supabase gen types typescript`)
-4. [ ] Ajouter tests sur auth et hooks critiques
-5. [ ] Audit et fix des bugs existants
-
-### Phase 3+ (Future)
-- [ ] Package monorepo pour types partagés (`@probain/types`)
-- [ ] Alignement versions React/TailwindCSS entre apps
-- [ ] Couverture tests étendue (80%+)
+2. [ ] Regenerer types Supabase (`supabase gen types typescript`)
+3. [ ] Ajouter tests sur auth et hooks critiques
+4. [ ] Couverture tests etendue
 
 ---
 
-## 📅 Historique des Changements
-
-| Date | Changement |
-|------|------------|
-| 2026-01-24 | Création du fichier, nettoyage projet, documentation générée |
-| 2026-01-24 | Ajout visibilité flux, upload CV, coins arrondis UI |
-| 2026-01-25 | PRD complété (52 FRs, 24 NFRs) |
-| 2026-01-25 | Architecture complète - Phase 2 Stabilisation définie |
-| 2026-01-27 | **Onboarding Sauveteur "Wahoo"** - 6 étapes avec animations vagues |
-| 2026-01-27 | **Migration handle_new_user** - Trigger création profil automatique |
-| 2026-01-27 | **Edge Function delete-user** - Suppression propre auth.users |
-| 2026-01-27 | **Fix 406 error** - select('*') dans useProfileState |
-| 2026-01-27 | **Skip onboarding** - Tous les champs skippables, null au lieu de "" |
+*Pour l'historique detaille des sessions, voir `docs/development-log.md`*
