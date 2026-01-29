@@ -425,7 +425,7 @@ const Profile = () => {
                   MODIFIER
                 </Button>
               </SheetTrigger>
-              <SheetContent className="overflow-y-auto bg-[#0a1628] w-full sm:max-w-xl p-0" closeButtonColor="white">
+              <SheetContent className="overflow-y-auto bg-[#0a1628] w-full sm:max-w-xl p-0" closeButtonColor="white" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <SheetHeader className="sticky top-0 z-20 space-y-1 bg-gradient-to-r from-primary to-primary-light p-5 text-white shadow-lg">
                   <SheetTitle className="text-xl font-bold text-white">Modifier le profil</SheetTitle>
                   <SheetDescription className="text-white/80 text-sm">

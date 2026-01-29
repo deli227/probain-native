@@ -1,6 +1,6 @@
 
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
-import { lazy, Suspense, useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { supabase } from "@/integrations/supabase/client";
 import { ProfileProvider, useProfile } from "@/contexts/ProfileContext";
@@ -12,6 +12,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { useAppResume } from "@/hooks/useAppResume";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { queryClient, persister } from "@/lib/queryClient";
+import { lazyRetry } from "@/utils/lazyRetry";
 
 // Navbars - chargées immédiatement car souvent utilisées
 import Navbar from "@/components/Navbar";
@@ -19,28 +20,28 @@ import TrainerNavbar from "@/components/navbar/TrainerNavbar";
 import RescuerNavbar from "@/components/navbar/RescuerNavbar";
 import EstablishmentNavbar from "@/components/navbar/EstablishmentNavbar";
 
-// Lazy loading des pages pour réduire la taille du bundle initial
-const Index = lazy(() => import("@/pages/Index"));
-const Profile = lazy(() => import("@/pages/Profile"));
-const TrainerProfile = lazy(() => import("@/components/profile/TrainerProfile"));
-const EstablishmentProfile = lazy(() => import("@/components/profile/EstablishmentProfile"));
-const EstablishmentAnnouncements = lazy(() => import("@/pages/EstablishmentAnnouncements"));
-const EstablishmentRescuers = lazy(() => import("@/pages/EstablishmentRescuers"));
-const TrainerStudents = lazy(() => import("@/components/profile/TrainerStudents").then(m => ({ default: m.TrainerStudents })));
-const Jobs = lazy(() => import("@/pages/Jobs"));
-const Training = lazy(() => import("@/pages/Training"));
-const Auth = lazy(() => import("@/pages/Auth"));
-const OnboardingWizard = lazy(() => import("@/components/onboarding/OnboardingWizard").then(m => ({ default: m.OnboardingWizard })));
-const Mailbox = lazy(() => import("@/pages/Mailbox"));
-const EstablishmentMailbox = lazy(() => import("@/components/mailbox/EstablishmentMailbox"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
-const Settings = lazy(() => import("@/pages/Settings"));
-const Flux = lazy(() => import("@/pages/Flux"));
-const TermsOfUse = lazy(() => import("@/pages/TermsOfUse"));
-const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
-const SetPassword = lazy(() => import("@/pages/SetPassword"));
-const AddFormation = lazy(() => import("@/pages/AddFormation"));
-const AddExperience = lazy(() => import("@/pages/AddExperience"));
+// Lazy loading des pages avec retry automatique (protection contre les chunks invalides apres deploiement)
+const Index = lazyRetry(() => import("@/pages/Index"));
+const Profile = lazyRetry(() => import("@/pages/Profile"));
+const TrainerProfile = lazyRetry(() => import("@/components/profile/TrainerProfile"));
+const EstablishmentProfile = lazyRetry(() => import("@/components/profile/EstablishmentProfile"));
+const EstablishmentAnnouncements = lazyRetry(() => import("@/pages/EstablishmentAnnouncements"));
+const EstablishmentRescuers = lazyRetry(() => import("@/pages/EstablishmentRescuers"));
+const TrainerStudents = lazyRetry(() => import("@/components/profile/TrainerStudents").then(m => ({ default: m.TrainerStudents })));
+const Jobs = lazyRetry(() => import("@/pages/Jobs"));
+const Training = lazyRetry(() => import("@/pages/Training"));
+const Auth = lazyRetry(() => import("@/pages/Auth"));
+const OnboardingWizard = lazyRetry(() => import("@/components/onboarding/OnboardingWizard").then(m => ({ default: m.OnboardingWizard })));
+const Mailbox = lazyRetry(() => import("@/pages/Mailbox"));
+const EstablishmentMailbox = lazyRetry(() => import("@/components/mailbox/EstablishmentMailbox"));
+const NotFound = lazyRetry(() => import("@/pages/NotFound"));
+const Settings = lazyRetry(() => import("@/pages/Settings"));
+const Flux = lazyRetry(() => import("@/pages/Flux"));
+const TermsOfUse = lazyRetry(() => import("@/pages/TermsOfUse"));
+const PrivacyPolicy = lazyRetry(() => import("@/pages/PrivacyPolicy"));
+const SetPassword = lazyRetry(() => import("@/pages/SetPassword"));
+const AddFormation = lazyRetry(() => import("@/pages/AddFormation"));
+const AddExperience = lazyRetry(() => import("@/pages/AddExperience"));
 
 // Plus besoin de sessionStorage - TanStack Query gère le cache
 
@@ -62,8 +63,14 @@ function AppRoutes() {
   const { profileTypeSelected, onboardingCompleted, profileType, loading } = useProfile();
   const [isInitializing, setIsInitializing] = useState(true);
   const [isProcessingAuthTokens, setIsProcessingAuthTokens] = useState(hasAuthTokensInUrl());
+  const isProcessingAuthTokensRef = useRef(isProcessingAuthTokens);
   const sessionRef = useRef(null);
   const initHandledRef = useRef(false); // Pour éviter les race conditions
+
+  // Sync ref avec le state pour utilisation dans l'effet auth (evite de re-souscrire)
+  useEffect(() => {
+    isProcessingAuthTokensRef.current = isProcessingAuthTokens;
+  }, [isProcessingAuthTokens]);
 
   // Gestion du retour sur l'app après lien externe (FIX PWA)
   useAppResume();
@@ -73,6 +80,25 @@ function AppRoutes() {
   const isOnboardingPage = location.pathname === "/onboarding";
   const isTrainerProfile = location.pathname.startsWith("/trainer-profile");
   const isEstablishmentProfile = location.pathname.startsWith("/establishment-profile");
+
+  // Determiner si on doit utiliser le DashboardLayout (pages protegees avec profil)
+  // Debounce: passe a true immediatement, mais attend 300ms avant de passer a false
+  // Cela empeche le DashboardLayout de se demonter pendant les transitions transitoires (refresh session, etc.)
+  const shouldUseDashboardLayoutRaw = !!(session && profileType && !loading && !isLandingPage && !isAuthPage && !isOnboardingPage);
+  const [shouldUseDashboardLayout, setShouldUseDashboardLayout] = useState(shouldUseDashboardLayoutRaw);
+  const layoutTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (shouldUseDashboardLayoutRaw) {
+      clearTimeout(layoutTimerRef.current);
+      setShouldUseDashboardLayout(true);
+    } else {
+      layoutTimerRef.current = setTimeout(() => {
+        setShouldUseDashboardLayout(false);
+      }, 300);
+    }
+    return () => clearTimeout(layoutTimerRef.current);
+  }, [shouldUseDashboardLayoutRaw]);
 
   useEffect(() => {
     let isMounted = true;
@@ -84,7 +110,7 @@ function AppRoutes() {
       setSession(newSession);
 
       // Si on avait des tokens dans l'URL et qu'on a maintenant une session, les tokens ont été traités
-      if (isProcessingAuthTokens && newSession) {
+      if (isProcessingAuthTokensRef.current && newSession) {
         setIsProcessingAuthTokens(false);
         // Nettoyer l'URL pour éviter le retraitement (hash ou query params)
         if (window.location.hash.includes('access_token') ||
@@ -121,7 +147,8 @@ function AppRoutes() {
       clearTimeout(tokenProcessingTimeout);
       subscription.unsubscribe();
     };
-  }, [isProcessingAuthTokens]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Stable: pas de re-souscription. Le ref isProcessingAuthTokensRef est lu dans le callback.
 
   if (isInitializing) {
     return <LoadingScreen message="Initialisation de l'application..." />;
@@ -179,10 +206,6 @@ function AppRoutes() {
     return children;
   };
 
-  // Determiner si on doit utiliser le DashboardLayout (pages protegees avec profil)
-  // Attendre que loading soit false pour éviter les flashs
-  const shouldUseDashboardLayout = session && profileType && !loading && !isLandingPage && !isAuthPage && !isOnboardingPage;
-
   // Wrapper pour le contenu avec ou sans DashboardLayout
   const ContentWrapper = ({ children }: { children: React.ReactNode }) => {
     if (shouldUseDashboardLayout && profileType) {
@@ -206,6 +229,7 @@ function AppRoutes() {
       <OfflineIndicator />
       <InstallPWAPrompt />
       <ContentWrapper>
+      <ErrorBoundary resetKey={location.pathname}>
       <Suspense fallback={<LoadingScreen message="Chargement..." />}>
       <Routes>
         <Route path="/" element={<Navigate to="/auth" replace />} />
@@ -270,6 +294,7 @@ function AppRoutes() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
+      </ErrorBoundary>
       </ContentWrapper>
     </div>
   );

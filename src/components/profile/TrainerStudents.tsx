@@ -1,16 +1,17 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Users, User, Search, Mail, Check, X, Loader2, CalendarDays, GraduationCap, Shield, Phone } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Users, User, Search, Mail, Check, X, Loader2, CalendarDays, GraduationCap, Shield, Phone, SlidersHorizontal } from 'lucide-react';
 import { SendMessageDialog } from "@/components/profile/SendMessageDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { logger } from "@/utils/logger";
-import { getRecyclingInfo, getRecyclingLabel } from "@/utils/recyclingUtils";
+import { getRecyclingInfo, getRecyclingLabel, normalizeCertName } from "@/utils/recyclingUtils";
 import type { RecyclingStatus } from "@/utils/recyclingConfig";
 
 interface StudentData {
@@ -451,6 +452,97 @@ const StudentList = ({
   );
 };
 
+// Panneau de filtres (brevet + source)
+const FilterPanel = ({
+  show,
+  selectedBrevet,
+  onSelectBrevet,
+  formationSource,
+  onSelectSource,
+  availableBrevets,
+  onClearFilters,
+}: {
+  show: boolean;
+  selectedBrevet: string | null;
+  onSelectBrevet: (brevet: string | null) => void;
+  formationSource: 'all' | 'own' | 'others';
+  onSelectSource: (source: 'all' | 'own' | 'others') => void;
+  availableBrevets: string[];
+  onClearFilters: () => void;
+}) => {
+  if (!show) return null;
+
+  const hasActiveFilters = selectedBrevet !== null || formationSource !== 'all';
+
+  return (
+    <div className="bg-white/5 rounded-xl border border-white/10 p-4 mb-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+      {/* Sélecteur brevet */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-white/50 uppercase tracking-wide">
+          Filtrer par brevet
+        </label>
+        <Select
+          value={selectedBrevet || "__none__"}
+          onValueChange={(v) => onSelectBrevet(v === "__none__" ? null : v)}
+        >
+          <SelectTrigger className="w-full bg-white/5 border-white/10 text-white rounded-xl h-10 text-sm">
+            <SelectValue placeholder="Tous les brevets" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#0a1628] border-white/10 rounded-xl">
+            <SelectItem value="__none__" className="text-white/70 focus:bg-white/10 focus:text-white">
+              Tous les brevets
+            </SelectItem>
+            {availableBrevets.map((b) => (
+              <SelectItem key={b} value={b} className="text-white focus:bg-white/10 focus:text-white">
+                {b}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Sélecteur source (visible seulement quand un brevet est choisi) */}
+      {selectedBrevet && (
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-white/50 uppercase tracking-wide">
+            Source de la formation
+          </label>
+          <div className="grid grid-cols-3 gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
+            {([
+              { value: 'all' as const, label: 'Tous' },
+              { value: 'own' as const, label: 'Chez moi' },
+              { value: 'others' as const, label: 'Ailleurs' },
+            ]).map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => onSelectSource(value)}
+                className={`rounded-lg py-2 text-sm font-medium transition-all ${
+                  formationSource === value
+                    ? 'bg-white/15 text-white shadow-sm'
+                    : 'text-white/50 hover:text-white/70'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bouton effacer */}
+      {hasActiveFilters && (
+        <button
+          onClick={onClearFilters}
+          className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+        >
+          <X className="h-3 w-3" />
+          Effacer les filtres
+        </button>
+      )}
+    </div>
+  );
+};
+
 export const TrainerStudents = () => {
   const [students, setStudents] = useState<StudentData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -461,6 +553,11 @@ export const TrainerStudents = () => {
   const [detailStudent, setDetailStudent] = useState<StudentData | null>(null);
   const [externalFormations, setExternalFormations] = useState<ExternalFormation[]>([]);
   const [loadingExternal, setLoadingExternal] = useState(false);
+  // Filtres brevet + source
+  const [studentFormationsMap, setStudentFormationsMap] = useState<Map<string, string[]>>(new Map());
+  const [selectedBrevet, setSelectedBrevet] = useState<string | null>(null);
+  const [formationSource, setFormationSource] = useState<'all' | 'own' | 'others'>('all');
+  const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
 
   // Récupérer les élèves du formateur
@@ -535,6 +632,36 @@ export const TrainerStudents = () => {
       });
 
       setStudents(formattedStudents);
+
+      // Charger les formations externes (table `formations`) pour le système de filtres
+      if (studentIds.length > 0) {
+        try {
+          const BATCH_SIZE = 200;
+          const batches: string[][] = [];
+          for (let i = 0; i < studentIds.length; i += BATCH_SIZE) {
+            batches.push(studentIds.slice(i, i + BATCH_SIZE));
+          }
+          const results = await Promise.all(
+            batches.map(batch =>
+              supabase.from("formations").select("user_id, title").in("user_id", batch)
+            )
+          );
+          const fMap = new Map<string, string[]>();
+          for (const { data: batchData } of results) {
+            if (batchData) {
+              for (const item of batchData) {
+                const arr = fMap.get(item.user_id) || [];
+                arr.push(item.title);
+                fMap.set(item.user_id, arr);
+              }
+            }
+          }
+          setStudentFormationsMap(fMap);
+        } catch (err) {
+          console.error('[TrainerStudents] Bulk formations fetch error:', err);
+          // Non-bloquant : le filtre fonctionnera uniquement avec les données propres
+        }
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur inconnue';
       setError(msg);
@@ -612,9 +739,30 @@ export const TrainerStudents = () => {
     fetchExternalFormations();
   }, [detailStudent]);
 
-  // Filtrer : "active" = recyclage non expiré, "all" = tout
-  const getFilteredStudents = (tab: 'active' | 'all') => {
+  // Liste des brevets disponibles (propres + externes)
+  const availableBrevets = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of students) {
+      if (s.training_type) set.add(s.training_type);
+    }
+    for (const [, titles] of studentFormationsMap) {
+      for (const t of titles) {
+        if (t) set.add(t);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [students, studentFormationsMap]);
+
+  // Reset source quand on change de brevet
+  const handleSelectBrevet = useCallback((brevet: string | null) => {
+    setSelectedBrevet(brevet);
+    if (!brevet) setFormationSource('all');
+  }, []);
+
+  // Filtrer : recherche + onglet + brevet + source
+  const getFilteredStudents = useCallback((tab: 'active' | 'all') => {
     return students.filter(student => {
+      // 1. Recherche texte (existant)
       const matchesSearch = searchQuery === "" ||
         student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -622,16 +770,29 @@ export const TrainerStudents = () => {
 
       if (!matchesSearch) return false;
 
-      if (tab === 'active') {
-        return student.recyclingStatus !== 'expired';
+      // 2. Filtre onglet (existant)
+      if (tab === 'active' && student.recyclingStatus === 'expired') {
+        return false;
+      }
+
+      // 3. Filtre brevet + source (nouveau)
+      if (selectedBrevet) {
+        const norm = normalizeCertName(selectedBrevet);
+        const ownMatch = normalizeCertName(student.training_type) === norm;
+        const extForms = studentFormationsMap.get(student.student_id) || [];
+        const extMatch = extForms.some(t => normalizeCertName(t) === norm);
+
+        if (formationSource === 'own' && !ownMatch) return false;
+        if (formationSource === 'others' && !extMatch) return false;
+        if (formationSource === 'all' && !ownMatch && !extMatch) return false;
       }
 
       return true;
     });
-  };
+  }, [students, searchQuery, selectedBrevet, formationSource, studentFormationsMap]);
 
-  const activeStudents = getFilteredStudents('active');
-  const allStudents = getFilteredStudents('all');
+  const activeStudents = useMemo(() => getFilteredStudents('active'), [getFilteredStudents]);
+  const allStudents = useMemo(() => getFilteredStudents('all'), [getFilteredStudents]);
 
   // Sélection
   const toggleStudentSelection = (studentId: string) => {
@@ -733,17 +894,68 @@ export const TrainerStudents = () => {
 
       {/* Contenu */}
       <div className="max-w-4xl mx-auto p-4 md:p-6">
-        {/* Barre de recherche */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-          <input
-            type="text"
-            placeholder="Rechercher un élève..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 text-sm focus:outline-none focus:ring-1 focus:ring-probain-blue/50 focus:border-probain-blue/50 transition-all"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        {/* Barre de recherche + bouton filtre */}
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+            <input
+              type="text"
+              placeholder="Rechercher un élève..."
+              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 text-sm focus:outline-none focus:ring-1 focus:ring-probain-blue/50 focus:border-probain-blue/50 transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`relative h-[42px] w-[42px] rounded-xl border flex-shrink-0 transition-all ${
+              showFilters || selectedBrevet
+                ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400'
+                : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {selectedBrevet && !showFilters && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full" />
+            )}
+          </Button>
         </div>
+
+        {/* Panneau de filtres */}
+        <FilterPanel
+          show={showFilters}
+          selectedBrevet={selectedBrevet}
+          onSelectBrevet={handleSelectBrevet}
+          formationSource={formationSource}
+          onSelectSource={setFormationSource}
+          availableBrevets={availableBrevets}
+          onClearFilters={() => {
+            setSelectedBrevet(null);
+            setFormationSource('all');
+          }}
+        />
+
+        {/* Indicateur de filtre actif (panneau fermé) */}
+        {!showFilters && selectedBrevet && (
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <span className="text-xs text-white/40">Filtre :</span>
+            <span
+              className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full text-xs cursor-pointer hover:bg-cyan-500/30 transition-colors"
+              onClick={() => setShowFilters(true)}
+            >
+              {selectedBrevet}
+              {formationSource !== 'all' && ` · ${formationSource === 'own' ? 'Chez moi' : 'Ailleurs'}`}
+            </span>
+            <button
+              onClick={() => { setSelectedBrevet(null); setFormationSource('all'); }}
+              className="text-white/30 hover:text-white/50 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <Tabs defaultValue="active" className="w-full">

@@ -17,8 +17,13 @@ interface FormationData {
 }
 
 /** Résout le nom canonique d'une certification (gère les alias) */
-function resolveCertName(title: string): string {
+export function resolveCertName(title: string): string {
   return CERTIFICATION_ALIASES[title] ?? title;
+}
+
+/** Normalise un nom de brevet pour comparaison (insensible à la casse + alias) */
+export function normalizeCertName(title: string): string {
+  return resolveCertName(title).toLowerCase().trim();
 }
 
 /** Calcule le statut de recyclage pour une formation donnée (logique année civile SSS) */

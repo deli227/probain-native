@@ -393,7 +393,17 @@ export const AuthForm = ({ activeTab, setActiveTab, errorMessage }: AuthFormProp
       setRescuerPassword("");
       setRescuerPasswordConfirm("");
 
-      // Afficher la modal de confirmation
+      // Si l'utilisateur est deja confirme (email verification desactivee dans Supabase),
+      // pas besoin d'afficher le dialog "Verifiez votre email"
+      if (data.user.email_confirmed_at || data.session) {
+        toast({
+          title: "Inscription reussie !",
+          description: "Votre compte a ete cree avec succes. Bienvenue !",
+        });
+        return;
+      }
+
+      // Sinon, afficher la modal de confirmation email
       setConfirmDialogType("rescuer");
       setShowConfirmDialog(true);
 

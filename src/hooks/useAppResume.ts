@@ -49,6 +49,18 @@ export const useAppResume = () => {
               const { error } = await supabase.auth.refreshSession();
               if (error) {
                 logger.error('Erreur refresh session:', error);
+                // Si la session est expiree/invalide, deconnecter proprement
+                // pour eviter un etat inconsistant (routes protegees visibles sans session)
+                const msg = error.message || '';
+                if (
+                  msg.includes('Auth session missing') ||
+                  msg.includes('Invalid Refresh Token') ||
+                  msg.includes('Refresh Token Not Found') ||
+                  error.name === 'AuthSessionMissingError'
+                ) {
+                  logger.warn('Session expiree apres background - deconnexion propre');
+                  await supabase.auth.signOut();
+                }
               }
             }
           }, 2000);

@@ -23,6 +23,8 @@ interface NotificationsPopupProps {
   recyclingExpiringSoonCount?: number;
   recyclingReminderCount?: number;
   notifyRecycling?: boolean;
+  // Ne pas afficher le badge tant que les donnees ne sont pas chargees
+  isNotificationsReady?: boolean;
 }
 
 // Routes de mail selon le type de profil
@@ -48,6 +50,7 @@ export const NotificationsPopup = ({
   recyclingExpiringSoonCount = 0,
   recyclingReminderCount = 0,
   notifyRecycling = true,
+  isNotificationsReady = true,
 }: NotificationsPopupProps) => {
   const navigate = useNavigate();
 
@@ -107,7 +110,7 @@ export const NotificationsPopup = ({
       <PopoverTrigger asChild>
         <button className="p-2 rounded-full hover:bg-primary-light relative text-white">
           <Bell className="h-5 w-5 text-white" />
-          {totalNotifications > 0 && (
+          {isNotificationsReady && totalNotifications > 0 && (
             <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-yellow-400 text-primary text-xs font-bold rounded-full border-2 border-primary">
               {totalNotifications > 99 ? '99+' : totalNotifications}
             </Badge>

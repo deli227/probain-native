@@ -5,6 +5,7 @@ import { AlertCircle } from "lucide-react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
+  resetKey?: string; // Quand cette valeur change, l'erreur est automatiquement resetee
 }
 
 interface ErrorBoundaryState {
@@ -25,6 +26,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps: ErrorBoundaryProps): void {
+    // Auto-recovery: si resetKey change (ex: navigation vers un autre onglet), reset l'erreur
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null, errorInfo: null });
+    }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {

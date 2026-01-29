@@ -27,15 +27,16 @@ export const MobileHeader = memo(({ profileType }: MobileHeaderProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Hooks pour notifications
+  // Hooks pour notifications (extraire isLoading pour eviter les flash de badge)
   const {
     counts,
+    isLoading: isRescuerLoading,
     markFormationsAsSeen,
     markJobsAsSeen,
     markAllAsSeen,
   } = useRescuerNotifications();
-  const { unreadCount: unreadMessages } = useUnreadMessages();
-  const { newPostsCount, markAsSeen: markFluxAsSeen } = useFluxNotifications();
+  const { unreadCount: unreadMessages, isLoading: isMessagesLoading } = useUnreadMessages();
+  const { newPostsCount, isLoading: isFluxLoading, markAsSeen: markFluxAsSeen } = useFluxNotifications();
   const { expiredCount: recyclingExpiredCount, expiringSoonCount: recyclingExpiringSoonCount, reminderCount: recyclingReminderCount } = useRecyclingReminders();
 
   // Préférences de notifications (pour toggle recyclage)
@@ -45,7 +46,10 @@ export const MobileHeader = memo(({ profileType }: MobileHeaderProps) => {
       if (session?.user) setUserId(session.user.id);
     });
   }, []);
-  const { preferences } = useNotificationPreferences(userId);
+  const { preferences, loading: preferencesLoading } = useNotificationPreferences(userId);
+
+  // Ne pas afficher le badge tant que toutes les donnees ne sont pas chargees
+  const isNotificationsReady = !isRescuerLoading && !isMessagesLoading && !isFluxLoading && !preferencesLoading && !!userId;
 
   // Route du profil selon le type
   const getProfileRoute = () => {
@@ -116,7 +120,8 @@ export const MobileHeader = memo(({ profileType }: MobileHeaderProps) => {
       recyclingExpiredCount={recyclingExpiredCount}
       recyclingExpiringSoonCount={recyclingExpiringSoonCount}
       recyclingReminderCount={recyclingReminderCount}
-      notifyRecycling={preferences?.notify_recycling ?? true}
+      notifyRecycling={preferencesLoading ? false : (preferences?.notify_recycling ?? true)}
+      isNotificationsReady={isNotificationsReady}
     />
   );
 

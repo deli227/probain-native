@@ -260,7 +260,7 @@ export const ProfileForm = ({ defaultValues, onProfileUpdated, onSaveComplete }:
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="relative z-10 space-y-6 pb-24">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="relative z-10 space-y-6 pb-44 md:pb-24">
           {/* Section Profil */}
           <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-5 border border-white/10 shadow-xl">
             <PersonalInfoForm form={form} darkMode />
@@ -416,8 +416,8 @@ export const ProfileForm = ({ defaultValues, onProfileUpdated, onSaveComplete }:
             </p>
           </div>
 
-          {/* Bouton de sauvegarde style natif */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/95 to-transparent z-20">
+          {/* Bouton de sauvegarde style natif - bottom-[100px] pour ne pas être caché par la tab bar mobile */}
+          <div className="fixed bottom-[100px] md:bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/95 to-transparent z-20">
             <Button
               type="submit"
               className="w-full h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold text-lg shadow-lg shadow-blue-500/30 transition-all duration-300 active:scale-[0.98]"
