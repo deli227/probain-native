@@ -223,10 +223,41 @@ DROP POLICY IF EXISTS "trainer_students_select" ON trainer_students;
 CREATE POLICY "trainer_students_select"
 ON trainer_students FOR SELECT TO authenticated USING (auth.uid() = trainer_id OR auth.uid() = student_id);
 
+-- Supprimer l'ancienne politique qui causait une récursion infinie
+DROP POLICY IF EXISTS "trainer_see_student_all_formations" ON trainer_students;
+
+-- Fonction RPC SECURITY DEFINER pour récupérer les formations externes d'un élève
+-- Permet à un formateur de voir les formations de son élève chez d'autres formateurs
+-- sans modifier les politiques RLS de trainer_students
+CREATE OR REPLACE FUNCTION public.get_student_external_formations(p_student_id uuid)
+RETURNS TABLE (
+  id uuid,
+  training_date date,
+  training_type text,
+  trainer_id uuid
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT ts.id, ts.training_date, ts.training_type, ts.trainer_id
+  FROM trainer_students ts
+  WHERE ts.student_id = p_student_id
+    AND ts.trainer_id != auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM trainer_students
+      WHERE trainer_id = auth.uid()
+      AND student_id = p_student_id
+    );
+$$;
+
 DROP POLICY IF EXISTS "trainer_students_insert" ON trainer_students;
 CREATE POLICY "trainer_students_insert"
 ON trainer_students FOR INSERT TO authenticated
-WITH CHECK (auth.uid() = trainer_id AND EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.profile_type = 'formateur'));
+WITH CHECK (
+  (auth.uid() = trainer_id AND EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.profile_type = 'formateur'))
+  OR auth.uid() = student_id
+);
 
 DROP POLICY IF EXISTS "trainer_students_update" ON trainer_students;
 CREATE POLICY "trainer_students_update"

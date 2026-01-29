@@ -30,6 +30,12 @@ dist-ssr
 # Claude Code
 .claude/
 
+# MCP config (contains secrets)
+.mcp.json
+
+# Windows artifacts
+nul
+
 # Vite cache
 .vite/
 .vite-dev/

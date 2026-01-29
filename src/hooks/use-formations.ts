@@ -55,68 +55,51 @@ function resolveRecyclingOrg(
 }
 
 /**
- * Synchronise le lien trainer_students pour le recyclage.
- * - Si previousOrg existait et a changé → supprime l'ancien lien
- * - Si newOrg est défini → crée ou met à jour le lien
+ * Synchronise le lien trainer_students.
+ * Les liens ne sont JAMAIS supprimés (un formateur garde toujours ses élèves).
+ * - Si org est défini → crée ou met à jour le lien
  */
 async function syncTrainerStudentLink(
   studentId: string,
   trainingType: string,
-  trainingDate: string | null,
-  newOrg: string | null,
-  previousOrg: string | null
+  trainingDate: string,
+  org: string
 ) {
   try {
-    // 1. Si l'ancien org a changé, supprimer l'ancien lien
-    if (previousOrg && previousOrg !== newOrg) {
-      const oldTrainerId = await findTrainerIdByOrganizationName(previousOrg);
-      if (oldTrainerId) {
-        logger.log('[syncTrainerStudentLink] Suppression ancien lien:', { oldTrainerId, studentId, trainingType });
-        await supabase
-          .from('trainer_students')
-          .delete()
-          .eq('trainer_id', oldTrainerId)
-          .eq('student_id', studentId)
-          .eq('training_type', trainingType);
-      }
+    const trainerId = await findTrainerIdByOrganizationName(org);
+    if (!trainerId) {
+      logger.log('[syncTrainerStudentLink] Aucun formateur inscrit trouvé pour:', org);
+      return;
     }
 
-    // 2. Si nouveau org défini, créer/mettre à jour le lien
-    if (newOrg && trainingDate) {
-      const newTrainerId = await findTrainerIdByOrganizationName(newOrg);
-      if (newTrainerId) {
-        // Vérifier si un lien existe déjà
-        const { data: existing } = await supabase
-          .from('trainer_students')
-          .select('id')
-          .eq('trainer_id', newTrainerId)
-          .eq('student_id', studentId)
-          .eq('training_type', trainingType)
-          .maybeSingle();
+    // Vérifier si un lien existe déjà
+    const { data: existing } = await supabase
+      .from('trainer_students')
+      .select('id')
+      .eq('trainer_id', trainerId)
+      .eq('student_id', studentId)
+      .eq('training_type', trainingType)
+      .maybeSingle();
 
-        if (existing) {
-          // Mettre à jour la date
-          logger.log('[syncTrainerStudentLink] Mise à jour lien existant:', existing.id);
-          await supabase
-            .from('trainer_students')
-            .update({ training_date: trainingDate })
-            .eq('id', existing.id);
-        } else {
-          // Créer un nouveau lien
-          logger.log('[syncTrainerStudentLink] Création nouveau lien:', { newTrainerId, studentId, trainingType });
-          await supabase
-            .from('trainer_students')
-            .insert({
-              trainer_id: newTrainerId,
-              student_id: studentId,
-              training_type: trainingType,
-              training_date: trainingDate,
-              certification_issued: true,
-            });
-        }
-      } else {
-        logger.log('[syncTrainerStudentLink] Aucun formateur inscrit trouvé pour:', newOrg);
-      }
+    if (existing) {
+      // Mettre à jour la date
+      logger.log('[syncTrainerStudentLink] Mise à jour lien existant:', existing.id);
+      await supabase
+        .from('trainer_students')
+        .update({ training_date: trainingDate })
+        .eq('id', existing.id);
+    } else {
+      // Créer un nouveau lien
+      logger.log('[syncTrainerStudentLink] Création nouveau lien:', { trainerId, studentId, trainingType });
+      await supabase
+        .from('trainer_students')
+        .insert({
+          trainer_id: trainerId,
+          student_id: studentId,
+          training_type: trainingType,
+          training_date: trainingDate,
+          certification_issued: true,
+        });
     }
   } catch (error) {
     // Ne pas bloquer la mutation principale si la sync échoue
@@ -199,9 +182,15 @@ export const useFormations = (userId?: string) => {
 
       if (insertError) throw insertError;
 
+      // Synchroniser le lien trainer_students pour l'organisme initial
+      if (values.organization) {
+        const startDateStr = values.startDate.toISOString().split('T')[0];
+        await syncTrainerStudentLink(user.id, title, startDateStr, values.organization);
+      }
+
       // Synchroniser le lien trainer_students pour le recyclage
       if (recyclingOrg && endDateStr) {
-        await syncTrainerStudentLink(user.id, title, endDateStr, recyclingOrg, null);
+        await syncTrainerStudentLink(user.id, title, endDateStr, recyclingOrg);
       }
 
       return insertedData;
@@ -242,14 +231,6 @@ export const useFormations = (userId?: string) => {
       if (authError) throw authError;
       if (!user) throw new Error('User not authenticated');
 
-      // Récupérer l'ancien recycling_organization avant la mise à jour
-      const { data: oldFormation } = await supabase
-        .from('formations')
-        .select('recycling_organization, title')
-        .eq('id', id)
-        .single();
-      const previousRecyclingOrg = oldFormation?.recycling_organization || null;
-
       const documentUrl = values.documentUrl;
 
       const title = values.certificationType === "Autre diplôme" && values.customCertification
@@ -283,12 +264,15 @@ export const useFormations = (userId?: string) => {
 
       if (updateError) throw updateError;
 
-      // Synchroniser le lien trainer_students
-      // Si endDate supprimé et ancien org existait → cleanup
-      if (!endDateStr && previousRecyclingOrg) {
-        await syncTrainerStudentLink(user.id, title, null, null, previousRecyclingOrg);
-      } else {
-        await syncTrainerStudentLink(user.id, title, endDateStr, recyclingOrg, previousRecyclingOrg);
+      // Synchroniser le lien trainer_students pour l'organisme initial
+      if (values.organization) {
+        const startDateStr = values.startDate.toISOString().split('T')[0];
+        await syncTrainerStudentLink(user.id, title, startDateStr, values.organization);
+      }
+
+      // Synchroniser le lien trainer_students pour le recyclage
+      if (recyclingOrg && endDateStr) {
+        await syncTrainerStudentLink(user.id, title, endDateStr, recyclingOrg);
       }
 
       return updatedData;
@@ -327,13 +311,6 @@ export const useFormations = (userId?: string) => {
       if (authError) throw authError;
       if (!user) throw new Error('User not authenticated');
 
-      // Récupérer les infos avant suppression pour cleanup trainer_students
-      const { data: formationData } = await supabase
-        .from('formations')
-        .select('title, recycling_organization, end_date')
-        .eq('id', id)
-        .single();
-
       const { error } = await supabase
         .from('formations')
         .delete()
@@ -342,16 +319,8 @@ export const useFormations = (userId?: string) => {
 
       if (error) throw error;
 
-      // Cleanup du lien trainer_students si recycling_organization existait
-      if (formationData?.recycling_organization) {
-        await syncTrainerStudentLink(
-          user.id,
-          formationData.title,
-          null,
-          null,
-          formationData.recycling_organization
-        );
-      }
+      // Les liens trainer_students ne sont PAS supprimés :
+      // un formateur garde toujours ses anciens élèves
 
       return id;
     },

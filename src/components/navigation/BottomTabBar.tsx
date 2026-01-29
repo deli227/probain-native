@@ -43,7 +43,6 @@ export const BottomTabBar = memo(({ profileType }: BottomTabBarProps) => {
           { path: '/trainer-profile/students', icon: Users, label: 'Eleves' },
           { path: '/trainer-profile/mail', icon: Mail, label: 'Messages', badgeCount: unreadMessages },
           { path: '/flux', icon: Newspaper, label: 'Flux', badgeCount: newPostsCount },
-          { path: '/training', icon: GraduationCap, label: 'Formations' },
         ];
 
       case 'etablissement':
@@ -60,12 +59,9 @@ export const BottomTabBar = memo(({ profileType }: BottomTabBarProps) => {
     }
   }, [profileType, rescuerNotifications.counts, unreadMessages, newPostsCount]);
 
-  // Verifier si un onglet est actif
+  // Verifier si un onglet est actif (match exact pour eviter les conflits de prefixes)
   const isActive = (path: string) => {
-    if (path === '/flux') {
-      return location.pathname === '/flux';
-    }
-    return location.pathname.startsWith(path);
+    return location.pathname === path;
   };
 
   // Handler pour le flux (marquer comme vu) avec haptic feedback
@@ -90,7 +86,7 @@ export const BottomTabBar = memo(({ profileType }: BottomTabBarProps) => {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 bg-primary z-50 bottom-tab-bar-fix"
+      className="md:hidden fixed bottom-0 left-0 right-0 bg-primary z-[60] bottom-tab-bar-fix"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       role="navigation"
       aria-label="Navigation principale"

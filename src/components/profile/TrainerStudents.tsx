@@ -1,33 +1,476 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { UserPlus, UserX, User, Search, Backpack, Mail, Check, X } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Users, User, Search, Mail, Check, X, Loader2, CalendarDays, GraduationCap, Shield, Phone } from 'lucide-react';
 import { SendMessageDialog } from "@/components/profile/SendMessageDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { safeGetUser } from "@/utils/asyncHelpers";
+import { logger } from "@/utils/logger";
+import { getRecyclingInfo, getRecyclingLabel } from "@/utils/recyclingUtils";
+import type { RecyclingStatus } from "@/utils/recyclingConfig";
+
+interface StudentData {
+  id: string;
+  student_id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  phoneVisible: boolean;
+  avatarUrl: string | null;
+  certification_issued: boolean;
+  date: string;
+  training_type: string;
+  training_date: string;
+  recyclingStatus: RecyclingStatus;
+  recyclingLabel: string | null;
+}
+
+interface SelectedStudent {
+  student_id: string;
+  student: {
+    first_name: string;
+    last_name: string;
+  };
+}
+
+// Helper: obtenir les initiales
+const getInitials = (name: string): string => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return '?';
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
+
+// Badge de statut recyclage
+const RecyclingStatusBadge = ({ status }: { status: RecyclingStatus }) => {
+  const config: Record<string, { bg: string; text: string; label: string }> = {
+    valid: { bg: 'bg-green-500/20', text: 'text-green-400', label: 'Valide' },
+    expiring_soon: { bg: 'bg-orange-500/20', text: 'text-orange-400', label: 'Expire bientôt' },
+    reminder: { bg: 'bg-sky-500/20', text: 'text-sky-400', label: 'À recycler' },
+    expired: { bg: 'bg-red-500/20', text: 'text-red-400', label: 'Expiré' },
+    no_recycling: { bg: 'bg-white/10', text: 'text-white/50', label: 'Permanent' },
+    unknown: { bg: 'bg-white/10', text: 'text-white/40', label: '' },
+  };
+
+  const c = config[status] || config.unknown;
+  if (!c.label) return null;
+
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.text} whitespace-nowrap`}>
+      {c.label}
+    </span>
+  );
+};
+
+// Interface pour les formations externes (table `formations` du sauveteur)
+interface ExternalFormation {
+  id: string;
+  title: string;
+  organization: string;
+  start_date: string;
+  date: string;
+  recyclingStatus: RecyclingStatus;
+  recyclingLabel: string | null;
+}
+
+// Carte formation dans le détail (formations du formateur actuel)
+const FormationCard = ({ formation }: { formation: StudentData }) => {
+  const statusColor =
+    formation.recyclingStatus === 'expired' ? 'text-red-400' :
+    formation.recyclingStatus === 'expiring_soon' ? 'text-orange-400' :
+    formation.recyclingStatus === 'reminder' ? 'text-sky-400' :
+    formation.recyclingStatus === 'valid' ? 'text-green-400' :
+    'text-white/50';
+
+  return (
+    <div className="bg-white/5 rounded-xl p-4 border border-white/10 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <GraduationCap className="h-4 w-4 text-cyan-400 flex-shrink-0" />
+          <p className="text-sm font-semibold text-white truncate">{formation.training_type || 'Non spécifiée'}</p>
+        </div>
+        <RecyclingStatusBadge status={formation.recyclingStatus} />
+      </div>
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-white/40 flex items-center gap-1.5">
+          <CalendarDays className="h-3.5 w-3.5" />
+          {formation.date}
+        </span>
+        {formation.recyclingLabel && (
+          <span className={statusColor}>{formation.recyclingLabel}</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Carte formation externe (depuis la table `formations` du sauveteur)
+const ExternalFormationCard = ({ formation }: { formation: ExternalFormation }) => {
+  const statusColor =
+    formation.recyclingStatus === 'expired' ? 'text-red-400' :
+    formation.recyclingStatus === 'expiring_soon' ? 'text-orange-400' :
+    formation.recyclingStatus === 'reminder' ? 'text-sky-400' :
+    formation.recyclingStatus === 'valid' ? 'text-green-400' :
+    'text-white/50';
+
+  return (
+    <div className="bg-white/5 rounded-xl p-4 border border-white/10 border-dashed space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <GraduationCap className="h-4 w-4 text-white/30 flex-shrink-0" />
+          <p className="text-sm font-semibold text-white truncate">{formation.title || 'Non spécifiée'}</p>
+        </div>
+        <RecyclingStatusBadge status={formation.recyclingStatus} />
+      </div>
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-white/40 flex items-center gap-1.5">
+          <CalendarDays className="h-3.5 w-3.5" />
+          {formation.date}
+        </span>
+        {formation.recyclingLabel && (
+          <span className={statusColor}>{formation.recyclingLabel}</span>
+        )}
+      </div>
+      <div className="text-xs text-white/30">
+        Organisation : {formation.organization}
+      </div>
+    </div>
+  );
+};
+
+// Fiche détail élève (Sheet)
+const StudentDetailSheet = ({
+  student,
+  ownFormations,
+  externalFormations,
+  loadingExternal,
+  open,
+  onOpenChange,
+  onSendMessage,
+}: {
+  student: StudentData | null;
+  ownFormations: StudentData[];
+  externalFormations: ExternalFormation[];
+  loadingExternal: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSendMessage: () => void;
+}) => {
+  if (!student) return null;
+
+  const initials = getInitials(student.name);
+  const totalFormations = ownFormations.length + externalFormations.length;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-md bg-primary-dark border-white/10 p-0 pb-24 md:pb-0 overflow-y-auto" preventMobileAutoClose={false}>
+        <SheetHeader className="sticky top-0 z-10 bg-gradient-to-r from-primary to-primary-light px-6 py-5 shadow-lg">
+          <SheetTitle className="text-lg font-bold text-white">Détails de l'élève</SheetTitle>
+        </SheetHeader>
+
+        <div className="p-6 space-y-6">
+          {/* Avatar + Nom */}
+          <div className="flex flex-col items-center text-center">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400/20 to-blue-500/20 flex items-center justify-center border-2 border-white/20 mb-4 overflow-hidden">
+              {student.avatarUrl ? (
+                <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl font-bold text-white/70">{initials}</span>
+              )}
+            </div>
+            <h3 className="text-xl font-bold text-white">{student.name || 'Sans nom'}</h3>
+            {student.email && (
+              <p className="text-sm text-white/50 mt-1">{student.email}</p>
+            )}
+            {student.phoneVisible && student.phone && (
+              <a
+                href={`tel:${student.phone}`}
+                className="text-sm text-cyan-400 hover:text-cyan-300 mt-1 flex items-center gap-1"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                {student.phone}
+              </a>
+            )}
+          </div>
+
+          {/* Formations chez vous */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                <GraduationCap className="h-3.5 w-3.5 text-cyan-400" />
+              </div>
+              <span className="text-sm font-semibold text-white">
+                Formations chez vous ({ownFormations.length})
+              </span>
+            </div>
+            <div className="space-y-2">
+              {ownFormations.map((f) => (
+                <FormationCard key={f.id} formation={f} />
+              ))}
+            </div>
+          </div>
+
+          {/* Formations du sauveteur (depuis son profil) */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                <GraduationCap className="h-3.5 w-3.5 text-white/40" />
+              </div>
+              <span className="text-sm font-semibold text-white/70">
+                Ses formations {!loadingExternal && `(${externalFormations.length})`}
+              </span>
+            </div>
+            {loadingExternal ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-white/30" />
+              </div>
+            ) : externalFormations.length > 0 ? (
+              <div className="space-y-2">
+                {externalFormations.map((f) => (
+                  <ExternalFormationCard key={f.id} formation={f} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-white/30 pl-9">Aucune formation renseignée</p>
+            )}
+          </div>
+
+          {/* Total */}
+          {!loadingExternal && totalFormations > 0 && (
+            <div className="text-center text-xs text-white/30 pt-1">
+              {totalFormations} formation{totalFormations > 1 ? 's' : ''} au total
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="space-y-3">
+            <Button
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl h-12"
+              onClick={() => {
+                onOpenChange(false);
+                onSendMessage();
+              }}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Envoyer un message
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-white/60 hover:text-white hover:bg-white/10 rounded-xl h-12 font-semibold"
+              onClick={() => onOpenChange(false)}
+            >
+              Annuler
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+// Carte élève redesignée
+const StudentCard = ({
+  student,
+  isSelected,
+  onToggleSelect,
+  onSendMessage,
+  onViewDetails,
+}: {
+  student: StudentData;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onSendMessage: () => void;
+  onViewDetails: () => void;
+}) => {
+  const initials = getInitials(student.name);
+
+  return (
+    <div
+      className={`bg-white/10 backdrop-blur-sm rounded-xl border p-4 hover:bg-white/15 transition-all cursor-pointer ${
+        isSelected ? 'border-probain-blue ring-1 ring-probain-blue' : 'border-white/10'
+      }`}
+      onClick={onViewDetails}
+    >
+      <div className="flex items-center gap-3">
+        {/* Checkbox */}
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={onToggleSelect}
+          onClick={(e) => e.stopPropagation()}
+          className="border-white/40 data-[state=checked]:bg-probain-blue data-[state=checked]:border-probain-blue flex-shrink-0"
+        />
+
+        {/* Avatar */}
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400/20 to-blue-500/20 flex items-center justify-center border border-white/20 flex-shrink-0 overflow-hidden">
+          {student.avatarUrl ? (
+            <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-sm font-bold text-white/70">{initials}</span>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-white truncate">{student.name || 'Sans nom'}</p>
+          <p className="text-sm text-white/50 truncate">{student.training_type || 'Non spécifiée'}</p>
+        </div>
+
+        {/* Status badge */}
+        <RecyclingStatusBadge status={student.recyclingStatus} />
+
+        {/* Bouton message uniquement */}
+        <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-white/50 hover:text-white hover:bg-white/10"
+            onClick={onSendMessage}
+          >
+            <Mail className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Sous-ligne : date + recyclage */}
+      <div className="ml-[52px] mt-2 flex items-center gap-3 text-xs text-white/40">
+        <span>{student.date}</span>
+        {student.recyclingLabel && (
+          <span className={
+            student.recyclingStatus === 'expired' ? 'text-red-400' :
+            student.recyclingStatus === 'expiring_soon' ? 'text-orange-400' :
+            student.recyclingStatus === 'reminder' ? 'text-sky-400' :
+            'text-white/40'
+          }>
+            {student.recyclingLabel}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Header compact
+const CompactHeader = ({ activeCount, totalCount }: { activeCount: number; totalCount: number }) => (
+  <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark py-5 md:py-6 px-4 overflow-hidden">
+    {/* Cercle décoratif */}
+    <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+
+    <div className="relative max-w-4xl mx-auto text-center">
+      <div className="flex flex-col items-center gap-2">
+        {/* Icône compacte */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl blur-md opacity-40" />
+          <div className="relative bg-gradient-to-br from-cyan-400/20 to-blue-500/20 backdrop-blur-md p-2.5 rounded-xl border border-white/20">
+            <Users className="h-5 w-5 md:h-6 md:w-6 text-white" />
+          </div>
+        </div>
+
+        <h1 className="text-lg md:text-xl font-bold text-white tracking-tight">
+          MES ÉLÈVES
+        </h1>
+
+        {totalCount > 0 && (
+          <p className="text-white/60 text-sm">
+            {activeCount} actif{activeCount !== 1 ? 's' : ''} sur {totalCount}
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+// État vide
+const EmptyState = ({ type }: { type: 'active' | 'all' }) => (
+  <div className="text-center py-12">
+    <Users className="h-12 w-12 text-white/20 mx-auto mb-4" />
+    <p className="text-white/60 font-medium">
+      {type === 'active' ? 'Aucun élève actif' : 'Aucun élève trouvé'}
+    </p>
+    <p className="text-white/40 text-sm mt-1">
+      {type === 'active'
+        ? 'Les élèves avec un brevet valide chez vous apparaîtront ici'
+        : 'Les élèves qui passent un brevet chez vous apparaîtront ici'}
+    </p>
+  </div>
+);
+
+// Liste d'élèves
+const StudentList = ({
+  students,
+  selectedStudents,
+  onToggleSelect,
+  onSendMessage,
+  onToggleAll,
+  onViewDetails,
+  emptyType,
+}: {
+  students: StudentData[];
+  selectedStudents: SelectedStudent[];
+  onToggleSelect: (studentId: string) => void;
+  onSendMessage: (studentId: string) => void;
+  onToggleAll: () => void;
+  onViewDetails: (student: StudentData) => void;
+  emptyType: 'active' | 'all';
+}) => {
+  if (students.length === 0) return <EmptyState type={emptyType} />;
+
+  const allSelected = students.every(s =>
+    selectedStudents.some(sel => sel.student_id === s.student_id)
+  );
+
+  return (
+    <>
+      {/* Sélectionner tout - discret */}
+      <div className="flex justify-end mb-3">
+        <button
+          onClick={onToggleAll}
+          className="text-xs text-white/40 hover:text-white/70 transition-colors flex items-center gap-1"
+        >
+          {allSelected ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+          {allSelected ? 'Désélectionner' : 'Tout sélectionner'}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {students.map((student) => (
+          <StudentCard
+            key={student.id}
+            student={student}
+            isSelected={selectedStudents.some(s => s.student_id === student.student_id)}
+            onToggleSelect={() => onToggleSelect(student.student_id)}
+            onSendMessage={() => onSendMessage(student.student_id)}
+            onViewDetails={() => onViewDetails(student)}
+          />
+        ))}
+      </div>
+    </>
+  );
+};
 
 export const TrainerStudents = () => {
-  const [students, setStudents] = useState([]);
+  const [students, setStudents] = useState<StudentData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [selectedStudents, setSelectedStudents] = useState<SelectedStudent[]>([]);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [detailStudent, setDetailStudent] = useState<StudentData | null>(null);
+  const [externalFormations, setExternalFormations] = useState<ExternalFormation[]>([]);
+  const [loadingExternal, setLoadingExternal] = useState(false);
   const { toast } = useToast();
-  
-  // Récupérer les élèves du formateur depuis la base de données
+
+  // Récupérer les élèves du formateur
   const fetchStudents = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await safeGetUser(supabase, 5000);
       if (!user) throw new Error("Non authentifié");
 
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from("trainer_students")
         .select(`
           id,
@@ -39,27 +482,62 @@ export const TrainerStudents = () => {
             id,
             first_name,
             last_name,
-            email
+            email,
+            phone,
+            avatar_url
           )
         `)
         .eq("trainer_id", user.id);
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
 
-      // Transformer les données pour faciliter l'utilisation
-      const formattedStudents = data.map(item => ({
-        id: item.id,
-        student_id: item.student_id,
-        name: `${item.profiles.first_name || ''} ${item.profiles.last_name || ''}`.trim(),
-        email: item.profiles.email || '',
-        status: item.certification_issued ? "certifié" : "en formation",
-        date: new Date(item.training_date).toLocaleDateString('fr-FR'),
-        training_type: item.training_type
-      }));
+      // Récupérer phone_visible depuis rescuer_profiles pour chaque élève
+      const studentIds = (data || []).map(item => item.student_id);
+      let phoneVisibilityMap: Record<string, boolean> = {};
+
+      if (studentIds.length > 0) {
+        const { data: rescuerProfiles } = await supabase
+          .from("rescuer_profiles")
+          .select("id, phone_visible")
+          .in("id", studentIds);
+
+        if (rescuerProfiles) {
+          phoneVisibilityMap = Object.fromEntries(
+            rescuerProfiles.map(rp => [rp.id, rp.phone_visible ?? false])
+          );
+        }
+      }
+
+      const formattedStudents: StudentData[] = (data || []).map(item => {
+        // Calculer le statut de recyclage
+        const recyclingInfo = getRecyclingInfo({
+          id: item.id,
+          title: item.training_type,
+          start_date: item.training_date,
+        });
+        const recyclingLabel = getRecyclingLabel(recyclingInfo);
+
+        return {
+          id: item.id,
+          student_id: item.student_id,
+          name: `${item.profiles?.first_name || ''} ${item.profiles?.last_name || ''}`.trim(),
+          email: item.profiles?.email || '',
+          phone: item.profiles?.phone || null,
+          phoneVisible: phoneVisibilityMap[item.student_id] ?? false,
+          avatarUrl: item.profiles?.avatar_url || null,
+          certification_issued: item.certification_issued ?? false,
+          date: new Date(item.training_date).toLocaleDateString('fr-FR'),
+          training_type: item.training_type,
+          training_date: item.training_date,
+          recyclingStatus: recyclingInfo.status,
+          recyclingLabel,
+        };
+      });
 
       setStudents(formattedStudents);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue';
+      setError(msg);
       toast({
         title: "Erreur",
         description: "Impossible de charger vos élèves",
@@ -74,132 +552,174 @@ export const TrainerStudents = () => {
     fetchStudents();
   }, []);
 
-  // Filtrer les élèves par statut et recherche
-  const getFilteredStudents = (status = "all") => {
+  // Charger les formations externes quand on ouvre le détail d'un élève
+  useEffect(() => {
+    if (!detailStudent) {
+      setExternalFormations([]);
+      return;
+    }
+
+    const fetchExternalFormations = async () => {
+      setLoadingExternal(true);
+      try {
+        // Récupérer toutes les formations du sauveteur depuis la table `formations`
+        // Inclure end_date (date du dernier recyclage) pour calculer correctement le statut
+        const { data, error: extError } = await supabase
+          .from("formations")
+          .select("id, title, organization, start_date, end_date")
+          .eq("user_id", detailStudent.student_id);
+
+        if (extError) {
+          console.error("[ExternalFormations] Query error:", extError.message);
+          setExternalFormations([]);
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          setExternalFormations([]);
+          return;
+        }
+
+        const formatted: ExternalFormation[] = data.map(item => {
+          const recyclingInfo = getRecyclingInfo({
+            id: item.id,
+            title: item.title,
+            start_date: item.start_date,
+            end_date: item.end_date,
+          });
+          const recyclingLabel = getRecyclingLabel(recyclingInfo);
+
+          return {
+            id: item.id,
+            title: item.title || '',
+            organization: item.organization || '',
+            start_date: item.start_date,
+            date: new Date(item.end_date || item.start_date).toLocaleDateString('fr-FR'),
+            recyclingStatus: recyclingInfo.status,
+            recyclingLabel,
+          };
+        });
+
+        setExternalFormations(formatted);
+      } catch (err) {
+        console.error("[ExternalFormations] Unexpected error:", err);
+        setExternalFormations([]);
+      } finally {
+        setLoadingExternal(false);
+      }
+    };
+
+    fetchExternalFormations();
+  }, [detailStudent]);
+
+  // Filtrer : "active" = recyclage non expiré, "all" = tout
+  const getFilteredStudents = (tab: 'active' | 'all') => {
     return students.filter(student => {
-      const matchesStatus = status === "all" || 
-                          (status === "active" && student.status === "en formation") ||
-                          (status === "inactive" && student.status === "certifié");
-      
-      const matchesSearch = searchQuery === "" || 
-                          student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          student.email.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      return matchesStatus && matchesSearch;
+      const matchesSearch = searchQuery === "" ||
+        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.training_type.toLowerCase().includes(searchQuery.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      if (tab === 'active') {
+        return student.recyclingStatus !== 'expired';
+      }
+
+      return true;
     });
   };
 
-  // Mettre à jour le statut de certification d'un élève
-  const updateCertificationStatus = async (studentRecordId, newStatus) => {
-    try {
-      const { error } = await supabase
-        .from("trainer_students")
-        .update({ certification_issued: newStatus })
-        .eq("id", studentRecordId);
+  const activeStudents = getFilteredStudents('active');
+  const allStudents = getFilteredStudents('all');
 
-      if (error) throw error;
-
-      // Mettre à jour l'état local
-      setStudents(prev => prev.map(student =>
-        student.id === studentRecordId
-          ? { ...student, status: newStatus ? "certifié" : "en formation" }
-          : student
-      ));
-
-      toast({
-        title: "Succès",
-        description: newStatus
-          ? "L'élève a été certifié avec succès"
-          : "La certification a été retirée",
-      });
-    } catch {
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le statut de certification",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Gérer la sélection d'un élève
-  const toggleStudentSelection = (studentId) => {
+  // Sélection
+  const toggleStudentSelection = (studentId: string) => {
     setSelectedStudents(prev => {
       const isSelected = prev.some(s => s.student_id === studentId);
       if (isSelected) {
         return prev.filter(s => s.student_id !== studentId);
-      } else {
-        const student = students.find(s => s.student_id === studentId);
-        return [...prev, { 
-          student_id: student.student_id,
-          student: {
-            first_name: student.name.split(' ')[0],
-            last_name: student.name.split(' ').slice(1).join(' ')
-          }
-        }];
       }
+      const student = students.find(s => s.student_id === studentId);
+      if (!student) return prev;
+      return [...prev, {
+        student_id: student.student_id,
+        student: {
+          first_name: student.name.split(' ')[0] || '',
+          last_name: student.name.split(' ').slice(1).join(' ') || '',
+        },
+      }];
     });
   };
 
-  // Sélectionner/désélectionner tous les élèves visibles
-  const toggleAllStudents = (status) => {
-    const filteredStudents = getFilteredStudents(status);
-    
-    if (filteredStudents.every(s => selectedStudents.some(selected => selected.student_id === s.student_id))) {
-      // Désélectionner tous les élèves de ce filtre
-      setSelectedStudents(prev => prev.filter(s => 
-        !filteredStudents.some(filtered => filtered.student_id === s.student_id)
-      ));
+  const toggleAllStudents = (filteredStudents: StudentData[]) => {
+    const allSelected = filteredStudents.every(s =>
+      selectedStudents.some(sel => sel.student_id === s.student_id)
+    );
+
+    if (allSelected) {
+      setSelectedStudents(prev =>
+        prev.filter(s => !filteredStudents.some(f => f.student_id === s.student_id))
+      );
     } else {
-      // Sélectionner tous les élèves de ce filtre
-      const studentsToAdd = filteredStudents
-        .filter(s => !selectedStudents.some(selected => selected.student_id === s.student_id))
-        .map(s => ({ 
+      const toAdd = filteredStudents
+        .filter(s => !selectedStudents.some(sel => sel.student_id === s.student_id))
+        .map(s => ({
           student_id: s.student_id,
           student: {
-            first_name: s.name.split(' ')[0],
-            last_name: s.name.split(' ').slice(1).join(' ')
-          }
+            first_name: s.name.split(' ')[0] || '',
+            last_name: s.name.split(' ').slice(1).join(' ') || '',
+          },
         }));
-      
-      setSelectedStudents(prev => [...prev, ...studentsToAdd]);
+      setSelectedStudents(prev => [...prev, ...toAdd]);
     }
   };
 
-  // Envoyer un message à un seul élève
-  const openMessageDialogForStudent = (studentId) => {
+  const openMessageDialogForStudent = (studentId: string) => {
     const student = students.find(s => s.student_id === studentId);
     if (student) {
-      setSelectedStudents([{ 
+      setSelectedStudents([{
         student_id: student.student_id,
         student: {
-          first_name: student.name.split(' ')[0],
-          last_name: student.name.split(' ').slice(1).join(' ')
-        }
+          first_name: student.name.split(' ')[0] || '',
+          last_name: student.name.split(' ').slice(1).join(' ') || '',
+        },
       }]);
       setIsMessageDialogOpen(true);
     }
   };
 
+  // Counts (sans filtre de recherche)
+  const totalCount = students.length;
+  const activeCount = students.filter(s => s.recyclingStatus !== 'expired').length;
+
+  // Loading
   if (loading) {
     return (
-      <div className="min-h-screen bg-primary-dark pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
-          <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white w-full text-left md:text-center uppercase mb-8">MES ÉLÈVES</h2>
-          <div className="bg-white/5 backdrop-blur-sm rounded-lg p-8 flex justify-center items-center">
-            <p className="text-white">Chargement des élèves...</p>
-          </div>
+      <div className="min-h-screen bg-primary-dark pb-20 md:pb-6">
+        <CompactHeader activeCount={0} totalCount={0} />
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-white/60" />
         </div>
       </div>
     );
   }
 
+  // Error
   if (error) {
     return (
-      <div className="min-h-screen bg-primary-dark pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
-          <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white w-full text-left md:text-center uppercase mb-8">MES ÉLÈVES</h2>
-          <div className="bg-white/5 backdrop-blur-sm rounded-lg p-8 flex justify-center items-center">
-            <p className="text-red-400">Erreur: {error}</p>
+      <div className="min-h-screen bg-primary-dark pb-20 md:pb-6">
+        <CompactHeader activeCount={0} totalCount={0} />
+        <div className="max-w-4xl mx-auto p-4 md:p-6">
+          <div className="bg-red-500/10 backdrop-blur-sm rounded-xl p-6 border border-red-500/20 text-center">
+            <p className="text-red-400">Erreur : {error}</p>
+            <Button
+              onClick={fetchStudents}
+              variant="ghost"
+              className="mt-3 text-white/70 hover:text-white"
+            >
+              Réessayer
+            </Button>
           </div>
         </div>
       </div>
@@ -207,158 +727,101 @@ export const TrainerStudents = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
-        <div className="flex justify-between items-center mb-6 md:mb-8">
-          <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white w-full text-left md:text-center uppercase">MES ÉLÈVES</h2>
+    <div className="min-h-screen bg-primary-dark pb-20 md:pb-6">
+      {/* Header compact */}
+      <CompactHeader activeCount={activeCount} totalCount={totalCount} />
+
+      {/* Contenu */}
+      <div className="max-w-4xl mx-auto p-4 md:p-6">
+        {/* Barre de recherche */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+          <input
+            type="text"
+            placeholder="Rechercher un élève..."
+            className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 text-sm focus:outline-none focus:ring-1 focus:ring-probain-blue/50 focus:border-probain-blue/50 transition-all"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
-        <div className="bg-white/5 backdrop-blur-sm rounded-lg p-4 mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-            <div className="relative w-full md:w-64">
-              <input
-                type="text"
-                placeholder="Rechercher un élève..."
-                className="w-full px-4 py-2 pl-10 bg-white/10 border border-white/20 rounded-md text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-probain-blue"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70 h-4 w-4" />
-            </div>
-            <div className="flex gap-2 w-full md:w-auto">
-              {selectedStudents.length > 0 && (
-                <Button 
-                  className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
-                  onClick={() => setIsMessageDialogOpen(true)}
-                >
-                  <Mail className="h-4 w-4" />
-                  Envoyer un message ({selectedStudents.length})
-                </Button>
-              )}
-              <Button className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                Ajouter un élève
-              </Button>
-            </div>
-          </div>
+        {/* Tabs */}
+        <Tabs defaultValue="active" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 rounded-xl p-1 h-auto">
+            <TabsTrigger
+              value="active"
+              className="rounded-lg py-2 text-sm text-white/60 data-[state=active]:bg-white/15 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+            >
+              Actifs ({activeStudents.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="all"
+              className="rounded-lg py-2 text-sm text-white/60 data-[state=active]:bg-white/15 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+            >
+              Tous ({allStudents.length})
+            </TabsTrigger>
+          </TabsList>
 
-          <Tabs defaultValue="active" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-primary border border-white/10">
-              <TabsTrigger value="active" className="text-white data-[state=active]:bg-primary/80">
-                Actifs
-              </TabsTrigger>
-              <TabsTrigger value="inactive" className="text-white data-[state=active]:bg-primary/80">
-                Certifiés
-              </TabsTrigger>
-              <TabsTrigger value="all" className="text-white data-[state=active]:bg-primary/80">
-                Tous
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="active" className="mt-4">
-              <div className="flex justify-end mb-2">
-                <Button 
-                  variant="ghost" 
-                  className="text-white p-2 h-8"
-                  onClick={() => toggleAllStudents("active")}
-                >
-                  {getFilteredStudents("active").every(s => selectedStudents.some(selected => selected.student_id === s.student_id)) 
-                    ? <><X className="h-4 w-4 mr-1" /> Désélectionner tout</>
-                    : <><Check className="h-4 w-4 mr-1" /> Sélectionner tout</>
-                  }
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {getFilteredStudents("active").map((student) => (
-                  <StudentCard
-                    key={student.id}
-                    student={student}
-                    isSelected={selectedStudents.some(s => s.student_id === student.student_id)}
-                    onToggleSelect={() => toggleStudentSelection(student.student_id)}
-                    onSendMessage={() => openMessageDialogForStudent(student.student_id)}
-                    onUpdateCertification={(newStatus) => updateCertificationStatus(student.id, newStatus)}
-                  />
-                ))}
-                {getFilteredStudents("active").length === 0 && (
-                  <div className="col-span-full text-center p-8 text-white/60">
-                    Aucun élève actif trouvé
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="inactive" className="mt-4">
-              <div className="flex justify-end mb-2">
-                <Button 
-                  variant="ghost" 
-                  className="text-white p-2 h-8"
-                  onClick={() => toggleAllStudents("inactive")}
-                >
-                  {getFilteredStudents("inactive").every(s => selectedStudents.some(selected => selected.student_id === s.student_id)) 
-                    ? <><X className="h-4 w-4 mr-1" /> Désélectionner tout</>
-                    : <><Check className="h-4 w-4 mr-1" /> Sélectionner tout</>
-                  }
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {getFilteredStudents("inactive").map((student) => (
-                  <StudentCard
-                    key={student.id}
-                    student={student}
-                    isSelected={selectedStudents.some(s => s.student_id === student.student_id)}
-                    onToggleSelect={() => toggleStudentSelection(student.student_id)}
-                    onSendMessage={() => openMessageDialogForStudent(student.student_id)}
-                    onUpdateCertification={(newStatus) => updateCertificationStatus(student.id, newStatus)}
-                  />
-                ))}
-                {getFilteredStudents("inactive").length === 0 && (
-                  <div className="col-span-full text-center p-8 text-white/60">
-                    Aucun élève certifié trouvé
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="all" className="mt-4">
-              <div className="flex justify-end mb-2">
-                <Button 
-                  variant="ghost" 
-                  className="text-white p-2 h-8"
-                  onClick={() => toggleAllStudents("all")}
-                >
-                  {getFilteredStudents("all").every(s => selectedStudents.some(selected => selected.student_id === s.student_id)) 
-                    ? <><X className="h-4 w-4 mr-1" /> Désélectionner tout</>
-                    : <><Check className="h-4 w-4 mr-1" /> Sélectionner tout</>
-                  }
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {getFilteredStudents("all").map((student) => (
-                  <StudentCard
-                    key={student.id}
-                    student={student}
-                    isSelected={selectedStudents.some(s => s.student_id === student.student_id)}
-                    onToggleSelect={() => toggleStudentSelection(student.student_id)}
-                    onSendMessage={() => openMessageDialogForStudent(student.student_id)}
-                    onUpdateCertification={(newStatus) => updateCertificationStatus(student.id, newStatus)}
-                  />
-                ))}
-                {getFilteredStudents("all").length === 0 && (
-                  <div className="col-span-full text-center p-8 text-white/60">
-                    Aucun élève trouvé
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+          <TabsContent value="active" className="mt-4">
+            <StudentList
+              students={activeStudents}
+              selectedStudents={selectedStudents}
+              onToggleSelect={toggleStudentSelection}
+              onSendMessage={openMessageDialogForStudent}
+              onToggleAll={() => toggleAllStudents(activeStudents)}
+              onViewDetails={setDetailStudent}
+              emptyType="active"
+            />
+          </TabsContent>
+
+          <TabsContent value="all" className="mt-4">
+            <StudentList
+              students={allStudents}
+              selectedStudents={selectedStudents}
+              onToggleSelect={toggleStudentSelection}
+              onSendMessage={openMessageDialogForStudent}
+              onToggleAll={() => toggleAllStudents(allStudents)}
+              onViewDetails={setDetailStudent}
+              emptyType="all"
+            />
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* FAB : Envoyer message (fixé en bas quand sélection active) */}
+      {selectedStudents.length > 0 && (
+        <div className="fixed bottom-[100px] md:bottom-6 left-0 right-0 px-4 z-[55]">
+          <div className="max-w-4xl mx-auto">
+            <Button
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all py-3"
+              onClick={() => setIsMessageDialogOpen(true)}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Envoyer un message ({selectedStudents.length})
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Sheet détail élève */}
+      <StudentDetailSheet
+        student={detailStudent}
+        ownFormations={detailStudent ? students.filter(s => s.student_id === detailStudent.student_id) : []}
+        externalFormations={externalFormations}
+        loadingExternal={loadingExternal}
+        open={!!detailStudent}
+        onOpenChange={(open) => { if (!open) setDetailStudent(null); }}
+        onSendMessage={() => {
+          if (detailStudent) {
+            openMessageDialogForStudent(detailStudent.student_id);
+          }
+        }}
+      />
 
       <SendMessageDialog
         isOpen={isMessageDialogOpen}
         onClose={() => {
           setIsMessageDialogOpen(false);
-          // Réinitialiser la sélection après l'envoi du message
           if (selectedStudents.length === 1) {
             setSelectedStudents([]);
           }
@@ -366,89 +829,5 @@ export const TrainerStudents = () => {
         selectedStudents={selectedStudents}
       />
     </div>
-  );
-};
-
-const StudentCard = ({ student, isSelected, onToggleSelect, onSendMessage, onUpdateCertification }) => {
-  return (
-    <Card className={`bg-white/10 border-white/20 text-white overflow-hidden hover:bg-white/15 transition-colors ${isSelected ? 'border-probain-blue ring-1 ring-probain-blue' : ''}`}>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <Checkbox 
-              checked={isSelected}
-              onCheckedChange={onToggleSelect}
-              className="border-white/40 data-[state=checked]:bg-primary"
-            />
-            <div className="bg-primary-dark p-2 rounded-full">
-              <User className="h-5 w-5 text-probain-blue" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">{student.name}</CardTitle>
-              <CardDescription className="text-white/70">{student.email}</CardDescription>
-            </div>
-          </div>
-          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-            student.status === 'en formation' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
-          }`}>
-            {student.status === 'en formation' ? 'En formation' : 'Certifié'}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pb-2">
-        <div className="flex items-center gap-2 text-sm text-white/60">
-          <Backpack className="h-4 w-4" />
-          <span>Inscrit le {student.date}</span>
-        </div>
-        <div className="mt-1 text-sm text-white/60">
-          <span>Formation: {student.training_type || 'Non spécifiée'}</span>
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-between pt-2 border-t border-white/10">
-        <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 p-2 h-8">
-          Voir détails
-        </Button>
-        <div className="flex">
-          <Button 
-            variant="ghost" 
-            className="text-primary-light hover:text-primary hover:bg-primary/10 p-2 h-8"
-            onClick={onSendMessage}
-          >
-            <Mail className="h-4 w-4" />
-          </Button>
-          
-          <Popover>
-            <PopoverTrigger asChild>
-              {student.status === 'en formation' ? (
-                <Button variant="ghost" className="text-green-400 hover:text-green-300 hover:bg-green-500/10 p-2 h-8">
-                  <Check className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 h-8">
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </PopoverTrigger>
-            <PopoverContent className="w-auto">
-              <p className="mb-2">{student.status === 'en formation' ? 'Marquer comme certifié?' : 'Retirer la certification?'}</p>
-              <div className="flex justify-end gap-2">
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm">Annuler</Button>
-                </PopoverTrigger>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const newStatus = student.status === 'en formation';
-                    onUpdateCertification(newStatus);
-                  }}
-                >
-                  {student.status === 'en formation' ? 'Certifier' : 'Retirer'}
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </CardFooter>
-    </Card>
   );
 };

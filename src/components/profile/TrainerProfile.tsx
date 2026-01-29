@@ -7,12 +7,14 @@ import { TrainerProfileForm } from "./forms/TrainerProfileForm";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import { TrainerCourses } from "./TrainerCourses";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ProfileSkeleton } from "@/components/skeletons/ProfileSkeleton";
 import { useProfile } from "@/contexts/ProfileContext";
 import { useQuery } from "@tanstack/react-query";
 import { logger } from "@/utils/logger";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { CalendarDays, MapPin } from "lucide-react";
 
 interface TrainerProfileUpdateValues {
   biography?: string;
@@ -36,6 +38,7 @@ interface TrainerProfileUpdateValues {
 const TrainerProfile = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Utiliser les données du context (déjà en cache!)
   const {
@@ -47,39 +50,56 @@ const TrainerProfile = () => {
 
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Charger les stats (courses count, students count)
-  const { data: stats = { coursesCount: 0, studentsCount: 0 } } = useQuery({
-    queryKey: ['trainer-stats', baseProfile?.id],
-    queryFn: async () => {
-      if (!baseProfile?.id) return { coursesCount: 0, studentsCount: 0 };
+  // Ouvrir le sheet d'édition via l'événement openProfileEdit (gear icon)
+  useEffect(() => {
+    const handleOpenEdit = () => setSheetOpen(true);
+    window.addEventListener('openProfileEdit', handleOpenEdit);
+    return () => window.removeEventListener('openProfileEdit', handleOpenEdit);
+  }, []);
 
-      // Fetch courses count
-      const { count: courses } = await supabase
-        .from('formations')
+  // Ouvrir le sheet si navigué avec state openEdit: true
+  useEffect(() => {
+    if (location.state?.openEdit) {
+      setSheetOpen(true);
+      // Nettoyer le state pour éviter de réouvrir au retour
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state?.openEdit]);
+
+  // Charger le nombre d'élèves depuis trainer_students
+  const { data: studentsCount = 0 } = useQuery({
+    queryKey: ['trainer-students-count', baseProfile?.id],
+    queryFn: async () => {
+      if (!baseProfile?.id) return 0;
+
+      const { count } = await supabase
+        .from('trainer_students')
         .select('*', { count: 'exact', head: true })
         .eq('trainer_id', baseProfile.id);
 
-      // Fetch unique students count
-      const { data: formationsData } = await supabase
-        .from('formations')
-        .select('id')
-        .eq('trainer_id', baseProfile.id);
-
-      let studentsCount = 0;
-      if (formationsData && formationsData.length > 0) {
-        const { data: reservations } = await supabase
-          .from('reservations')
-          .select('user_id')
-          .in('formation_id', formationsData.map(f => f.id));
-
-        const uniqueStudents = new Set(reservations?.map(r => r.user_id) || []);
-        studentsCount = uniqueStudents.size;
-      }
-
-      return { coursesCount: courses || 0, studentsCount };
+      return count || 0;
     },
     enabled: !!baseProfile?.id,
     staleTime: 5 * 60 * 1000,
+  });
+
+  // Charger les formations à venir depuis sss_formations_cache
+  const { data: upcomingFormations = [] } = useQuery({
+    queryKey: ['trainer-upcoming-formations', trainerProfile?.organization_name],
+    queryFn: async () => {
+      if (!trainerProfile?.organization_name) return [];
+      const today = new Date().toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('sss_formations_cache')
+        .select('id, titre, debut, fin, lieu, places_status, places_color, url')
+        .eq('organisateur', trainerProfile.organization_name)
+        .eq('active', true)
+        .gte('debut', today)
+        .order('debut', { ascending: true });
+      return data || [];
+    },
+    enabled: !!trainerProfile?.organization_name,
+    staleTime: 10 * 60 * 1000,
   });
 
   // Rediriger si pas authentifié
@@ -204,11 +224,11 @@ const TrainerProfile = () => {
                 MODIFIER PROFIL
               </Button>
             </SheetTrigger>
-            <SheetContent className="overflow-y-auto bg-gray-100 w-full sm:max-w-xl p-0">
+            <SheetContent className="overflow-y-auto bg-[#0a1628] w-full sm:max-w-xl p-0" closeButtonColor="white">
               <SheetHeader className="sticky top-0 z-10 space-y-1 bg-gradient-to-r from-primary to-primary-light p-5 text-white shadow-lg">
                 <SheetTitle className="text-xl font-bold text-white">Modifier le profil formateur</SheetTitle>
               </SheetHeader>
-              <div className="p-6 space-y-6">
+              <div className="p-6">
                 <TrainerProfileForm
                   onSubmit={handleProfileUpdate}
                   defaultValues={{
@@ -239,9 +259,7 @@ const TrainerProfile = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <ProfileStats
           stats={[
-            { label: "Formations", value: stats.coursesCount, icon: "courses" },
-            { label: "Étudiants", value: stats.studentsCount, icon: "students" },
-            { label: "Certifications", value: trainerProfile?.certifications?.length || 0, icon: "certifications" },
+            { label: "Étudiants", value: studentsCount, icon: "students" },
           ]}
         />
 
@@ -250,14 +268,80 @@ const TrainerProfile = () => {
             { label: "Photo de profil", completed: !!trainerProfile?.avatar_url },
             { label: "Nom organisation", completed: !!trainerProfile?.organization_name },
             { label: "Description", completed: !!trainerProfile?.description },
-            { label: "Certifications", completed: (trainerProfile?.certifications?.length || 0) > 0 },
             { label: "Site web", completed: !!trainerProfile?.website },
             { label: "Canton", completed: !!trainerProfile?.canton || !!baseProfile?.canton },
           ]}
           className="mt-6"
         />
 
-        <TrainerCourses />
+        {/* Formations à venir */}
+        {upcomingFormations.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-white/80 font-semibold uppercase text-sm tracking-wider mb-4">
+              Formations à venir
+            </h3>
+            <div className="space-y-3">
+              {upcomingFormations.map((f) => {
+                const formatDate = (dateStr: string | null) => {
+                  if (!dateStr) return '';
+                  try {
+                    return format(new Date(dateStr), 'd MMM yyyy', { locale: fr });
+                  } catch {
+                    return dateStr;
+                  }
+                };
+
+                const placesBadge = () => {
+                  const colorMap: Record<string, string> = {
+                    green: 'bg-green-100 text-green-700',
+                    orange: 'bg-orange-100 text-orange-700',
+                    red: 'bg-red-100 text-red-700',
+                    gray: 'bg-gray-100 text-gray-500',
+                  };
+                  const labelMap: Record<string, string> = {
+                    green: 'Disponible',
+                    orange: 'Limité',
+                    red: 'Complet',
+                    gray: 'Indisponible',
+                  };
+                  const color = f.places_color || 'gray';
+                  return (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${colorMap[color] || colorMap.gray}`}>
+                      {labelMap[color] || 'Indisponible'}
+                    </span>
+                  );
+                };
+
+                return (
+                  <div
+                    key={f.id}
+                    className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => f.url && window.open(f.url, '_blank', 'noopener,noreferrer')}
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{f.titre}</p>
+                        {f.lieu && (
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                            <p className="text-sm text-gray-500 truncate">{f.lieu}</p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <CalendarDays className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                          <p className="text-sm text-gray-400">
+                            {formatDate(f.debut)}{f.fin && f.fin !== f.debut ? ` - ${formatDate(f.fin)}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      {placesBadge()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-primary to-transparent md:hidden">
@@ -270,11 +354,11 @@ const TrainerProfile = () => {
                 MODIFIER PROFIL
               </Button>
             </SheetTrigger>
-            <SheetContent className="overflow-y-auto bg-gray-100 w-full sm:max-w-xl p-0">
+            <SheetContent className="overflow-y-auto bg-[#0a1628] w-full sm:max-w-xl p-0" closeButtonColor="white">
               <SheetHeader className="sticky top-0 z-10 space-y-1 bg-gradient-to-r from-primary to-primary-light p-5 text-white shadow-lg">
                 <SheetTitle className="text-xl font-bold text-white">Modifier le profil formateur</SheetTitle>
               </SheetHeader>
-              <div className="p-6 space-y-6">
+              <div className="p-6">
                 <TrainerProfileForm
                   onSubmit={handleProfileUpdate}
                   defaultValues={{

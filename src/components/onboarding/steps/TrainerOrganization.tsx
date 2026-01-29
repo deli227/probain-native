@@ -7,6 +7,7 @@ interface TrainerOrganizationProps {
   onOrganizationNameChange: (value: string) => void;
   onNext: () => void;
   onBack: () => void;
+  locked?: boolean;
 }
 
 export const TrainerOrganization = ({
@@ -14,6 +15,7 @@ export const TrainerOrganization = ({
   onOrganizationNameChange,
   onNext,
   onBack,
+  locked = false,
 }: TrainerOrganizationProps) => {
   const isValid = organizationName.length >= 2;
 
@@ -51,10 +53,20 @@ export const TrainerOrganization = ({
           </label>
           <Input
             value={organizationName}
-            onChange={(e) => onOrganizationNameChange(e.target.value)}
+            onChange={(e) => !locked && onOrganizationNameChange(e.target.value)}
+            readOnly={locked}
             placeholder="Ex: École de Natation Suisse"
-            className="h-14 bg-white/10 border-white/20 text-white placeholder:text-white/40 text-lg rounded-xl focus:bg-white/15 focus:border-white/40 transition-all"
+            className={`h-14 bg-white/10 border-white/20 text-white placeholder:text-white/40 text-lg rounded-xl transition-all ${
+              locked
+                ? 'opacity-80 cursor-not-allowed'
+                : 'focus:bg-white/15 focus:border-white/40'
+            }`}
           />
+          {locked && (
+            <p className="text-white/50 text-xs mt-1">
+              Ce nom a été défini lors de la création de votre compte
+            </p>
+          )}
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { safeGetUser } from "@/utils/asyncHelpers";
 
 interface SendMessageDialogProps {
@@ -35,6 +36,7 @@ export const SendMessageDialog = ({
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleSend = async () => {
     if (!subject.trim() || !message.trim()) {
@@ -63,11 +65,14 @@ export const SendMessageDialog = ({
 
       await Promise.all(promises);
 
+      // Invalider le cache des messages pour qu'ils apparaissent immédiatement
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+
       toast({
         title: "Succès",
         description: "Messages envoyés avec succès",
       });
-      
+
       setSubject("");
       setMessage("");
       onClose();

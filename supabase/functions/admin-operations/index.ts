@@ -178,12 +178,25 @@ async function handleClaimsApprove(client: ReturnType<typeof createClient>, data
     claimId: string
     email: string
     profileType: 'formateur' | 'etablissement'
-    organizationName: string
+    organizationName?: string
     adminNotes?: string
     appUrl: string
   }
 
+  // Lire le claim pour recuperer selected_trainer_name
+  const { data: claimData, error: claimFetchError } = await client
+    .from('account_claim_requests')
+    .select('selected_trainer_name, type')
+    .eq('id', claimId)
+    .single()
+
+  if (claimFetchError) throw new Error(`Claim introuvable: ${claimFetchError.message}`)
+
+  // Utiliser selected_trainer_name si organizationName n'est pas fourni
+  const effectiveOrgName = organizationName || claimData.selected_trainer_name || ''
+
   let createdUserId: string | null = null
+  let transferredFromId: string | null = null
 
   try {
     // 1. Invite the user
@@ -191,7 +204,7 @@ async function handleClaimsApprove(client: ReturnType<typeof createClient>, data
       redirectTo: `${appUrl}/auth/set-password`,
       data: {
         profile_type: profileType,
-        organization_name: organizationName
+        organization_name: effectiveOrgName
       }
     })
 
@@ -212,17 +225,107 @@ async function handleClaimsApprove(client: ReturnType<typeof createClient>, data
     // This prevents the handle_profile_type_selection trigger from failing
     // because it tries to INSERT without organization_name
     if (profileType === 'formateur') {
-      const { error: trainerError } = await client.from('trainer_profiles').insert({
-        id: createdUserId,
-        organization_name: organizationName
-      })
-      if (trainerError && !trainerError.message.includes('duplicate key')) {
-        throw new Error(`Profil formateur: ${trainerError.message}`)
+      // Chercher un trainer_profiles existant avec ce nom d'organisme
+      const { data: existingTrainer } = await client
+        .from('trainer_profiles')
+        .select('*')
+        .eq('organization_name', effectiveOrgName)
+        .maybeSingle()
+
+      if (existingTrainer && existingTrainer.id !== createdUserId) {
+        // TRANSFERT: Profil existant trouve
+        const oldTrainerId = existingTrainer.id
+        transferredFromId = oldTrainerId
+
+        // 1. Transferer tous les liens trainer_students
+        await client
+          .from('trainer_students')
+          .update({ trainer_id: createdUserId })
+          .eq('trainer_id', oldTrainerId)
+
+        // 2. Supprimer l'ancien trainer_profiles
+        await client
+          .from('trainer_profiles')
+          .delete()
+          .eq('id', oldTrainerId)
+
+        // 3. Creer le nouveau trainer_profiles avec les donnees de l'ancien
+        const { id: _oldId, created_at: _ca, updated_at: _ua, ...profileData } = existingTrainer
+        const { error: trainerError } = await client
+          .from('trainer_profiles')
+          .insert({
+            ...profileData,
+            id: createdUserId,
+            organization_name: effectiveOrgName,
+          })
+
+        if (trainerError) throw new Error(`Profil formateur (transfert): ${trainerError.message}`)
+
+        console.log(`Trainer profile transferred: ${oldTrainerId} -> ${createdUserId}`)
+      } else {
+        // Pas de profil existant → creation normale
+        const { error: trainerError } = await client.from('trainer_profiles').insert({
+          id: createdUserId,
+          organization_name: effectiveOrgName
+        })
+        if (trainerError && !trainerError.message.includes('duplicate key')) {
+          throw new Error(`Profil formateur: ${trainerError.message}`)
+        }
+      }
+
+      // Liaison retroactive : scanner formations pour ce nom d'organisme
+      // et creer les trainer_students manquants
+      if (effectiveOrgName && createdUserId) {
+        const { data: formsByOrg } = await client
+          .from('formations')
+          .select('user_id, title, start_date, end_date, recycling_organization')
+          .eq('organization', effectiveOrgName)
+
+        const { data: formsByRecycling } = await client
+          .from('formations')
+          .select('user_id, title, start_date, end_date, organization')
+          .eq('recycling_organization', effectiveOrgName)
+
+        const allFormations = [
+          ...(formsByOrg || []).map(f => ({ ...f, isRecycling: false })),
+          ...(formsByRecycling || []).map(f => ({ ...f, isRecycling: true })),
+        ]
+
+        let linkedCount = 0
+        for (const formation of allFormations) {
+          const trainingDate = formation.isRecycling
+            ? (formation.end_date || formation.start_date)
+            : formation.start_date
+
+          // Eviter les doublons
+          const { data: existingLink } = await client
+            .from('trainer_students')
+            .select('id')
+            .eq('trainer_id', createdUserId)
+            .eq('student_id', formation.user_id)
+            .eq('training_type', formation.title)
+            .maybeSingle()
+
+          if (!existingLink) {
+            await client.from('trainer_students').insert({
+              trainer_id: createdUserId,
+              student_id: formation.user_id,
+              training_type: formation.title,
+              training_date: trainingDate,
+              certification_issued: true,
+            })
+            linkedCount++
+          }
+        }
+
+        if (linkedCount > 0) {
+          console.log(`Retroactive linking: ${linkedCount} students linked to trainer ${createdUserId} for "${effectiveOrgName}"`)
+        }
       }
     } else {
       const { error: estabError } = await client.from('establishment_profiles').insert({
         id: createdUserId,
-        organization_name: organizationName
+        organization_name: effectiveOrgName
       })
       if (estabError && !estabError.message.includes('duplicate key')) {
         throw new Error(`Profil etablissement: ${estabError.message}`)
@@ -262,7 +365,9 @@ async function handleClaimsApprove(client: ReturnType<typeof createClient>, data
         source: 'claim_approval',
         claim_id: claimId,
         profile_type: profileType,
-        organization_name: organizationName
+        organization_name: effectiveOrgName,
+        selected_trainer_name: claimData.selected_trainer_name,
+        transferred_from: transferredFromId
       }
     })
 

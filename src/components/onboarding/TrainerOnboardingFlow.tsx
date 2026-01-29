@@ -78,6 +78,34 @@ export const TrainerOnboardingFlow = () => {
   const [street, setStreet] = useState(persisted?.street ?? "");
   const [cityZip, setCityZip] = useState(persisted?.cityZip ?? "");
   const [canton, setCanton] = useState(persisted?.canton ?? "");
+  const [orgLocked, setOrgLocked] = useState(false);
+
+  // Charger le nom d'organisme existant depuis trainer_profiles (set par claim approval)
+  useEffect(() => {
+    const loadExistingOrg = async () => {
+      try {
+        const { data: { user } } = await safeGetUser(supabase, 5000);
+        if (!user) return;
+
+        const { data: trainerProfile } = await supabase
+          .from('trainer_profiles')
+          .select('organization_name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (trainerProfile?.organization_name) {
+          setOrganizationName(trainerProfile.organization_name);
+          setOrgLocked(true);
+        }
+      } catch {
+        // Silencieux
+      }
+    };
+
+    if (!persisted?.organizationName) {
+      loadExistingOrg();
+    }
+  }, []);
 
   // Persister l'état à chaque changement
   useEffect(() => {
@@ -218,6 +246,7 @@ export const TrainerOnboardingFlow = () => {
             onOrganizationNameChange={setOrganizationName}
             onNext={handleNext}
             onBack={handleBack}
+            locked={orgLocked}
           />
         );
       case 2:
