@@ -13,7 +13,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/utils/logger";
 import * as z from "zod";
 
-const AddFormation = () => {
+interface AddFormationProps {
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
+
+const AddFormation = ({ onClose: externalClose, onSuccess: externalSuccess }: AddFormationProps = {}) => {
   const navigate = useNavigate();
   const { addFormation } = useFormations();
   const { toast } = useToast();
@@ -135,7 +140,11 @@ const AddFormation = () => {
       });
       return;
     }
-    navigate(-1);
+    if (externalClose) {
+      externalClose();
+    } else {
+      navigate(-1);
+    }
   };
 
   // Handler appelé via onClick du bouton (pas via form submit pour éviter le bug mobile)
@@ -207,9 +216,12 @@ const AddFormation = () => {
 
       if (success) {
         setIsComplete(true);
-        // Navigation immédiate avec replace pour éviter les problèmes d'historique
-        logger.log("[AddFormation] ✅ Succès - navigation vers /profile");
-        navigate("/profile", { replace: true });
+        logger.log("[AddFormation] ✅ Succès - fermeture overlay");
+        if (externalSuccess) {
+          externalSuccess();
+        } else {
+          navigate("/profile", { replace: true });
+        }
         return; // Sortir sans reset isSubmitting
       }
 

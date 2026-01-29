@@ -8,6 +8,7 @@ export interface NotificationPreferences {
   notify_messages: boolean;
   notify_formations: boolean;
   notify_job_offers: boolean;
+  notify_recycling: boolean;
 }
 
 export const useNotificationPreferences = (userId: string | undefined) => {
@@ -55,7 +56,7 @@ export const useNotificationPreferences = (userId: string | undefined) => {
   };
 
   const updatePreference = async (
-    key: 'notify_messages' | 'notify_formations' | 'notify_job_offers',
+    key: 'notify_messages' | 'notify_formations' | 'notify_job_offers' | 'notify_recycling',
     value: boolean
   ) => {
     if (!userId || !preferences) return;
@@ -75,11 +76,6 @@ export const useNotificationPreferences = (userId: string | undefined) => {
         title: 'Erreur',
         description: 'Impossible de sauvegarder les préférences',
         variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Préférences mises à jour',
-        description: value ? 'Notifications activées' : 'Notifications désactivées',
       });
     }
   };

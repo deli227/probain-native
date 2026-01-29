@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Settings, UserPen, X, LogOut } from "lucide-react";
 import { LOGO_PATH } from "@/utils/constants";
@@ -7,6 +7,7 @@ import { useRescuerNotifications } from "@/hooks/use-rescuer-notifications";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useFluxNotifications } from "@/hooks/useFluxNotifications";
 import { useRecyclingReminders } from "@/hooks/use-recycling-reminders";
+import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -36,6 +37,15 @@ export const MobileHeader = memo(({ profileType }: MobileHeaderProps) => {
   const { unreadCount: unreadMessages } = useUnreadMessages();
   const { newPostsCount, markAsSeen: markFluxAsSeen } = useFluxNotifications();
   const { expiredCount: recyclingExpiredCount, expiringSoonCount: recyclingExpiringSoonCount, reminderCount: recyclingReminderCount } = useRecyclingReminders();
+
+  // Préférences de notifications (pour toggle recyclage)
+  const [userId, setUserId] = useState<string | undefined>();
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUserId(session.user.id);
+    });
+  }, []);
+  const { preferences } = useNotificationPreferences(userId);
 
   // Route du profil selon le type
   const getProfileRoute = () => {
@@ -106,6 +116,7 @@ export const MobileHeader = memo(({ profileType }: MobileHeaderProps) => {
       recyclingExpiredCount={recyclingExpiredCount}
       recyclingExpiringSoonCount={recyclingExpiringSoonCount}
       recyclingReminderCount={recyclingReminderCount}
+      notifyRecycling={preferences?.notify_recycling ?? true}
     />
   );
 

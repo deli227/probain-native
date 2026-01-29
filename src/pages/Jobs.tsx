@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar as CalendarIcon, Search, MapPin, Briefcase, Building2, Loader2, Upload, FileText, X } from "lucide-react";
+import { CalendarModal } from "@/components/shared/CalendarModal";
+import { useCalendarModal } from "@/hooks/use-calendar-modal";
 import { SWISS_CANTONS, isCityInCanton } from "@/utils/swissCantons";
 import {
   Select,
@@ -49,6 +49,16 @@ const Jobs = () => {
   const isMobile = useIsMobile();
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+
+  const startCalendar = useCalendarModal({
+    initialDate: startDate,
+    onDateChange: setStartDate,
+  });
+  const endCalendar = useCalendarModal({
+    initialDate: endDate,
+    onDateChange: setEndDate,
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
   const [jobs, setJobs] = useState<JobPosting[]>([]);
@@ -320,46 +330,59 @@ const Jobs = () => {
             <div className="space-y-2">
               <p className="text-sm text-white/80">Période :</p>
             <div className="flex flex-col md:flex-row gap-4">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full md:w-[200px] justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? formatDateShort(startDate) : <span>Date de début</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => startCalendar.open(startDate)}
+                className="w-full md:w-[200px] justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {startDate ? formatDateShort(startDate) : <span>Date de début</span>}
+              </Button>
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full md:w-[200px] justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? formatDateShort(endDate) : <span>Date de fin</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => endCalendar.open(endDate)}
+                className="w-full md:w-[200px] justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {endDate ? formatDateShort(endDate) : <span>Date de fin</span>}
+              </Button>
             </div>
+
+            <CalendarModal
+              isOpen={startCalendar.isOpen}
+              onClose={startCalendar.close}
+              title="Date de début"
+              tempDate={startCalendar.tempDate}
+              setTempDate={startCalendar.setTempDate}
+              currentYear={startCalendar.currentYear}
+              setCurrentYear={startCalendar.setCurrentYear}
+              currentMonth={startCalendar.currentMonth}
+              setCurrentMonth={startCalendar.setCurrentMonth}
+              onConfirm={startCalendar.confirm}
+              onClear={startCalendar.clear}
+              onYearChange={startCalendar.handleYearChange}
+              onPrevYear={startCalendar.prevYear}
+              onNextYear={startCalendar.nextYear}
+            />
+            <CalendarModal
+              isOpen={endCalendar.isOpen}
+              onClose={endCalendar.close}
+              title="Date de fin"
+              tempDate={endCalendar.tempDate}
+              setTempDate={endCalendar.setTempDate}
+              currentYear={endCalendar.currentYear}
+              setCurrentYear={endCalendar.setCurrentYear}
+              currentMonth={endCalendar.currentMonth}
+              setCurrentMonth={endCalendar.setCurrentMonth}
+              onConfirm={endCalendar.confirm}
+              onClear={endCalendar.clear}
+              onYearChange={endCalendar.handleYearChange}
+              onPrevYear={endCalendar.prevYear}
+              onNextYear={endCalendar.nextYear}
+            />
           </div>
 
             <Button

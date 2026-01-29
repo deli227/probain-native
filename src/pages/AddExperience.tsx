@@ -13,7 +13,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/utils/logger";
 import * as z from "zod";
 
-const AddExperience = () => {
+interface AddExperienceProps {
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
+
+const AddExperience = ({ onClose: externalClose, onSuccess: externalSuccess }: AddExperienceProps = {}) => {
   const navigate = useNavigate();
   const { addExperience } = useExperiences();
   const { toast } = useToast();
@@ -133,7 +138,11 @@ const AddExperience = () => {
       });
       return;
     }
-    navigate(-1);
+    if (externalClose) {
+      externalClose();
+    } else {
+      navigate(-1);
+    }
   };
 
   // Handler appelé via onClick du bouton (pas via form submit pour éviter le bug mobile)
@@ -195,9 +204,12 @@ const AddExperience = () => {
 
       if (success) {
         setIsComplete(true);
-        // Navigation immédiate avec replace pour éviter les problèmes d'historique
-        logger.log("[AddExperience] ✅ Succès - navigation vers /profile");
-        navigate("/profile", { replace: true });
+        logger.log("[AddExperience] ✅ Succès - fermeture overlay");
+        if (externalSuccess) {
+          externalSuccess();
+        } else {
+          navigate("/profile", { replace: true });
+        }
         return; // Sortir sans reset isSubmitting
       }
 
@@ -265,7 +277,7 @@ const AddExperience = () => {
         </div>
 
         {/* Contenu scrollable - avec padding bottom pour BottomTabBar mobile */}
-        <div className="relative overflow-y-auto max-h-[calc(90vh-140px)] px-6 py-6 pb-24 md:pb-6">
+        <div className="relative overflow-y-auto max-h-[calc(90vh-140px)] px-6 py-6 pb-32 md:pb-6">
           <Form {...form}>
             <div className="space-y-6">
               {/* Card glassmorphism pour le formulaire */}

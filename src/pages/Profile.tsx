@@ -1,6 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ProfileSkeleton } from "@/components/skeletons";
+
+const AddFormation = lazy(() => import("@/pages/AddFormation"));
+const AddExperience = lazy(() => import("@/pages/AddExperience"));
 import {
   Sheet,
   SheetContent,
@@ -50,6 +53,8 @@ const Profile = () => {
   const [isActuallyAvailableToday, setIsActuallyAvailableToday] = useState(false);
   const [userAvailabilityDates, setUserAvailabilityDates] = useState<Date[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [showAddFormation, setShowAddFormation] = useState(false);
+  const [showAddExperience, setShowAddExperience] = useState(false);
 
   // Écouter l'événement personnalisé pour ouvrir le Sheet
   useEffect(() => {
@@ -473,8 +478,8 @@ const Profile = () => {
             />
           )}
 
-          <ExperienceCarousel />
-          <FormationCarousel />
+          <ExperienceCarousel onAddClick={() => setShowAddExperience(true)} />
+          <FormationCarousel onAddClick={() => setShowAddFormation(true)} />
 
           {isOwnProfile && (
             <AvailabilitySection
@@ -490,6 +495,24 @@ const Profile = () => {
           )}
         </div>
       </div>
+
+      {/* Overlays Add Formation / Experience - rendus dans Profile pour éviter le démontage */}
+      {showAddFormation && (
+        <Suspense fallback={null}>
+          <AddFormation
+            onClose={() => setShowAddFormation(false)}
+            onSuccess={() => setShowAddFormation(false)}
+          />
+        </Suspense>
+      )}
+      {showAddExperience && (
+        <Suspense fallback={null}>
+          <AddExperience
+            onClose={() => setShowAddExperience(false)}
+            onSuccess={() => setShowAddExperience(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

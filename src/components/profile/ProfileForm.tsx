@@ -332,6 +332,21 @@ export const ProfileForm = ({ defaultValues, onProfileUpdated, onSaveComplete }:
                     onCheckedChange={(checked) => updatePreference('notify_job_offers', checked)}
                   />
                 </div>
+
+                {/* Recyclage */}
+                <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-400" />
+                    <div>
+                      <p className="text-white font-medium text-sm">Recyclage</p>
+                      <p className="text-white/50 text-xs">Rappels de renouvellement des brevets</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={preferences?.notify_recycling ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_recycling', checked)}
+                  />
+                </div>
               </div>
             )}
           </div>

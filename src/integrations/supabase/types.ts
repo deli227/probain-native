@@ -667,6 +667,7 @@ export type Database = {
           notify_formations: boolean | null
           notify_job_offers: boolean | null
           notify_messages: boolean | null
+          notify_recycling: boolean | null
           updated_at: string | null
           user_id: string
         }
@@ -676,6 +677,7 @@ export type Database = {
           notify_formations?: boolean | null
           notify_job_offers?: boolean | null
           notify_messages?: boolean | null
+          notify_recycling?: boolean | null
           updated_at?: string | null
           user_id: string
         }
@@ -685,6 +687,7 @@ export type Database = {
           notify_formations?: boolean | null
           notify_job_offers?: boolean | null
           notify_messages?: boolean | null
+          notify_recycling?: boolean | null
           updated_at?: string | null
           user_id?: string
         }

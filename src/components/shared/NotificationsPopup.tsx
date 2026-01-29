@@ -22,6 +22,7 @@ interface NotificationsPopupProps {
   recyclingExpiredCount?: number;
   recyclingExpiringSoonCount?: number;
   recyclingReminderCount?: number;
+  notifyRecycling?: boolean;
 }
 
 // Routes de mail selon le type de profil
@@ -46,16 +47,18 @@ export const NotificationsPopup = ({
   recyclingExpiredCount = 0,
   recyclingExpiringSoonCount = 0,
   recyclingReminderCount = 0,
+  notifyRecycling = true,
 }: NotificationsPopupProps) => {
   const navigate = useNavigate();
 
   // Rescuer voit formations et jobs, les autres non
   const isRescuer = profileType === 'maitre_nageur';
   const totalRecyclingAlerts = recyclingExpiredCount + recyclingExpiringSoonCount + recyclingReminderCount;
+  const effectiveRecyclingAlerts = notifyRecycling ? totalRecyclingAlerts : 0;
 
   // Calcul du total selon le type de profil
   const totalNotifications = isRescuer
-    ? unreadMessages + newFluxPosts + newFormationsCount + newJobsCount + totalRecyclingAlerts
+    ? unreadMessages + newFluxPosts + newFormationsCount + newJobsCount + effectiveRecyclingAlerts
     : unreadMessages + newFluxPosts;
 
   const handleMailClick = () => {
@@ -203,8 +206,8 @@ export const NotificationsPopup = ({
                   </div>
                 )}
 
-                {/* Alertes recyclage - Rescuer uniquement */}
-                {isRescuer && totalRecyclingAlerts > 0 && (
+                {/* Alertes recyclage - Rescuer uniquement (masquées si désactivées) */}
+                {isRescuer && notifyRecycling && totalRecyclingAlerts > 0 && (
                   <div
                     className="p-3 bg-orange-50 hover:bg-orange-100 cursor-pointer transition-colors rounded-lg border border-orange-200"
                     onClick={() => {

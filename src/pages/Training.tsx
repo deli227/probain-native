@@ -1,7 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +8,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Calendar as CalendarIcon, Search, Briefcase, GraduationCap, Loader2, MapPin, Users, ExternalLink, AlertCircle } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
+import { CalendarModal } from "@/components/shared/CalendarModal";
+import { useCalendarModal } from "@/hooks/use-calendar-modal";
 import { useNavigate } from "react-router-dom";
 import TrainerCoursesList from "@/components/formations/TrainerCoursesList";
 import { supabase } from "@/integrations/supabase/client";
@@ -303,6 +303,16 @@ const Training = () => {
 
   const [startDate, setStartDate] = useState<Date | undefined>(savedState?.startDate);
   const [endDate, setEndDate] = useState<Date | undefined>(savedState?.endDate);
+
+  const startCalendar = useCalendarModal({
+    initialDate: startDate,
+    onDateChange: setStartDate,
+  });
+  const endCalendar = useCalendarModal({
+    initialDate: endDate,
+    onDateChange: setEndDate,
+  });
+
   const [selectedTrainer, setSelectedTrainer] = useState<string>(savedState?.selectedTrainer || "");
   const [searchType, setSearchType] = useState<string>(savedState?.searchType || "");
   const [searchSubType, setSearchSubType] = useState<string>(savedState?.searchSubType || "all");
@@ -715,55 +725,66 @@ const Training = () => {
               <p className="text-sm text-center">Dates :</p>
               <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
                 <span className="text-sm">Du</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full md:w-[200px] justify-start text-left font-normal bg-white text-sm md:text-base",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "P", { locale: fr }) : <span>Choisir une date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      initialFocus
-                      locale={fr}
-                    />
-                  </PopoverContent>
-                </Popover>
-                
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => startCalendar.open(startDate)}
+                  className={cn(
+                    "w-full md:w-[200px] justify-start text-left font-normal bg-white text-sm md:text-base",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "P", { locale: fr }) : <span>Choisir une date</span>}
+                </Button>
+
                 <span className="text-sm">au</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full md:w-[200px] justify-start text-left font-normal bg-white text-sm md:text-base",
-                        !endDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "P", { locale: fr }) : <span>Choisir une date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={setEndDate}
-                      initialFocus
-                      locale={fr}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => endCalendar.open(endDate)}
+                  className={cn(
+                    "w-full md:w-[200px] justify-start text-left font-normal bg-white text-sm md:text-base",
+                    !endDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "P", { locale: fr }) : <span>Choisir une date</span>}
+                </Button>
               </div>
+
+              <CalendarModal
+                isOpen={startCalendar.isOpen}
+                onClose={startCalendar.close}
+                title="Date de début"
+                tempDate={startCalendar.tempDate}
+                setTempDate={startCalendar.setTempDate}
+                currentYear={startCalendar.currentYear}
+                setCurrentYear={startCalendar.setCurrentYear}
+                currentMonth={startCalendar.currentMonth}
+                setCurrentMonth={startCalendar.setCurrentMonth}
+                onConfirm={startCalendar.confirm}
+                onClear={startCalendar.clear}
+                onYearChange={startCalendar.handleYearChange}
+                onPrevYear={startCalendar.prevYear}
+                onNextYear={startCalendar.nextYear}
+              />
+              <CalendarModal
+                isOpen={endCalendar.isOpen}
+                onClose={endCalendar.close}
+                title="Date de fin"
+                tempDate={endCalendar.tempDate}
+                setTempDate={endCalendar.setTempDate}
+                currentYear={endCalendar.currentYear}
+                setCurrentYear={endCalendar.setCurrentYear}
+                currentMonth={endCalendar.currentMonth}
+                setCurrentMonth={endCalendar.setCurrentMonth}
+                onConfirm={endCalendar.confirm}
+                onClear={endCalendar.clear}
+                onYearChange={endCalendar.handleYearChange}
+                onPrevYear={endCalendar.prevYear}
+                onNextYear={endCalendar.nextYear}
+              />
             </div>
 
             <Button

@@ -83,7 +83,11 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsPdfViewerOpen(true);
+                if (isMobile) {
+                  window.open(experience.document_url, '_blank', 'noopener,noreferrer');
+                } else {
+                  setIsPdfViewerOpen(true);
+                }
               }}
               className={`flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${getContractColor(experience.contract_type)} shadow-lg transition-all duration-200 hover:scale-110 active:scale-95 touch-manipulation`}
               aria-label="Voir le document"
@@ -107,37 +111,57 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
 
         {/* Sheet d'édition contrôlé */}
         <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
-          <SheetContent className="w-full sm:max-w-md md:max-w-xl overflow-y-auto" closeButtonColor="black" onClose={() => setIsEditSheetOpen(false)}>
-            <SheetHeader>
-              <SheetTitle>Modifier l'expérience</SheetTitle>
+          <SheetContent className="w-full sm:max-w-md md:max-w-xl overflow-y-auto bg-[#0a1628] p-0" closeButtonColor="white" onClose={() => setIsEditSheetOpen(false)} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+            {/* Orbes lumineux animés */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse-glow" />
+              <div className="absolute top-1/3 -right-32 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-float-slow" />
+              <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-violet-500/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '2s' }} />
+            </div>
+
+            {/* Header gradient */}
+            <SheetHeader className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-light px-6 py-4 shadow-lg">
+              <SheetTitle className="text-lg font-semibold text-white">Modifier l'expérience</SheetTitle>
+              <p className="text-sm text-white/70">Modifiez les informations de votre expérience</p>
             </SheetHeader>
-            <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit(async (values) => {
-                setIsSubmitting(true);
-                try {
-                  await onUpdate(experience.id, values);
-                  setIsEditSheetOpen(false);
-                } finally {
-                  setIsSubmitting(false);
-                }
-              })} className="space-y-6 mt-4 pb-20">
-                <ExperienceForm
-                  form={editForm}
-                  onDelete={() => onDelete(experience.id)}
-                  isEdit
-                />
-                <Button type="submit" className="w-full h-12" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sauvegarde...
-                    </>
-                  ) : (
-                    "Modifier l'expérience"
-                  )}
-                </Button>
-              </form>
-            </Form>
+
+            {/* Contenu */}
+            <div className="relative px-6 py-6 pb-32 md:pb-6">
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(async (values) => {
+                  setIsSubmitting(true);
+                  try {
+                    await onUpdate(experience.id, values);
+                    setIsEditSheetOpen(false);
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                })} className="space-y-6">
+                  <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-5 border border-white/10">
+                    <ExperienceForm
+                      form={editForm}
+                      onDelete={() => onDelete(experience.id)}
+                      isEdit
+                      darkMode
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl shadow-lg hover:shadow-cyan-500/25 transition-all duration-300"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sauvegarde...
+                      </>
+                    ) : (
+                      "Modifier l'expérience"
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </div>
           </SheetContent>
         </Sheet>
 

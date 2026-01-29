@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { ExperienceCard } from "./ExperienceCard";
@@ -8,7 +6,11 @@ import { useEffect } from "react";
 import * as z from "zod";
 import { experienceFormSchema } from "./forms/ExperienceForm";
 
-export const ExperienceCarousel = () => {
+interface ExperienceCarouselProps {
+  onAddClick?: () => void;
+}
+
+export const ExperienceCarousel = ({ onAddClick }: ExperienceCarouselProps) => {
   const { experiences, fetchExperiences, updateExperience, deleteExperience } = useExperiences();
 
   useEffect(() => {
@@ -24,14 +26,13 @@ export const ExperienceCarousel = () => {
     <div className="px-4 py-6 md:py-12 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-4 md:mb-8">
         <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white w-full text-left md:text-center uppercase">EXPÉRIENCE PROFESSIONNELLE</h2>
-        <Link to="/add-experience">
-          <button
-            className="group relative flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-emerald-500/40 active:scale-95"
-          >
-            <Plus className="h-5 w-5 text-white transition-transform duration-300 group-hover:rotate-90" />
-            <span className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </button>
-        </Link>
+        <button
+          className="group relative flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-emerald-500/40 active:scale-95"
+          onClick={onAddClick}
+        >
+          <Plus className="h-5 w-5 text-white transition-transform duration-300 group-hover:rotate-90" />
+          <span className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </button>
       </div>
 
       {experiences.length === 0 ? (
