@@ -15,10 +15,11 @@ interface AvailabilitySectionProps {
   isAlwaysAvailable: boolean;
   showSpecificDates: boolean;
   selectedDates: Date[];
-  toggleAvailability: () => void;
+  setAvailability: (available: boolean) => void;
   toggleAlwaysAvailable: () => void;
   handleSpecificDatesToggle: () => void;
   handleDateSelect: (dates: Date[] | undefined) => void;
+  onDatesValidated?: () => void;
 }
 
 export const AvailabilitySection = ({
@@ -26,10 +27,11 @@ export const AvailabilitySection = ({
   isAlwaysAvailable,
   showSpecificDates,
   selectedDates,
-  toggleAvailability,
+  setAvailability,
   toggleAlwaysAvailable,
   handleSpecificDatesToggle,
   handleDateSelect,
+  onDatesValidated,
 }: AvailabilitySectionProps) => {
   const { fetchAvailabilities } = useAvailabilities();
   const { toast } = useToast();
@@ -72,6 +74,8 @@ export const AvailabilitySection = ({
   };
 
   const handleValidationSuccess = () => {
+    // Signaler au parent que les dates ont été validées (pour recharger depuis la BDD)
+    onDatesValidated?.();
     // Fermer le calendrier (sans vider les dates)
     handleSpecificDatesToggle();
 
@@ -91,7 +95,7 @@ export const AvailabilitySection = ({
               <p className="text-sm text-gray-600 md:text-white/60 text-center">Définissez votre statut de disponibilité :</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
-                  onClick={toggleAvailability}
+                  onClick={() => setAvailability(true)}
                   className={`flex-1 max-w-xs mx-auto ${
                     isAvailable
                       ? 'bg-green-500 hover:bg-green-600 text-white'
@@ -101,7 +105,7 @@ export const AvailabilitySection = ({
                   Je suis disponible
                 </Button>
                 <Button
-                  onClick={toggleAvailability}
+                  onClick={() => setAvailability(false)}
                   className={`flex-1 max-w-xs mx-auto ${
                     !isAvailable
                       ? 'bg-probain-red hover:bg-red-600 text-white'
@@ -158,7 +162,7 @@ export const AvailabilitySection = ({
                               cell: "relative h-9 w-9 p-0 focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-primary",
                               day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 focus:bg-gray-100 cursor-pointer",
                               day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                              day_today: "bg-accent text-accent-foreground",
+                              day_today: "font-bold text-primary underline underline-offset-4",
                               nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 text-primary cursor-pointer",
                               table: "w-full border-collapse",
                               caption: "relative flex items-center justify-center pt-1",
@@ -175,7 +179,10 @@ export const AvailabilitySection = ({
                           <AvailabilityValidation
                             selectedDates={selectedDates}
                             onValidation={handleValidationSuccess}
-                            onClear={() => handleDateSelect([])}
+                            onClear={() => {
+                              handleDateSelect([]);
+                              onDatesValidated?.();
+                            }}
                           />
                         )}
                       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ProfileSkeleton } from "@/components/skeletons";
 
@@ -49,11 +49,14 @@ const Profile = () => {
   } = useProfile();
 
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [isAvailable, setIsAvailable] = useState(rescuerProfile?.availability_status ?? true);
   const [showSpecificDates, setShowSpecificDates] = useState(false);
-  const [isAlwaysAvailable, setIsAlwaysAvailable] = useState(false);
-  const [isActuallyAvailableToday, setIsActuallyAvailableToday] = useState(false);
+  const [isAlwaysAvailable, setIsAlwaysAvailable] = useState(rescuerProfile?.is_always_available ?? false);
+  const [isActuallyAvailableToday, setIsActuallyAvailableToday] = useState(rescuerProfile?.is_always_available ?? false);
   const [userAvailabilityDates, setUserAvailabilityDates] = useState<Date[]>([]);
+  const [availabilityVersion, setAvailabilityVersion] = useState(0);
+  // Ref pour tracker l'initialisation depuis le context
+  const hasInitializedRef = useRef(!!rescuerProfile);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [showAddFormation, setShowAddFormation] = useState(false);
   const [showAddExperience, setShowAddExperience] = useState(false);
@@ -99,9 +102,10 @@ const Profile = () => {
     }
   }, [contextLoading, baseProfile, navigate]);
 
-  // Initialiser les états de disponibilité depuis les données du context
+  // Initialiser les états de disponibilité depuis le context (une seule fois)
   useEffect(() => {
-    if (rescuerProfile) {
+    if (rescuerProfile && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
       if (rescuerProfile.availability_status !== null) {
         setIsAvailable(rescuerProfile.availability_status);
       }
@@ -111,35 +115,44 @@ const Profile = () => {
     }
   }, [rescuerProfile]);
 
-  // Charger les disponibilités spécifiques et calculer la disponibilité du jour
+  // Charger les disponibilités spécifiques depuis la BDD
   useEffect(() => {
-    const loadAvailabilitiesAndCalculateToday = async () => {
-      if (!rescuerProfile || !baseProfile?.id) return;
-
+    const loadAvailabilities = async () => {
+      if (!baseProfile?.id) return;
       const dates = await fetchAvailabilities(baseProfile.id);
       setUserAvailabilityDates(dates);
-
-      const today = new Date();
-      const todayString = today.toISOString().split('T')[0];
-
-      let availableToday = false;
-
-      if (rescuerProfile.is_always_available) {
-        availableToday = true;
-      } else if (!rescuerProfile.availability_status) {
-        availableToday = false;
-      } else if (rescuerProfile.availability_status && !rescuerProfile.is_always_available) {
-        availableToday = dates.some(date => {
-          const dateString = date.toISOString().split('T')[0];
-          return dateString === todayString;
-        });
-      }
-
-      setIsActuallyAvailableToday(availableToday);
     };
 
-    loadAvailabilitiesAndCalculateToday();
-  }, [rescuerProfile, baseProfile?.id, fetchAvailabilities]);
+    loadAvailabilities();
+  }, [baseProfile?.id, fetchAvailabilities, availabilityVersion]);
+
+  // Calculer la disponibilité du jour à partir des états LOCAUX (pas du context)
+  useEffect(() => {
+    if (!baseProfile?.id) return;
+
+    let availableToday = false;
+
+    if (!isAvailable) {
+      // Explicitement indisponible
+      availableToday = false;
+    } else if (isAlwaysAvailable) {
+      // Toujours disponible
+      availableToday = true;
+    } else if (userAvailabilityDates.length > 0) {
+      // A des dates spécifiques → vérifier si aujourd'hui est dedans
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      availableToday = userAvailabilityDates.some(date => {
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return dateStr === todayStr;
+      });
+    } else {
+      // Disponible sans dates spécifiques = disponible par défaut
+      availableToday = true;
+    }
+
+    setIsActuallyAvailableToday(availableToday);
+  }, [isAvailable, isAlwaysAvailable, userAvailabilityDates, baseProfile?.id]);
 
   const handleAvatarUpdate = async (newAvatarUrl: string) => {
     if (!baseProfile?.id) return;
@@ -169,37 +182,42 @@ const Profile = () => {
     }
   };
 
-  const toggleAvailability = async () => {
+  const setAvailability = async (newStatus: boolean) => {
     if (!baseProfile?.id) return;
+    // Si déjà dans l'état voulu, ne rien faire
+    if (newStatus === isAvailable) return;
 
-    const newAvailabilityStatus = !isAvailable;
-    setIsAvailable(newAvailabilityStatus);
+    // Mise à jour optimiste immédiate
+    setIsAvailable(newStatus);
+
+    if (!newStatus) {
+      setIsActuallyAvailableToday(false);
+      setShowSpecificDates(false);
+      setSelectedDates([]);
+      setIsAlwaysAvailable(false);
+    }
 
     try {
       const { error } = await supabase
         .from('rescuer_profiles')
         .update({
-          availability_status: newAvailabilityStatus,
-          ...(newAvailabilityStatus === false && { is_always_available: false })
+          availability_status: newStatus,
+          ...(!newStatus && { is_always_available: false })
         })
         .eq('id', baseProfile.id);
 
       if (error) {
-        setIsAvailable(!newAvailabilityStatus);
+        // Rollback
+        setIsAvailable(!newStatus);
         throw error;
       }
 
       toast({
         title: "Statut mis à jour",
-        description: newAvailabilityStatus ? "Vous êtes maintenant disponible" : "Vous êtes maintenant indisponible",
+        description: newStatus ? "Vous êtes maintenant disponible" : "Vous êtes maintenant indisponible",
       });
 
-      if (!newAvailabilityStatus) {
-        setIsActuallyAvailableToday(false);
-      }
-
-      // Rafraîchir le profil
-      refreshProfile();
+      await refreshProfile();
     } catch (error) {
       logger.error("Erreur lors de la mise à jour:", error);
       toast({
@@ -208,19 +226,22 @@ const Profile = () => {
         variant: "destructive",
       });
     }
-
-    if (!newAvailabilityStatus) {
-      setShowSpecificDates(false);
-      setSelectedDates([]);
-      setIsAlwaysAvailable(false);
-    }
   };
 
   const toggleAlwaysAvailable = async () => {
     if (!baseProfile?.id) return;
 
     const newIsAlwaysAvailable = !isAlwaysAvailable;
+
+    // Mise à jour optimiste immédiate
     setIsAlwaysAvailable(newIsAlwaysAvailable);
+
+    if (newIsAlwaysAvailable) {
+      setSelectedDates([]);
+      setIsAvailable(true);
+    } else {
+      setShowSpecificDates(false);
+    }
 
     try {
       const { error } = await supabase
@@ -241,11 +262,7 @@ const Profile = () => {
         description: newIsAlwaysAvailable ? "Vous êtes disponible tout le temps" : "Disponibilités spécifiques activées",
       });
 
-      if (newIsAlwaysAvailable) {
-        setIsActuallyAvailableToday(true);
-      }
-
-      refreshProfile();
+      await refreshProfile();
     } catch (error) {
       logger.error("Erreur lors de la mise à jour:", error);
       toast({
@@ -253,13 +270,6 @@ const Profile = () => {
         description: "Impossible de mettre à jour votre disponibilité",
         variant: "destructive",
       });
-    }
-
-    if (newIsAlwaysAvailable) {
-      setSelectedDates([]);
-      setIsAvailable(true);
-    } else {
-      setShowSpecificDates(false);
     }
   };
 
@@ -338,7 +348,7 @@ const Profile = () => {
           <div className="absolute top-3 right-3 z-10">
             <div
               className="group relative cursor-pointer"
-              onClick={toggleAvailability}
+              onClick={() => setAvailability(!isAvailable)}
             >
               <div
                 className={`
@@ -476,10 +486,11 @@ const Profile = () => {
                   isAlwaysAvailable={isAlwaysAvailable}
                   showSpecificDates={showSpecificDates}
                   selectedDates={selectedDates}
-                  toggleAvailability={toggleAvailability}
+                  setAvailability={setAvailability}
                   toggleAlwaysAvailable={toggleAlwaysAvailable}
                   handleSpecificDatesToggle={handleSpecificDatesToggle}
                   handleDateSelect={handleDateSelect}
+                  onDatesValidated={() => setAvailabilityVersion(v => v + 1)}
                 />
               )}
             </div>

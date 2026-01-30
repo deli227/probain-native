@@ -25,12 +25,17 @@ export const useAvailabilities = () => {
 
       // Only proceed with insert if there are dates to save
       if (dates.length > 0) {
-        // Prepare the data for insertion
-        const availabilitiesData = dates.map(date => ({
-          user_id: userId,
-          date: date.toISOString().split('T')[0],
-          is_available: true
-        }));
+        // Préparer les données — utiliser date locale (pas UTC) pour éviter décalage timezone
+        const availabilitiesData = dates.map(date => {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          return {
+            user_id: userId,
+            date: `${y}-${m}-${d}`,
+            is_available: true
+          };
+        });
 
         logger.log('Inserting new availabilities:', availabilitiesData);
 
@@ -79,7 +84,12 @@ export const useAvailabilities = () => {
       }
 
       logger.log('Fetched availabilities:', data);
-      return data.map(item => new Date(item.date));
+      // Créer les dates en local (pas UTC) pour éviter le décalage de timezone
+      // "2026-01-31" doit devenir le 31 janvier local, pas le 30 janvier 23h UTC
+      return data.map(item => {
+        const [year, month, day] = item.date.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      });
     } catch (error) {
       logger.error('Error fetching availabilities:', error);
       toast({

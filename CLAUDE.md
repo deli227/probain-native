@@ -599,12 +599,63 @@ Padding : px-4 py-3
 
 ---
 
-## Profil Sauveteur - Bouton Modifier
+## Bouton Modifier Profil (mobile vs desktop)
 
-- Le bouton jaune "MODIFIER" (avec icone crayon) est **masque sur mobile** (supprime du bloc `md:hidden`)
+- Le bouton jaune "MODIFIER" (avec icone crayon) est **masque sur mobile** sur les 3 profils
 - Il reste visible uniquement sur **desktop** (dans le layout `hidden md:flex` a cote du nom)
-- Les utilisateurs mobiles editent via les cartes individuelles du profil
-- Fichier : `src/components/profile/RescuerProfileHeader.tsx`
+- Les utilisateurs mobiles editent via l'engrenage Settings
+- Fichiers concernes :
+  - `src/components/profile/RescuerProfileHeader.tsx`
+  - `src/components/profile/TrainerProfile.tsx` (bloc `fixed bottom-0 md:hidden` supprime)
+  - `src/components/profile/EstablishmentProfile.tsx` (bloc `fixed bottom-0 md:hidden` supprime)
+
+---
+
+## Disponibilite Sauveteur
+
+### Architecture
+- **Etat local** : `isAvailable`, `isAlwaysAvailable`, `selectedDates`, `userAvailabilityDates` dans `Profile.tsx`
+- **Source de verite** : les etats locaux (pas le context `rescuerProfile`), initialises UNE SEULE FOIS via `hasInitializedRef`
+- **Calcul pastille** : `isActuallyAvailableToday` derive des etats locaux dans un `useEffect`
+- **Rechargement BDD** : `availabilityVersion` (compteur) incremente apres chaque validation pour forcer le `useEffect` de chargement
+
+### Logique de la pastille verte/rouge
+```
+!isAvailable                        → rouge (indisponible)
+isAlwaysAvailable                   → vert (toujours dispo)
+userAvailabilityDates.length > 0    → vert si aujourd'hui est dans les dates, sinon rouge
+pas de dates specifiques            → vert (disponible par defaut)
+```
+
+### Boutons disponibilite
+- Les boutons "Je suis disponible" / "Je ne suis pas disponible" appellent `setAvailability(true)` / `setAvailability(false)` (setters explicites, PAS un toggle `!isAvailable`)
+- Evite les race conditions et les sauts d'etat
+
+### Timezone
+- **IMPORTANT** : Les dates de disponibilite sont stockees en `YYYY-MM-DD` (date sans timezone)
+- `new Date("2026-01-31")` cree une date UTC = 30 jan 23h en CET → **BUG**
+- Utiliser `new Date(year, month - 1, day)` pour creer des dates locales
+- Utiliser `getFullYear()/getMonth()/getDate()` pour formater (PAS `toISOString()`)
+- Fichier : `src/hooks/use-availabilities.ts`
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `src/pages/Profile.tsx` | Etat local + logique toggle + calcul pastille |
+| `src/components/profile/AvailabilitySection.tsx` | UI boutons + calendrier + chargement dates |
+| `src/components/profile/AvailabilityValidation.tsx` | Sauvegarde dates + effacement |
+| `src/hooks/use-availabilities.ts` | CRUD dates (fetch/save/clear) avec dates locales |
+
+---
+
+## Changement de mot de passe
+
+- Composant `ChangePasswordSection` ajoute aux 3 profils :
+  - Sauveteur : `ProfileForm.tsx` (dark mode)
+  - Formateur : `TrainerProfileForm.tsx` (dark mode)
+  - Etablissement : `EstablishmentProfileForm.tsx` (light mode)
+- Prop `darkMode` pour adapter le theme
+- Independant du formulaire principal (bouton propre, pas de submit form)
 
 ---
 
@@ -613,7 +664,7 @@ Padding : px-4 py-3
 | Environnement | URL | Methode | Repo GitHub |
 |---------------|-----|---------|-------------|
 | **Native (production)** | https://www.probain.ch | Vercel | `deli227/probain-native` |
-| **Web (legacy)** | probain.ch | Netlify | `deli227/pro-bain` |
+| **Web (legacy)** | - | - | `deli227/pro-bain` (plus utilise) |
 
 ---
 
