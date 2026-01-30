@@ -245,44 +245,6 @@ const EstablishmentProfile = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-primary to-transparent md:hidden">
-        <div className="max-w-7xl mx-auto">
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <Button
-                className="w-full bg-yellow-400 hover:bg-yellow-500 text-primary font-bold rounded-full transition-colors duration-200 shadow-lg"
-              >
-                MODIFIER PROFIL
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="overflow-y-auto bg-gray-100 w-full sm:max-w-xl p-0">
-              <SheetHeader className="sticky top-0 z-10 space-y-1 bg-gradient-to-r from-primary to-primary-light p-5 text-white shadow-lg">
-                <SheetTitle className="text-xl font-bold text-white">Modifier le profil établissement</SheetTitle>
-              </SheetHeader>
-              <div className="p-6 space-y-6">
-                <EstablishmentProfileForm
-                  onSubmit={onSubmit}
-                  defaultValues={{
-                    organization: {
-                      name: establishmentProfile.organization_name || "",
-                      website: establishmentProfile.website || "",
-                      facebookUrl: establishmentProfile.facebook_url || "",
-                      instagramUrl: establishmentProfile.instagram_url || "",
-                      linkedinUrl: establishmentProfile.linkedin_url || "",
-                    },
-                    address: {
-                      street: establishmentProfile.street || "",
-                      cityZip: establishmentProfile.city_zip || "",
-                      canton: establishmentProfile.canton || ""
-                    }
-                  }}
-                  isSubmitting={isSubmitting}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
     </div>
   );
 };
