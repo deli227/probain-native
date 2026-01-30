@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AddressForm } from "./AddressForm";
 import { OrganizationForm } from "./OrganizationForm";
 import { Loader2 } from "lucide-react";
+import { ChangePasswordSection } from "./ChangePasswordSection";
 
 const establishmentFormSchema = z.object({
   organization: z.object({
@@ -63,6 +64,8 @@ export const EstablishmentProfileForm = ({
         <OrganizationForm form={form} isEstablishmentProfile={true} />
         <AddressForm form={form} />
         
+        <ChangePasswordSection />
+
         <Button
           type="submit"
           className="w-full bg-primary hover:bg-primary/90"

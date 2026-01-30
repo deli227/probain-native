@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { PersonalInfoForm } from "./forms/PersonalInfoForm";
 import { AddressForm } from "./forms/AddressForm";
+import { ChangePasswordSection } from "./forms/ChangePasswordSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/utils/logger";
@@ -350,6 +351,9 @@ export const ProfileForm = ({ defaultValues, onProfileUpdated, onSaveComplete }:
               </div>
             )}
           </div>
+
+          {/* Section Mot de passe */}
+          <ChangePasswordSection darkMode />
 
           {/* Section Compte - Suppression */}
           <div className="backdrop-blur-xl bg-red-500/10 rounded-2xl p-5 border border-red-500/20 shadow-xl">

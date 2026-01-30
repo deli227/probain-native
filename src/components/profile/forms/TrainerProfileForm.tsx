@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, MapPin, Building2, Globe, Lock } from "lucide-react";
 import { useState } from "react";
+import { ChangePasswordSection } from "./ChangePasswordSection";
 
 const RegionEnum = z.enum(["nyon_la_cote", "geneve", "lausanne", "morges", "vaud"]);
 
@@ -282,6 +283,9 @@ export const TrainerProfileForm = ({ defaultValues, onSubmit }: TrainerProfileFo
               )}
             />
           </div>
+
+          {/* Section Mot de passe */}
+          <ChangePasswordSection darkMode />
 
           {/* Bouton Sauvegarder fixe en bas */}
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/95 to-transparent z-20">
