@@ -5,6 +5,7 @@ export interface MessageProfile {
   first_name: string | null;
   last_name: string | null;
   profile_type: string | null;
+  avatar_url?: string | null;
 }
 
 export interface Message {

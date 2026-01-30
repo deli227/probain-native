@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SendRescuerMessageDialog } from "@/components/profile/SendRescuerMessageDialog";
 import { PDFViewerDialog } from "@/components/profile/PDFViewerDialog";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Loader2, Mail, MapPin, Search, CheckCircle, XCircle, Eye, Phone } from "lucide-react";
+import { FileText, Loader2, Mail, MapPin, Search, CheckCircle, XCircle, Eye, Phone, Users } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useState } from "react";
@@ -246,32 +246,64 @@ const EstablishmentRescuers = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent">
+        {/* Header compact (identique au final) */}
+        <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark px-4 py-3 overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative max-w-4xl mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-400/20 rounded-xl border border-white/10">
+                <Users className="h-5 w-5 text-cyan-400" />
+              </div>
+              <div>
+                <h1 className="text-sm font-bold text-white tracking-tight">LES SAUVETEURS</h1>
+                <p className="text-[11px] text-white/40">Recherchez et contactez des sauveteurs</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-white/60" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-4 px-2 sm:px-4 md:px-6 lg:px-8">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4 text-primary">Les Sauveteurs</h1>
+    <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent pb-20 md:pb-6">
+      {/* Header compact */}
+      <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark px-4 py-3 overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-400/20 rounded-xl border border-white/10">
+              <Users className="h-5 w-5 text-cyan-400" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-white tracking-tight">LES SAUVETEURS</h1>
+              <p className="text-[11px] text-white/40">Recherchez et contactez des sauveteurs</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto">
       {/* Statut compact */}
-      <div className="bg-muted/30 p-3 rounded-xl mb-4 border">
+      <div className="bg-white/10 p-3 rounded-xl mb-4 border border-white/10">
         <div className="flex items-center justify-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
             <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-            <span className="text-muted-foreground">Disponible</span>
+            <span className="text-white/60">Disponible</span>
           </div>
           <div className="flex items-center gap-1.5">
             <XCircle className="h-3.5 w-3.5 text-red-500" />
-            <span className="text-muted-foreground">Non disponible</span>
+            <span className="text-white/60">Non disponible</span>
           </div>
         </div>
       </div>
 
       {/* Filtres compacts */}
-      <div className="bg-primary/5 p-3 rounded-2xl mb-4">
+      <div className="bg-white/5 p-3 rounded-2xl mb-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
           <Input
             placeholder="Nom / Prénom"
@@ -593,6 +625,8 @@ const EstablishmentRescuers = () => {
             </DialogContent>
           </Dialog>
         ))}
+      </div>
+
       </div>
 
       {selectedRescuer && (

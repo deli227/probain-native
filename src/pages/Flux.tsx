@@ -77,19 +77,17 @@ const Flux = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent pb-20 md:pb-6">
         {/* Header compact */}
-        <div className="relative bg-gradient-to-br from-probain-blue to-primary py-5 md:py-6 px-4 overflow-hidden">
+        <div className="relative bg-gradient-to-br from-probain-blue to-primary px-4 py-3 overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-          <div className="relative max-w-4xl mx-auto text-center">
-            <div className="flex flex-col items-center gap-2">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-white/10 rounded-xl blur-md opacity-50" />
-                <div className="relative bg-white/10 backdrop-blur-md p-2.5 rounded-xl border border-white/20">
-                  <MessageCircle className="h-5 w-5 md:h-6 md:w-6 text-white" />
-                </div>
+          <div className="relative max-w-4xl mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/10">
+                <MessageCircle className="h-5 w-5 text-cyan-400" />
               </div>
-              <h1 className="text-lg md:text-xl font-bold text-white tracking-tight">
-                FLUX
-              </h1>
+              <div>
+                <h1 className="text-sm font-bold text-white tracking-tight">FLUX</h1>
+                <p className="text-[11px] text-white/40">Publications et actualités</p>
+              </div>
             </div>
           </div>
         </div>
@@ -105,23 +103,17 @@ const Flux = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent pb-20 md:pb-6">
       {/* Header compact */}
-      <div className="relative bg-gradient-to-br from-probain-blue to-primary py-5 md:py-6 px-4 overflow-hidden">
-        {/* Cercle décoratif */}
+      <div className="relative bg-gradient-to-br from-probain-blue to-primary px-4 py-3 overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="flex flex-col items-center gap-2">
-            {/* Icône compacte */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-white/10 rounded-xl blur-md opacity-50" />
-              <div className="relative bg-white/10 backdrop-blur-md p-2.5 rounded-xl border border-white/20">
-                <MessageCircle className="h-5 w-5 md:h-6 md:w-6 text-white" />
-              </div>
+        <div className="relative max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/10">
+              <MessageCircle className="h-5 w-5 text-cyan-400" />
             </div>
-
-            <h1 className="text-lg md:text-xl font-bold text-white tracking-tight">
-              FLUX
-            </h1>
+            <div>
+              <h1 className="text-sm font-bold text-white tracking-tight">FLUX</h1>
+              <p className="text-[11px] text-white/40">Publications et actualités</p>
+            </div>
           </div>
         </div>
       </div>

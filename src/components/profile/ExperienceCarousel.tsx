@@ -1,22 +1,17 @@
 import { Plus } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { ExperienceCard } from "./ExperienceCard";
-import { useExperiences } from "@/hooks/use-experiences";
-import { useEffect } from "react";
 import * as z from "zod";
 import { experienceFormSchema } from "./forms/ExperienceForm";
 
 interface ExperienceCarouselProps {
+  experiences: any[];
+  updateExperience: (id: string, values: z.infer<typeof experienceFormSchema>) => Promise<boolean>;
+  deleteExperience: (id: string) => Promise<void>;
   onAddClick?: () => void;
 }
 
-export const ExperienceCarousel = ({ onAddClick }: ExperienceCarouselProps) => {
-  const { experiences, fetchExperiences, updateExperience, deleteExperience } = useExperiences();
-
-  useEffect(() => {
-    fetchExperiences();
-  }, []);
-
+export const ExperienceCarousel = ({ experiences, updateExperience, deleteExperience, onAddClick }: ExperienceCarouselProps) => {
   // Fonction wrapper pour transformer la valeur de retour de updateExperience (boolean) en void
   const handleUpdateExperience = async (id: string, values: z.infer<typeof experienceFormSchema>): Promise<void> => {
     await updateExperience(id, values);

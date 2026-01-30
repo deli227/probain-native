@@ -279,23 +279,17 @@ const Jobs = () => {
 
   return (
     <div className="min-h-screen bg-primary-dark md:bg-transparent">
-      <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark py-5 md:py-6 px-4 overflow-hidden">
-        {/* Cercle décoratif */}
+      <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark px-4 py-3 overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="flex flex-col items-center gap-2">
-            {/* Icône compacte */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl blur-md opacity-40" />
-              <div className="relative bg-gradient-to-br from-blue-400/20 to-indigo-500/20 backdrop-blur-md p-2.5 rounded-xl border border-white/20">
-                <Briefcase className="h-5 w-5 md:h-6 md:w-6 text-white" />
-              </div>
+        <div className="relative max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-blue-400/20 to-indigo-500/20 rounded-xl border border-white/10">
+              <Briefcase className="h-5 w-5 text-cyan-400" />
             </div>
-
-            <h1 className="text-lg md:text-xl font-bold text-white tracking-tight">
-              OFFRES D'EMPLOI
-            </h1>
+            <div>
+              <h1 className="text-sm font-bold text-white tracking-tight">OFFRES D'EMPLOI</h1>
+              <p className="text-[11px] text-white/40">Trouvez votre prochain poste</p>
+            </div>
           </div>
         </div>
       </div>

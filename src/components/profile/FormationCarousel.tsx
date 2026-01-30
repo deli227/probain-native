@@ -1,30 +1,26 @@
-
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { Plus } from "lucide-react";
 import { FormationCard } from "./FormationCard";
-import { useFormations } from "@/hooks/use-formations";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import * as z from "zod";
 import { formationFormSchema } from "./forms/FormationForm";
 import { sortCertificationsByLevel } from "@/utils/sortingUtils";
 import { getRecyclingInfo } from "@/utils/recyclingUtils";
 
 interface FormationCarouselProps {
+  formations: any[];
+  updateFormation: (id: string, values: z.infer<typeof formationFormSchema>) => Promise<boolean>;
+  deleteFormation: (id: string) => Promise<void>;
   onAddClick?: () => void;
 }
 
-export const FormationCarousel = ({ onAddClick }: FormationCarouselProps) => {
-  const { formations, fetchFormations, updateFormation, deleteFormation } = useFormations();
+export const FormationCarousel = ({ formations, updateFormation, deleteFormation, onAddClick }: FormationCarouselProps) => {
 
   // Trier les formations par niveau de brevet (du plus haut au plus bas)
   const sortedFormations = useMemo(
     () => sortCertificationsByLevel(formations),
     [formations]
   );
-
-  useEffect(() => {
-    fetchFormations();
-  }, []);
 
   const handleUpdate = async (id: string, values: z.infer<typeof formationFormSchema>) => {
     await updateFormation(id, values);

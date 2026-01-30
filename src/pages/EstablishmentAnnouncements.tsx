@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { JobPostings } from "@/components/profile/EstablishmentJobPostings";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
+import { Megaphone } from "lucide-react";
 
 const EstablishmentAnnouncements = () => {
   const [establishmentId, setEstablishmentId] = useState<string | null>(null);
@@ -24,11 +25,19 @@ const EstablishmentAnnouncements = () => {
 
   return (
     <div className="min-h-screen bg-primary-dark">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-probain-blue to-primary p-6 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl md:text-3xl font-bold text-white">Mes Annonces</h1>
-          <p className="text-white/70 text-sm mt-1">Gérez vos offres d'emploi</p>
+      {/* Header compact */}
+      <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark px-4 py-3 overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-400/20 rounded-xl border border-white/10">
+              <Megaphone className="h-5 w-5 text-cyan-400" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-white tracking-tight">MES ANNONCES</h1>
+              <p className="text-[11px] text-white/40">Gérez vos offres d'emploi</p>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -26,7 +26,9 @@ import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/utils/logger";
 import { useAvailabilities } from "@/hooks/use-availabilities";
 import { useProfile } from "@/contexts/ProfileContext";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFormations } from "@/hooks/use-formations";
+import { useExperiences } from "@/hooks/use-experiences";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -80,39 +82,9 @@ const Profile = () => {
   // Déterminer si c'est le profil de l'utilisateur actuel
   const isOwnProfile = !id || id === baseProfile?.id;
 
-  // Charger les formations (brevets/certifications)
-  const { data: formations = [] } = useQuery({
-    queryKey: ['formations', baseProfile?.id],
-    queryFn: async () => {
-      if (!baseProfile?.id) return [];
-      const { data, error } = await supabase
-        .from('formations')
-        .select('*')
-        .eq('user_id', baseProfile.id)
-        .order('start_date', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!baseProfile?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Charger les expériences
-  const { data: experiences = [] } = useQuery({
-    queryKey: ['experiences', baseProfile?.id],
-    queryFn: async () => {
-      if (!baseProfile?.id) return [];
-      const { data, error } = await supabase
-        .from('experiences')
-        .select('*')
-        .eq('user_id', baseProfile.id)
-        .order('start_date', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!baseProfile?.id,
-    staleTime: 5 * 60 * 1000,
-  });
+  // Charger les formations et expériences via les hooks (cache TanStack Query)
+  const { formations, updateFormation, deleteFormation } = useFormations(baseProfile?.id);
+  const { experiences, updateExperience, deleteExperience } = useExperiences(baseProfile?.id);
 
   // Rediriger si pas authentifié ou mauvais type de profil
   useEffect(() => {
@@ -345,8 +317,8 @@ const Profile = () => {
   const handleProfileUpdated = async () => {
     await refreshProfile();
     // Invalider aussi les formations et expériences
-    queryClient.invalidateQueries({ queryKey: ['formations', baseProfile?.id] });
-    queryClient.invalidateQueries({ queryKey: ['experiences', baseProfile?.id] });
+    queryClient.invalidateQueries({ queryKey: ['formations'] });
+    queryClient.invalidateQueries({ queryKey: ['experiences'] });
   };
 
   // Afficher le skeleton seulement si on n'a vraiment pas de données
@@ -485,8 +457,18 @@ const Profile = () => {
 
             {/* Colonne droite desktop: contenu principal */}
             <div className="md:flex-1 md:min-w-0">
-              <ExperienceCarousel onAddClick={() => setShowAddExperience(true)} />
-              <FormationCarousel onAddClick={() => setShowAddFormation(true)} />
+              <ExperienceCarousel
+                experiences={experiences}
+                updateExperience={updateExperience}
+                deleteExperience={deleteExperience}
+                onAddClick={() => setShowAddExperience(true)}
+              />
+              <FormationCarousel
+                formations={formations}
+                updateFormation={updateFormation}
+                deleteFormation={deleteFormation}
+                onAddClick={() => setShowAddFormation(true)}
+              />
 
               {isOwnProfile && (
                 <AvailabilitySection

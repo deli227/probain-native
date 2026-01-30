@@ -122,12 +122,7 @@ export const RescuerProfileHeader = ({
       <div className="absolute inset-0 bg-gradient-to-r from-primary to-probain-blue opacity-90 md:opacity-0" />
       <div className="hidden md:block absolute inset-0 bg-white/5 backdrop-blur-sm border-b border-white/10" />
 
-      {/* Bouton action - Mobile only, top right */}
-      {actionButton && (
-        <div className="md:hidden absolute top-6 right-6 z-10">
-          {actionButton}
-        </div>
-      )}
+      {/* Bouton action - Desktop uniquement (dans le layout horizontal ci-dessous) */}
 
       {/* Mobile: layout vertical centré */}
       <div className="relative px-4 py-8 flex flex-col items-center space-y-4 md:hidden">

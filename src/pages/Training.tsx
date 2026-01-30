@@ -550,52 +550,40 @@ const Training = () => {
 
   return (
     <div className="min-h-screen bg-background md:bg-transparent">
-      <div className="w-full bg-gradient-to-br from-probain-blue via-primary to-primary-dark py-4 md:py-6 px-4 relative overflow-hidden">
-        {/* Cercle décoratif */}
+      <div className="w-full bg-gradient-to-br from-probain-blue via-primary to-primary-dark px-4 py-3 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 rounded-full blur-2xl translate-x-1/3 -translate-y-1/3" />
 
-        <div className="relative max-w-[1280px] mx-auto text-center">
-          <h1 className="text-base md:text-lg font-bold text-white mb-4 mt-8 md:mt-2 tracking-tight">
-            {totalNewItems > 0
-              ? `${totalNewItems} NOUVELLE${totalNewItems > 1 ? "S" : ""} OPPORTUNITÉ${totalNewItems > 1 ? "S" : ""}`
-              : "FORMATIONS ET OFFRES DISPONIBLES"}
-          </h1>
+        <div className="relative max-w-[1280px] mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-amber-500/20 rounded-xl border border-white/10">
+              <GraduationCap className="h-5 w-5 text-cyan-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-sm font-bold text-white tracking-tight">
+                {totalNewItems > 0
+                  ? `${totalNewItems} NOUVELLE${totalNewItems > 1 ? "S" : ""} OPPORTUNITÉ${totalNewItems > 1 ? "S" : ""}`
+                  : "FORMATIONS"}
+              </h1>
+              <p className="text-[11px] text-white/40">Formations et offres disponibles</p>
+            </div>
 
-          <div className="flex flex-wrap gap-3 md:gap-4 justify-center">
-            {/* Carte Formations SSS - Compacte */}
-            <Card className="group relative p-3 bg-white/95 backdrop-blur-sm rounded-xl border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            {/* Badges compacts */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               {!hasSearched && (allSSSFormations?.length || 0) > 0 && (
-                <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md">
-                  {allSSSFormations?.length || 0}
+                <span className="bg-gradient-to-r from-red-500 to-rose-600 text-white text-[10px] font-bold rounded-full px-2 py-0.5 shadow-md">
+                  {allSSSFormations?.length || 0} formations
                 </span>
               )}
-              <div className="w-14 h-14 md:w-16 md:h-16 flex flex-col items-center justify-center gap-1">
-                <div className="p-2 bg-gradient-to-br from-primary/10 to-probain-blue/10 rounded-lg">
-                  <GraduationCap className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-                </div>
-                <span className="text-[10px] md:text-xs font-bold text-primary">FORMATIONS</span>
-              </div>
-            </Card>
-
-            {/* Carte Offres d'emploi - Compacte */}
-            <Card
-              className="group relative p-3 bg-white/95 backdrop-blur-sm rounded-xl border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
-              onClick={() => navigate("/jobs")}
-            >
               {!hasSearched && newJobsCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md">
-                  {newJobsCount}
+                <span
+                  className="bg-gradient-to-r from-yellow-400 to-amber-500 text-primary text-[10px] font-bold rounded-full px-2 py-0.5 shadow-md cursor-pointer"
+                  onClick={() => navigate("/jobs")}
+                >
+                  {newJobsCount} emploi{newJobsCount > 1 ? "s" : ""}
                 </span>
               )}
-              <div className="w-14 h-14 md:w-16 md:h-16 flex flex-col items-center justify-center gap-1">
-                <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-amber-500/20 rounded-lg">
-                  <Briefcase className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-                </div>
-                <span className="text-[10px] md:text-xs font-bold text-primary">EMPLOIS</span>
-              </div>
-            </Card>
+            </div>
           </div>
-
         </div>
       </div>
 

@@ -322,13 +322,43 @@ interface ExtendedProfileContextType {
 | `SimpleFileUpload.tsx` | Upload fichier basique |
 | `PullToRefresh.tsx` | Pull-to-refresh mobile |
 
-### `components/mailbox/`
+### `components/mailbox/` (Messagerie Instagram/WhatsApp)
+
+**Architecture refaite** : l'ancien systeme d'onglets "Recus/Envoyes" a ete remplace par une interface de conversations groupees par contact avec bulles de messages.
+
 | Fichier | Role |
 |---------|------|
-| `RescuerMailbox.tsx` | Messagerie lecture seule (sauveteurs) |
-| `EstablishmentMailbox.tsx` | Messagerie bidirectionnelle |
-| `MessageCard.tsx` | Carte message individuel |
-| `MessageDialog.tsx` | Detail message modal |
+| `EstablishmentMailbox.tsx` | Re-export vers `conversation/ConversationMailbox` |
+| `RescuerMailbox.tsx` | Ancien composant (obsolete, garde pour reference) |
+| `MessageCard.tsx` | Ancien composant (obsolete) |
+| `MessageDialog.tsx` | Ancien composant (obsolete) |
+
+### `components/mailbox/conversation/` (Nouveau systeme messagerie)
+
+| Fichier | Role |
+|---------|------|
+| `index.ts` | Barrel export |
+| `types.ts` | `ConversationContact`, `Conversation`, helpers groupement |
+| `useConversations.ts` | Hook : fetch, groupement par contact, real-time, mutations |
+| `ConversationMailbox.tsx` | Orchestrateur : layout responsive, permissions par profil |
+| `ConversationList.tsx` | Panel gauche : liste des conversations + header compact |
+| `ConversationListItem.tsx` | Ligne : avatar, nom, apercu, heure, badge non-lu |
+| `ConversationView.tsx` | Panel droit : bulles + input + separateurs de date |
+| `MessageBubble.tsx` | Bulle individuelle (envoye=droite cyan, recu=gauche glass) |
+| `ConversationHeader.tsx` | Barre haut conversation : avatar, nom, retour, suppression |
+| `ConversationInput.tsx` | Textarea auto-resize + bouton envoyer |
+| `EmptyState.tsx` | Etats vides (pas de conversation, pas de selection) |
+| `DeleteConfirmDialog.tsx` | Dialogs confirmation suppression (message ou conversation) |
+
+**Points techniques :**
+- Conversations derivees cote client en groupant les messages par "l'autre participant" (pas de thread_id en BDD)
+- Query key `["messages", userId]` : meme que l'ancien code, les `invalidateQueries` de `SendMessageDialog` et `SendRescuerMessageDialog` continuent de fonctionner
+- Real-time via canal Supabase `conversations-${userId}` (INSERT/UPDATE/DELETE)
+- `avatar_url` joint depuis les tables `*_profiles` selon `profile_type`
+- Mobile : navigation par etat (liste OU conversation), `bg-[#0a1628]`
+- Desktop : split view (liste 320px + conversation) avec glassmorphism
+- Sauveteurs : reception + reponse uniquement (pas de bouton "nouveau message")
+- `Mailbox.tsx` (page) = re-export 1 ligne vers `ConversationMailbox`
 
 ### `components/formations/`
 | Fichier | Role |
@@ -379,6 +409,7 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 | `useEstablishmentProfile` | establishment_profiles | Profil etablissement |
 | `useSSSFormations` | sss_formations_cache | Cache formations SSS externes |
 | `useRecyclingReminders` | formations | Alertes recyclage certifications |
+| `useConversations` | internal_messages + *_profiles | Messagerie : fetch, groupement, real-time, mutations |
 
 ---
 
@@ -405,7 +436,7 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 
 | Table | Evenements | Utilise par |
 |-------|-----------|-------------|
-| `internal_messages` | INSERT, UPDATE, DELETE | useUnreadMessages |
+| `internal_messages` | INSERT, UPDATE, DELETE | useUnreadMessages, useConversations |
 | `flux_posts` | INSERT, UPDATE | useFlux |
 | `sss_formations_cache` | INSERT | useRescuerNotifications |
 | `job_postings` | INSERT | useRescuerNotifications |
@@ -463,10 +494,14 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 
 ## Points d'Attention
 
-### Messagerie
-- Sauveteurs: reception uniquement
+### Messagerie (style Instagram/WhatsApp)
+- **Redesign complet** : conversations groupees par contact avec bulles de messages
+- Sauveteurs: reception + reponse uniquement (pas d'initiation de conversation)
 - Formateurs/Etablissements: bidirectionnelle
 - Apres envoi d'un message, TOUJOURS invalider le cache: `queryClient.invalidateQueries({ queryKey: ["messages"] })`
+- Le groupement par conversation est fait cote client (pas de `thread_id` en BDD)
+- `Mailbox.tsx` et `EstablishmentMailbox.tsx` sont des re-exports vers `ConversationMailbox`
+- Les anciens fichiers (`RescuerMailbox.tsx`, `MessageCard.tsx`, `MessageDialog.tsx`) sont obsoletes mais encore presents
 
 ### Onboarding
 - Tous champs optionnels (bouton "Passer")
@@ -536,6 +571,40 @@ Label: text-white/70
 Focus: ring-cyan-400/30 border-cyan-400/50
 Bouton save: from-cyan-500 to-blue-600
 ```
+
+---
+
+## Header Compact (pattern unifie)
+
+Toutes les pages principales (Jobs, Training, Flux, Messagerie) utilisent le meme style de header compact horizontal :
+
+```
+Structure : icone glassmorphism a gauche + titre + sous-titre a droite
+Fond : bg-gradient-to-br from-primary via-probain-blue to-primary-dark
+Icone : p-2 bg-[couleur]/20 rounded-xl border border-white/10
+        Icone Lucide h-5 w-5 text-cyan-400
+Titre : text-sm font-bold text-white tracking-tight
+Sous-titre : text-[11px] text-white/40
+Padding : px-4 py-3
+```
+
+| Page | Icone | Titre | Sous-titre |
+|------|-------|-------|------------|
+| Jobs | Briefcase | OFFRES D'EMPLOI | Trouvez votre prochain poste |
+| Training | GraduationCap | FORMATIONS (ou N NOUVELLES OPPORTUNITES) | Formations et offres disponibles |
+| Flux | MessageCircle | FLUX | Publications et actualites |
+| Messagerie | Mail | MESSAGERIE | N conversation(s) |
+
+**Important** : si une page a un etat de chargement (`loading`), le header dans le loading state doit etre IDENTIQUE au header final (meme layout horizontal) pour eviter un flash visuel.
+
+---
+
+## Profil Sauveteur - Bouton Modifier
+
+- Le bouton jaune "MODIFIER" (avec icone crayon) est **masque sur mobile** (supprime du bloc `md:hidden`)
+- Il reste visible uniquement sur **desktop** (dans le layout `hidden md:flex` a cote du nom)
+- Les utilisateurs mobiles editent via les cartes individuelles du profil
+- Fichier : `src/components/profile/RescuerProfileHeader.tsx`
 
 ---
 
