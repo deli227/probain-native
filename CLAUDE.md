@@ -17,7 +17,8 @@
 | **UI** | Shadcn/UI, Tailwind CSS 3.4, Radix UI |
 | **State** | TanStack Query 5 + persistence localStorage |
 | **Port dev** | 8080 |
-| **GitHub** | https://github.com/deli227/pro-bain |
+| **GitHub (Native)** | https://github.com/deli227/probain-native |
+| **GitHub (Web)** | https://github.com/deli227/pro-bain |
 
 ---
 
@@ -540,10 +541,10 @@ Bouton save: from-cyan-500 to-blue-600
 
 ## Deploiement
 
-| Environnement | URL | Methode |
-|---------------|-----|---------|
-| **Native (staging)** | https://pro-bain-native-test.vercel.app | Vercel |
-| **Web (production)** | probain.ch | Netlify (autre repo) |
+| Environnement | URL | Methode | Repo GitHub |
+|---------------|-----|---------|-------------|
+| **Native (production)** | https://www.probain.ch | Vercel | `deli227/probain-native` |
+| **Web (legacy)** | probain.ch | Netlify | `deli227/pro-bain` |
 
 ---
 
