@@ -3,7 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound, Loader2, Eye, EyeOff } from "lucide-react";
+import { KeyRound, Loader2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ChangePasswordSectionProps {
   darkMode?: boolean;
@@ -16,15 +26,16 @@ export const ChangePasswordSection = ({ darkMode = false }: ChangePasswordSectio
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const handleChangePassword = async () => {
+  const validatePassword = (): boolean => {
     if (!newPassword || !confirmPassword) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir les deux champs",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     if (newPassword.length < 6) {
@@ -33,7 +44,7 @@ export const ChangePasswordSection = ({ darkMode = false }: ChangePasswordSectio
         description: "Le mot de passe doit contenir au moins 6 caractères",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     if (newPassword !== confirmPassword) {
@@ -42,9 +53,20 @@ export const ChangePasswordSection = ({ darkMode = false }: ChangePasswordSectio
         description: "Les mots de passe ne correspondent pas",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
+    return true;
+  };
+
+  const handleRequestChange = () => {
+    if (validatePassword()) {
+      setShowConfirmDialog(true);
+    }
+  };
+
+  const handleConfirmChange = async () => {
+    setShowConfirmDialog(false);
     setIsUpdating(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -68,6 +90,37 @@ export const ChangePasswordSection = ({ darkMode = false }: ChangePasswordSectio
       setIsUpdating(false);
     }
   };
+
+  const confirmDialog = (
+    <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <AlertDialogContent className={darkMode ? "bg-[#0d2847] border-white/20 text-white" : ""}>
+        <AlertDialogHeader>
+          <div className="flex items-center gap-3 mb-2">
+            <div className={`p-2 rounded-xl ${darkMode ? "bg-amber-500/20" : "bg-amber-100"}`}>
+              <AlertTriangle className={`h-5 w-5 ${darkMode ? "text-amber-400" : "text-amber-600"}`} />
+            </div>
+            <AlertDialogTitle className={darkMode ? "text-white" : ""}>
+              Confirmer le changement
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogDescription className={darkMode ? "text-white/60" : ""}>
+            Vous allez modifier votre mot de passe de connexion. Cette action prendra effet immédiatement. Voulez-vous continuer ?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="gap-2 sm:gap-0">
+          <AlertDialogCancel className={darkMode ? "bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white" : ""}>
+            Annuler
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmChange}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            Oui, modifier
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   if (darkMode) {
     return (
@@ -125,7 +178,7 @@ export const ChangePasswordSection = ({ darkMode = false }: ChangePasswordSectio
 
           <Button
             type="button"
-            onClick={handleChangePassword}
+            onClick={handleRequestChange}
             disabled={isUpdating || !newPassword || !confirmPassword}
             className="w-full h-12 rounded-xl bg-purple-600/80 hover:bg-purple-600 text-white font-medium transition-all"
           >
@@ -142,6 +195,8 @@ export const ChangePasswordSection = ({ darkMode = false }: ChangePasswordSectio
             )}
           </Button>
         </div>
+
+        {confirmDialog}
       </div>
     );
   }
@@ -202,7 +257,7 @@ export const ChangePasswordSection = ({ darkMode = false }: ChangePasswordSectio
 
         <Button
           type="button"
-          onClick={handleChangePassword}
+          onClick={handleRequestChange}
           disabled={isUpdating || !newPassword || !confirmPassword}
           className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white"
         >
@@ -219,6 +274,8 @@ export const ChangePasswordSection = ({ darkMode = false }: ChangePasswordSectio
           )}
         </Button>
       </div>
+
+      {confirmDialog}
     </div>
   );
 };

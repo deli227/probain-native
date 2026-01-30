@@ -4,7 +4,7 @@ import { useConversations } from "./useConversations";
 import { ConversationList } from "./ConversationList";
 import { ConversationView } from "./ConversationView";
 import { EmptyState } from "./EmptyState";
-import { LoadingScreen } from "@/components/shared/LoadingScreen";
+import { Loader2, Mail } from "lucide-react";
 
 export const ConversationMailbox = () => {
   const isMobile = useIsMobile();
@@ -61,15 +61,31 @@ export const ConversationMailbox = () => {
 
   const unreadTotal = conversations.reduce((acc, c) => acc + c.unreadCount, 0);
 
-  if (isLoading) {
-    return <LoadingScreen message="Chargement des messages..." />;
-  }
-
   // Mobile : affichage par navigation (liste OU conversation)
   if (isMobile) {
-    if (selectedContactId && selectedConversation && userId) {
-      return (
-        <div className="h-[calc(100vh-56px-76px)] flex flex-col bg-[#0a1628]">
+    // Container dark toujours rendu immediatement pour eviter le flash blanc
+    // Le spinner de chargement est inline, pas un remplacement complet du composant
+    return (
+      <div className="h-[calc(100vh-56px-76px)] flex flex-col bg-[#0a1628]">
+        {isLoading ? (
+          <>
+            {/* Header identique au header final pour eviter le flash */}
+            <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-br from-primary via-probain-blue to-primary-dark flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-xl border border-white/10">
+                  <Mail className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-white tracking-tight">MESSAGERIE</h2>
+                  <p className="text-[11px] text-white/40">Chargement...</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 text-white animate-spin" />
+            </div>
+          </>
+        ) : selectedContactId && selectedConversation && userId ? (
           <ConversationView
             conversation={selectedConversation}
             currentUserId={userId}
@@ -80,18 +96,14 @@ export const ConversationMailbox = () => {
             isSending={isSending}
             showBackButton={true}
           />
-        </div>
-      );
-    }
-
-    return (
-      <div className="h-[calc(100vh-56px-76px)] flex flex-col bg-[#0a1628]">
-        <ConversationList
-          conversations={conversations}
-          selectedContactId={null}
-          onSelectConversation={handleSelectConversation}
-          unreadTotal={unreadTotal}
-        />
+        ) : (
+          <ConversationList
+            conversations={conversations}
+            selectedContactId={null}
+            onSelectConversation={handleSelectConversation}
+            unreadTotal={unreadTotal}
+          />
+        )}
       </div>
     );
   }
@@ -102,12 +114,31 @@ export const ConversationMailbox = () => {
       <div className="flex h-full gap-4 lg:gap-6">
         {/* Liste des conversations (gauche) */}
         <div className="w-80 lg:w-96 flex-shrink-0 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
-          <ConversationList
-            conversations={conversations}
-            selectedContactId={selectedContactId}
-            onSelectConversation={handleSelectConversation}
-            unreadTotal={unreadTotal}
-          />
+          {isLoading ? (
+            <div className="flex flex-col h-full">
+              <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-br from-primary via-probain-blue to-primary-dark flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-xl border border-white/10">
+                    <Mail className="h-5 w-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-white tracking-tight">MESSAGERIE</h2>
+                    <p className="text-[11px] text-white/40">Chargement...</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 text-white/50 animate-spin" />
+              </div>
+            </div>
+          ) : (
+            <ConversationList
+              conversations={conversations}
+              selectedContactId={selectedContactId}
+              onSelectConversation={handleSelectConversation}
+              unreadTotal={unreadTotal}
+            />
+          )}
         </div>
 
         {/* Conversation active (droite) */}
