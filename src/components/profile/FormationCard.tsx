@@ -64,7 +64,7 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
     <div className="relative min-h-[200px] w-full sm:w-[320px] max-w-[95vw] sm:max-w-none">
       {/* Carte principale cliquable */}
       <div
-        className="min-h-full w-full rounded-2xl bg-white shadow-xl border border-gray-100 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 active:scale-[0.98] flex overflow-hidden relative cursor-pointer"
+        className="min-h-full w-full rounded-2xl bg-white md:bg-white/10 md:backdrop-blur-xl shadow-xl border border-gray-100 md:border-white/10 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 active:scale-[0.98] flex overflow-hidden relative cursor-pointer"
         onClick={() => setIsEditSheetOpen(true)}
       >
         {/* Boutons FIXES - position absolue par rapport à la CARTE */}
@@ -89,14 +89,14 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all duration-200 touch-manipulation"
+            className="h-10 w-10 rounded-xl bg-gray-100 md:bg-white/10 hover:bg-gray-200 md:hover:bg-white/20 transition-all duration-200 touch-manipulation"
             aria-label="Modifier la formation"
             onClick={(e) => {
               e.stopPropagation();
               setIsEditSheetOpen(true);
             }}
           >
-            <Pencil className="h-4 w-4 text-gray-600" />
+            <Pencil className="h-4 w-4 text-gray-600 md:text-white/70" />
           </Button>
         </div>
 
@@ -166,24 +166,24 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
         <div className="flex-1 p-4 flex flex-col">
           {/* Badge organisation - avec marge pour ne pas chevaucher les boutons */}
           <div className="mb-3 mr-14">
-            <span className="inline-block px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-500/10 text-blue-700 max-w-full truncate">
+            <span className="inline-block px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-500/10 text-blue-700 md:bg-blue-500/20 md:text-blue-300 max-w-full truncate">
               {formation.organization}
             </span>
           </div>
 
           {/* Titre de la formation */}
           <div className="flex-1 flex flex-col justify-center">
-            <h3 className="font-bold text-lg text-gray-900 line-clamp-2 leading-snug">
+            <h3 className="font-bold text-lg text-gray-900 md:text-white line-clamp-2 leading-snug">
               {displayTitle}
             </h3>
           </div>
 
           {/* Footer avec dates et statut recyclage */}
-          <div className="pt-3 mt-auto border-t border-gray-100">
+          <div className="pt-3 mt-auto border-t border-gray-100 md:border-white/10">
             <div className="text-xs space-y-1">
               <div>
-                <span className="text-gray-400">Obtenu le </span>
-                <span className="font-semibold text-gray-700">{formatDate(formation.start_date)}</span>
+                <span className="text-gray-400 md:text-white/40">Obtenu le </span>
+                <span className="font-semibold text-gray-700 md:text-white/80">{formatDate(formation.start_date)}</span>
               </div>
               {formation.end_date && (
                 <div className="flex items-center gap-1.5">
@@ -191,7 +191,7 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
                   <span className="font-semibold text-emerald-600">
                     Recyclé le {formatDate(formation.end_date)}
                     {formation.recycling_organization && (
-                      <span className="text-gray-500 font-normal"> chez {formation.recycling_organization}</span>
+                      <span className="text-gray-500 md:text-white/40 font-normal"> chez {formation.recycling_organization}</span>
                     )}
                   </span>
                 </div>

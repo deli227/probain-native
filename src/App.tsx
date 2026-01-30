@@ -225,14 +225,14 @@ function AppRoutes() {
   };
 
   return (
-    <div className="min-h-screen bg-blue-50">
+    <div className="min-h-screen bg-blue-50 md:bg-[#0a1628]">
       <OfflineIndicator />
       <InstallPWAPrompt />
       <ContentWrapper>
       <ErrorBoundary resetKey={location.pathname}>
       <Suspense fallback={<LoadingScreen message="Chargement..." />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/auth" replace />} />
+        <Route path="/" element={navigator.userAgent.toLowerCase().includes('despia') ? <Navigate to="/auth" replace /> : <Index />} />
         <Route path="/terms" element={<TermsOfUse />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/auth/set-password" element={<SetPassword />} />

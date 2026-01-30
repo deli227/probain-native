@@ -360,7 +360,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark pb-20">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent pb-20 md:pb-6">
       <div className="relative max-w-[1920px] mx-auto">
         {isOwnProfile && (
           <div className="absolute top-3 right-3 z-10">
@@ -457,42 +457,51 @@ const Profile = () => {
         />
 
         <div className="max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8">
-          <ProfileStats
-            stats={[
-              { label: "Formations", value: formations.length, icon: "certifications" },
-              { label: "Expériences", value: experiences.length, icon: "experience" },
-            ]}
-          />
+          {/* Desktop: layout 2 colonnes */}
+          <div className="md:flex md:gap-8 md:mt-8">
+            {/* Colonne gauche desktop: stats + completion */}
+            <div className="md:w-80 md:flex-shrink-0">
+              <ProfileStats
+                stats={[
+                  { label: "Formations", value: formations.length, icon: "certifications" },
+                  { label: "Expériences", value: experiences.length, icon: "experience" },
+                ]}
+              />
 
-          {isOwnProfile && (
-            <ProfileCompletion
-              items={[
-                { label: "Photo de profil", completed: !!rescuerProfile?.avatar_url },
-                { label: "Prénom", completed: !!(rescuerProfile?.first_name || baseProfile?.first_name) },
-                { label: "Nom", completed: !!(rescuerProfile?.last_name || baseProfile?.last_name) },
-                { label: "Biographie", completed: !!baseProfile?.biography },
-                { label: "Canton", completed: !!baseProfile?.canton },
-                { label: "Formations", completed: formations.length > 0 },
-              ]}
-              className="mt-6"
-            />
-          )}
+              {isOwnProfile && (
+                <ProfileCompletion
+                  items={[
+                    { label: "Photo de profil", completed: !!rescuerProfile?.avatar_url },
+                    { label: "Prénom", completed: !!(rescuerProfile?.first_name || baseProfile?.first_name) },
+                    { label: "Nom", completed: !!(rescuerProfile?.last_name || baseProfile?.last_name) },
+                    { label: "Biographie", completed: !!baseProfile?.biography },
+                    { label: "Canton", completed: !!baseProfile?.canton },
+                    { label: "Formations", completed: formations.length > 0 },
+                  ]}
+                  className="mt-6"
+                />
+              )}
+            </div>
 
-          <ExperienceCarousel onAddClick={() => setShowAddExperience(true)} />
-          <FormationCarousel onAddClick={() => setShowAddFormation(true)} />
+            {/* Colonne droite desktop: contenu principal */}
+            <div className="md:flex-1 md:min-w-0">
+              <ExperienceCarousel onAddClick={() => setShowAddExperience(true)} />
+              <FormationCarousel onAddClick={() => setShowAddFormation(true)} />
 
-          {isOwnProfile && (
-            <AvailabilitySection
-              isAvailable={isAvailable}
-              isAlwaysAvailable={isAlwaysAvailable}
-              showSpecificDates={showSpecificDates}
-              selectedDates={selectedDates}
-              toggleAvailability={toggleAvailability}
-              toggleAlwaysAvailable={toggleAlwaysAvailable}
-              handleSpecificDatesToggle={handleSpecificDatesToggle}
-              handleDateSelect={handleDateSelect}
-            />
-          )}
+              {isOwnProfile && (
+                <AvailabilitySection
+                  isAvailable={isAvailable}
+                  isAlwaysAvailable={isAlwaysAvailable}
+                  showSpecificDates={showSpecificDates}
+                  selectedDates={selectedDates}
+                  toggleAvailability={toggleAvailability}
+                  toggleAlwaysAvailable={toggleAlwaysAvailable}
+                  handleSpecificDatesToggle={handleSpecificDatesToggle}
+                  handleDateSelect={handleDateSelect}
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

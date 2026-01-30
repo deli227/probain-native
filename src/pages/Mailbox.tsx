@@ -389,7 +389,7 @@ const Mailbox = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark pb-20 md:pb-6">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent pb-20 md:pb-6">
       {/* Header compact */}
       <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark py-5 md:py-6 px-4 overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />

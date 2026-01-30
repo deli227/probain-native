@@ -417,10 +417,10 @@ export const ProfileForm = ({ defaultValues, onProfileUpdated, onSaveComplete }:
           </div>
 
           {/* Bouton de sauvegarde style natif - bottom-[100px] pour ne pas être caché par la tab bar mobile */}
-          <div className="fixed bottom-[100px] md:bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/95 to-transparent z-20">
+          <div className="fixed bottom-[100px] md:bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-full md:max-w-xl p-4 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/95 to-transparent z-20">
             <Button
               type="submit"
-              className="w-full h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold text-lg shadow-lg shadow-blue-500/30 transition-all duration-300 active:scale-[0.98]"
+              className="w-full md:max-w-sm md:mx-auto md:block h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold text-lg shadow-lg shadow-blue-500/30 transition-all duration-300 active:scale-[0.98]"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

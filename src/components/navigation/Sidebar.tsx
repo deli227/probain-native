@@ -98,17 +98,20 @@ export const Sidebar = ({ profileType }: SidebarProps) => {
   };
 
   return (
-    <aside className="hidden md:flex md:flex-col md:w-64 md:fixed md:inset-y-0 md:left-0 bg-primary border-r border-white/10 z-40">
+    <aside className="hidden md:flex md:flex-col md:w-64 md:fixed md:inset-y-0 md:left-0 bg-white/5 backdrop-blur-xl border-r border-white/10 z-40">
       {/* Logo */}
       <div className="flex items-center h-16 px-6 border-b border-white/10">
-        <Link to="/" className="flex items-center gap-3">
-          <img src={LOGO_PATH} alt="Probain" className="h-8 w-auto" />
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="relative">
+            <img src={LOGO_PATH} alt="Probain" className="h-8 w-auto relative z-10" />
+            <div className="absolute inset-0 bg-cyan-400/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </div>
           <span className="text-white font-bold text-xl tracking-tight">Probain</span>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
         {links.map((link) => {
           const Icon = link.icon;
           const active = isActive(link.href);
@@ -119,13 +122,13 @@ export const Sidebar = ({ profileType }: SidebarProps) => {
               to={link.href}
               onClick={link.onClick}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 relative",
                 active
-                  ? "bg-white/20 text-white shadow-lg"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
+                  ? "bg-white/10 text-white border-l-2 border-cyan-400 shadow-lg shadow-cyan-500/5"
+                  : "text-white/60 hover:bg-white/5 hover:text-white border-l-2 border-transparent"
               )}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <Icon className={cn("h-5 w-5 flex-shrink-0", active && "text-cyan-400")} />
               <span className="flex-1">{link.label}</span>
               {link.badge && link.badge > 0 && (
                 <Badge className={cn(
@@ -144,7 +147,7 @@ export const Sidebar = ({ profileType }: SidebarProps) => {
       <div className="p-4 border-t border-white/10">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-white/70 hover:bg-red-500/20 hover:text-red-400 transition-all duration-200"
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-white/40 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
         >
           <LogOut className="h-5 w-5" />
           <span>Deconnexion</span>

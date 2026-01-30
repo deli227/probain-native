@@ -42,7 +42,7 @@ export const ProfileStats = ({ stats }: ProfileStatsProps) => {
   if (!stats || stats.length === 0) return null;
 
   return (
-    <div className="flex flex-nowrap justify-center gap-3 md:gap-6 py-4 overflow-x-auto">
+    <div className="flex flex-nowrap justify-center gap-3 md:flex-col md:gap-4 py-4 overflow-x-auto md:overflow-visible">
       {stats.map((stat, index) => {
         const Icon = iconMap[stat.icon];
         const gradientColor = accentColors[stat.icon];

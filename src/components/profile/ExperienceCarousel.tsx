@@ -23,9 +23,9 @@ export const ExperienceCarousel = ({ onAddClick }: ExperienceCarouselProps) => {
   };
 
   return (
-    <div className="px-4 py-6 md:py-12 max-w-5xl mx-auto">
+    <div className="px-4 py-6 md:py-8 md:px-0 max-w-5xl md:max-w-none mx-auto">
       <div className="flex justify-between items-center mb-4 md:mb-8">
-        <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white w-full text-left md:text-center uppercase">EXPÉRIENCE PROFESSIONNELLE</h2>
+        <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white w-full text-left uppercase">EXPÉRIENCE PROFESSIONNELLE</h2>
         <button
           className="group relative flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-emerald-500/40 active:scale-95"
           onClick={onAddClick}

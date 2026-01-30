@@ -84,7 +84,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark">
+    <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent">
       {/* Header */}
       <div className="bg-gradient-to-r from-probain-blue to-primary p-6 pt-8 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto text-center">
@@ -95,7 +95,7 @@ const Settings = () => {
       {/* Layout 2 colonnes sur desktop */}
       <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Section Notifications */}
-        <div className="bg-white/10 rounded-xl p-4 md:p-6">
+        <div className="bg-white/10 md:backdrop-blur-xl md:border md:border-white/10 rounded-xl p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <Bell className="h-5 w-5 text-yellow-400" />
             <h2 className="text-lg md:text-xl font-semibold text-white">Notifications</h2>
@@ -159,7 +159,7 @@ const Settings = () => {
         </div>
 
         {/* Section Compte */}
-        <div className="bg-white/10 rounded-xl p-4 md:p-6">
+        <div className="bg-white/10 md:backdrop-blur-xl md:border md:border-white/10 rounded-xl p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <Trash2 className="h-5 w-5 text-red-400" />
             <h2 className="text-lg font-semibold text-white">Compte</h2>

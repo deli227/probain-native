@@ -75,7 +75,7 @@ const Flux = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark pb-20">
+      <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent pb-20 md:pb-6">
         {/* Header compact */}
         <div className="relative bg-gradient-to-br from-probain-blue to-primary py-5 md:py-6 px-4 overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
@@ -103,7 +103,7 @@ const Flux = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark pb-20">
+    <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent pb-20 md:pb-6">
       {/* Header compact */}
       <div className="relative bg-gradient-to-br from-probain-blue to-primary py-5 md:py-6 px-4 overflow-hidden">
         {/* Cercle décoratif */}
@@ -126,14 +126,14 @@ const Flux = () => {
         </div>
       </div>
 
-      <div className={`p-4 md:p-6 lg:p-8 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 ${posts.length > 0 ? 'stagger-children' : ''}`}>
+      <div className={`p-4 md:p-6 lg:p-8 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 ${posts.length > 0 ? 'stagger-children' : ''}`}>
         {posts.length === 0 ? (
           <div className="bg-white/10 rounded-xl p-8 text-center col-span-full">
             <p className="text-white/60">Aucune publication pour le moment</p>
           </div>
         ) : (
           posts.map((post) => (
-            <div key={post.id} className="bg-white rounded-xl overflow-hidden shadow-lg card-pressable">
+            <div key={post.id} className="bg-white md:bg-white/10 md:backdrop-blur-md md:border md:border-white/10 rounded-xl overflow-hidden shadow-lg card-pressable">
               {/* Post Header */}
               <div className="p-4 flex items-center gap-3 border-b border-gray-100">
                 {post.author_avatar_url ? (
@@ -154,17 +154,17 @@ const Flux = () => {
                   </div>
                 )}
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900">{post.author_name}</p>
-                  <p className="text-gray-500 text-xs">{formatDate(post.created_at)}</p>
+                  <p className="font-semibold text-gray-900 md:text-white">{post.author_name}</p>
+                  <p className="text-gray-500 md:text-white/50 text-xs">{formatDate(post.created_at)}</p>
                 </div>
               </div>
 
               {/* Post Content */}
               <div className="p-4">
                 {post.title && (
-                  <h2 className="font-bold text-lg text-gray-900 mb-2">{post.title}</h2>
+                  <h2 className="font-bold text-lg text-gray-900 md:text-white mb-2">{post.title}</h2>
                 )}
-                <p className="text-gray-700 whitespace-pre-wrap">{post.content}</p>
+                <p className="text-gray-700 md:text-white/80 whitespace-pre-wrap">{post.content}</p>
               </div>
 
               {/* Post Image */}
@@ -180,13 +180,13 @@ const Flux = () => {
               )}
 
               {/* Likes & Comments Count */}
-              <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+              <div className="px-4 py-2 border-t border-gray-100 md:border-white/10 flex items-center justify-between text-sm text-gray-500 md:text-white/50">
                 <span>{post.likes_count} j'aime{post.likes_count > 1 ? 's' : ''}</span>
                 <span>{post.comments_count} commentaire{post.comments_count > 1 ? 's' : ''}</span>
               </div>
 
               {/* Actions */}
-              <div className="px-4 py-2 border-t border-gray-100 flex gap-2">
+              <div className="px-4 py-2 border-t border-gray-100 md:border-white/10 flex gap-2">
                 <Button
                   variant="ghost"
                   className={`flex-1 ${post.user_has_liked ? 'text-red-500' : 'text-gray-600'}`}

@@ -128,139 +128,134 @@ export const ProfileHeader = ({
     onFileSelected: handleAvatarUpload,
   });
 
+  const socialLinks = [
+    { url: website, icon: Globe, label: 'Site web' },
+    { url: facebookUrl, icon: Facebook, label: 'Facebook' },
+    { url: instagramUrl, icon: Instagram, label: 'Instagram' },
+    { url: linkedinUrl, icon: Linkedin, label: 'LinkedIn' },
+  ].filter(l => l.url);
+
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-primary to-probain-blue opacity-90" />
+      <div className="absolute inset-0 bg-gradient-to-r from-primary to-probain-blue opacity-90 md:opacity-0" />
+      <div className="hidden md:block absolute inset-0 bg-white/5 backdrop-blur-sm border-b border-white/10" />
 
-      {/* Bouton action - Desktop only, top left */}
+      {/* Bouton action - Mobile only, top right */}
       {actionButton && (
-        <div className="hidden md:block absolute top-6 left-6 z-10">
+        <div className="md:hidden absolute top-6 right-6 z-10">
           {actionButton}
         </div>
       )}
 
-      <div className="relative px-4 py-8 md:py-16 lg:py-20 flex flex-col items-center space-y-4 md:space-y-8 max-w-7xl mx-auto">
-        <div className="relative group transition-transform duration-300 md:hover:scale-105">
-          <Avatar className="w-32 h-32 md:w-48 md:h-48 lg:w-56 lg:h-56 border-4 border-white shadow-lg overflow-hidden rounded-full">
-            <AvatarImage
-              src={avatarUrl}
-              alt={`${firstName} ${lastName}`}
-              className="object-cover w-full h-full rounded-full"
-            />
-            <AvatarFallback className="text-lg md:text-2xl lg:text-3xl bg-primary-light rounded-full">
-              {`${firstName[0]}${lastName ? lastName[0] : ''}`}
-            </AvatarFallback>
+      {/* Mobile: layout vertical centré */}
+      <div className="relative px-4 py-8 flex flex-col items-center space-y-4 md:hidden">
+        <div className="relative group">
+          <Avatar className="w-32 h-32 border-4 border-white shadow-lg overflow-hidden rounded-full">
+            <AvatarImage src={avatarUrl} alt={`${firstName} ${lastName}`} className="object-cover w-full h-full rounded-full" />
+            <AvatarFallback className="text-lg bg-primary-light rounded-full">{`${firstName[0]}${lastName ? lastName[0] : ''}`}</AvatarFallback>
           </Avatar>
-          
           {onAvatarUpdate && (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={openPicker}
-              onKeyDown={(e) => e.key === 'Enter' && openPicker()}
-              className="absolute inset-0 flex items-center justify-center bg-black/50
-                       opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300
-                       rounded-full"
-            >
-              <Upload className="w-8 h-8 text-white transform transition-transform group-hover:scale-110" />
+            <div role="button" tabIndex={0} onClick={openPicker} onKeyDown={(e) => e.key === 'Enter' && openPicker()}
+              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 rounded-full">
+              <Upload className="w-8 h-8 text-white" />
             </div>
           )}
-          {/* Desktop fallback input */}
-          <input
-            ref={desktopInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelected}
-            disabled={uploading}
-            className="hidden"
-          />
+          <input ref={desktopInputRef} type="file" accept="image/*" onChange={handleFileSelected} disabled={uploading} className="hidden" />
         </div>
-        
-        <div className="text-white text-center md:max-w-3xl lg:max-w-4xl animate-fade-in">
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-2 md:mb-6">
-            {`${firstName.toUpperCase()} ${lastName.toUpperCase()}`}
-          </h1>
-          
-          <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 text-white/90 mb-3 md:mb-6">
-            {age && (
-              <span className="text-sm md:text-base lg:text-lg font-medium bg-white/20 px-4 py-1.5 rounded-full transition-all duration-300 hover:bg-white/30">
-                {age} ANS
-              </span>
-            )}
+
+        <div className="text-white text-center">
+          <h1 className="text-3xl font-bold tracking-tight mb-2">{`${firstName.toUpperCase()} ${lastName.toUpperCase()}`}</h1>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-white/90 mb-3">
+            {age && <span className="text-sm font-medium bg-white/20 px-4 py-1.5 rounded-full">{age} ANS</span>}
             {address?.canton && (
-              <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg bg-white/20 px-4 py-1.5 rounded-full transition-all duration-300 hover:bg-white/30">
-                <MapPin className="w-4 h-4 md:w-5 md:h-5" />
-                <span>{address.canton}</span>
+              <div className="flex items-center gap-2 text-sm bg-white/20 px-4 py-1.5 rounded-full">
+                <MapPin className="w-4 h-4" /> <span>{address.canton}</span>
+              </div>
+            )}
+          </div>
+          {address && (address.street || address.cityZip) && (
+            <div className="flex flex-col items-center gap-1 text-sm text-white/90 mb-3">
+              {address.street && <span>{address.street}</span>}
+              {address.cityZip && <span>{address.cityZip}</span>}
+            </div>
+          )}
+          {socialLinks.length > 0 && (
+            <div className="flex justify-center gap-4 text-white/90 mb-3">
+              {socialLinks.map(({ url, icon: Icon, label }) => (
+                <a key={label} href={url!.startsWith('http') ? url! : `https://${url}`} target="_blank" rel="noopener noreferrer" className="hover:text-white hover:scale-110 transition-all" title={label}>
+                  <Icon className="w-5 h-5" />
+                </a>
+              ))}
+            </div>
+          )}
+          {certifications && certifications.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {certifications.map((cert, index) => (
+                <Badge key={index} variant="secondary" className="bg-white/20 text-white hover:bg-white/30">{cert}</Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: layout horizontal (avatar gauche, info droite) */}
+      <div className="relative hidden md:flex md:items-center md:gap-10 px-8 lg:px-12 py-10 lg:py-14">
+        <div className="relative group transition-transform duration-300 hover:scale-105 flex-shrink-0">
+          <Avatar className="w-40 h-40 lg:w-48 lg:h-48 border-4 border-white shadow-lg overflow-hidden rounded-full">
+            <AvatarImage src={avatarUrl} alt={`${firstName} ${lastName}`} className="object-cover w-full h-full rounded-full" />
+            <AvatarFallback className="text-2xl lg:text-3xl bg-primary-light rounded-full">{`${firstName[0]}${lastName ? lastName[0] : ''}`}</AvatarFallback>
+          </Avatar>
+          {onAvatarUpdate && (
+            <div role="button" tabIndex={0} onClick={openPicker} onKeyDown={(e) => e.key === 'Enter' && openPicker()}
+              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 rounded-full">
+              <Upload className="w-8 h-8 text-white" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-white">
+              {`${firstName.toUpperCase()} ${lastName.toUpperCase()}`}
+            </h1>
+            {actionButton && (
+              <div className="flex-shrink-0">
+                {actionButton}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-white/90">
+            {age && <span className="text-base font-medium bg-white/20 px-4 py-1.5 rounded-full hover:bg-white/30 transition-all">{age} ANS</span>}
+            {address?.canton && (
+              <div className="flex items-center gap-2 text-base bg-white/20 px-4 py-1.5 rounded-full hover:bg-white/30 transition-all">
+                <MapPin className="w-5 h-5" /> <span>{address.canton}</span>
               </div>
             )}
           </div>
 
           {address && (address.street || address.cityZip) && (
-            <div className="flex flex-col items-center gap-1 text-sm md:text-base lg:text-lg text-white/90 mb-3 md:mb-6">
-              {address.street && <span className="transition-all duration-300 hover:text-white">{address.street}</span>}
-              {address.cityZip && <span className="transition-all duration-300 hover:text-white">{address.cityZip}</span>}
+            <div className="text-base text-white/70">
+              {address.street && <span>{address.street}</span>}
+              {address.street && address.cityZip && <span> · </span>}
+              {address.cityZip && <span>{address.cityZip}</span>}
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-4 text-white/90 mb-3 md:mb-6">
-            <div className="flex gap-4 md:gap-8">
-              {website && (
-                <a 
-                  href={website.startsWith('http') ? website : `https://${website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="transform transition-all duration-300 hover:text-white hover:scale-110"
-                  title="Site web"
-                >
-                  <Globe className="w-5 h-5 md:w-7 md:h-7" />
+          {socialLinks.length > 0 && (
+            <div className="flex gap-5 text-white/70">
+              {socialLinks.map(({ url, icon: Icon, label }) => (
+                <a key={label} href={url!.startsWith('http') ? url! : `https://${url}`} target="_blank" rel="noopener noreferrer" className="hover:text-white hover:scale-110 transition-all" title={label}>
+                  <Icon className="w-6 h-6" />
                 </a>
-              )}
-              {facebookUrl && (
-                <a 
-                  href={facebookUrl.startsWith('http') ? facebookUrl : `https://${facebookUrl}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="transform transition-all duration-300 hover:text-white hover:scale-110"
-                  title="Facebook"
-                >
-                  <Facebook className="w-5 h-5 md:w-7 md:h-7" />
-                </a>
-              )}
-              {instagramUrl && (
-                <a 
-                  href={instagramUrl.startsWith('http') ? instagramUrl : `https://${instagramUrl}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="transform transition-all duration-300 hover:text-white hover:scale-110"
-                  title="Instagram"
-                >
-                  <Instagram className="w-5 h-5 md:w-7 md:h-7" />
-                </a>
-              )}
-              {linkedinUrl && (
-                <a 
-                  href={linkedinUrl.startsWith('http') ? linkedinUrl : `https://${linkedinUrl}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="transform transition-all duration-300 hover:text-white hover:scale-110"
-                  title="LinkedIn"
-                >
-                  <Linkedin className="w-5 h-5 md:w-7 md:h-7" />
-                </a>
-              )}
+              ))}
             </div>
-          </div>
+          )}
 
           {certifications && certifications.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2 md:gap-3 mt-4 md:mt-8">
+            <div className="flex flex-wrap gap-2">
               {certifications.map((cert, index) => (
-                <Badge 
-                  key={index}
-                  variant="secondary"
-                  className="bg-white/20 text-white hover:bg-white/30 md:text-lg transition-all duration-300 transform hover:scale-105"
-                >
-                  {cert}
-                </Badge>
+                <Badge key={index} variant="secondary" className="bg-white/20 text-white hover:bg-white/30 text-base transition-all hover:scale-105">{cert}</Badge>
               ))}
             </div>
           )}

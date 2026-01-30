@@ -82,20 +82,20 @@ export const AvailabilitySection = ({
   };
 
   return (
-    <div className="max-w-[1280px] mx-auto">
-      <div className="px-4 md:px-6 lg:px-8 py-6">
-        <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white mb-4 uppercase text-center">DISPONIBILITÉ</h2>
-        <div className="bg-white rounded-xl p-4 max-w-3xl mx-auto">
+    <div className="md:max-w-none mx-auto">
+      <div className="px-4 md:px-0 py-6 md:py-8">
+        <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white mb-4 uppercase text-left">DISPONIBILITÉ</h2>
+        <div className="bg-white md:bg-white/10 md:backdrop-blur-xl md:border md:border-white/10 rounded-xl p-4 max-w-3xl md:max-w-none">
           <div className="flex flex-col gap-4">
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 text-center">Définissez votre statut de disponibilité :</p>
+              <p className="text-sm text-gray-600 md:text-white/60 text-center">Définissez votre statut de disponibilité :</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
                   onClick={toggleAvailability}
                   className={`flex-1 max-w-xs mx-auto ${
                     isAvailable
                       ? 'bg-green-500 hover:bg-green-600 text-white'
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700 md:bg-white/10 md:hover:bg-white/20 md:text-white/60'
                   } font-semibold rounded-full transition-colors duration-200`}
                 >
                   Je suis disponible
@@ -105,7 +105,7 @@ export const AvailabilitySection = ({
                   className={`flex-1 max-w-xs mx-auto ${
                     !isAvailable
                       ? 'bg-probain-red hover:bg-red-600 text-white'
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700 md:bg-white/10 md:hover:bg-white/20 md:text-white/60'
                   } font-semibold rounded-full transition-colors duration-200`}
                 >
                   Je ne suis pas disponible
@@ -118,27 +118,27 @@ export const AvailabilitySection = ({
                 <Button
                   onClick={handleSpecificDatesToggle}
                   variant="outline"
-                  className="w-full max-w-xs mx-auto block text-primary"
+                  className="w-full max-w-xs mx-auto block text-primary md:text-white/70 md:border-white/20 md:hover:bg-white/10"
                 >
                   {showSpecificDates ? "Masquer les options de disponibilité" : "Préciser mes disponibilités"}
                 </Button>
 
                 {showSpecificDates && (
-                  <div className="space-y-4 border-t pt-4">
+                  <div className="space-y-4 border-t md:border-white/10 pt-4">
                     <Button
                       onClick={toggleAlwaysAvailable}
                       className={`w-full max-w-xs mx-auto block ${
                         isAlwaysAvailable
                           ? 'bg-green-500 hover:bg-green-600 text-white'
-                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700 md:bg-white/10 md:hover:bg-white/20 md:text-white/60'
                       } font-semibold rounded-full transition-colors duration-200`}
                     >
                       Je suis disponible tout le temps
                     </Button>
 
                     {!isAlwaysAvailable && (
-                      <div className="border-t pt-4">
-                        <p className="text-sm text-gray-600 mb-4 text-center">
+                      <div className="border-t md:border-white/10 pt-4">
+                        <p className="text-sm text-gray-600 md:text-white/60 mb-4 text-center">
                           Sélectionnez vos dates de disponibilité spécifiques dans le calendrier ci-dessous :
                           <br />
                           <span className="text-xs italic mt-1 block">

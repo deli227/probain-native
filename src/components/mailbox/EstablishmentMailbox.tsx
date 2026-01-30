@@ -175,9 +175,9 @@ const EstablishmentMailbox = () => {
     <Card
       className={`mb-3 cursor-pointer hover:shadow-md transition-all border-l-4 ${
         isReceived && !message.read
-          ? 'border-l-primary bg-primary/5'
-          : 'border-l-transparent'
-      }`}
+          ? 'border-l-primary bg-primary/5 md:bg-white/15 md:border-l-probain-blue'
+          : 'border-l-transparent md:bg-white/5 md:hover:bg-white/10'
+      } md:border md:border-white/10 md:rounded-xl`}
       onClick={() => handleOpenMessage(message)}
     >
       <CardHeader className="py-3 px-4">
@@ -187,17 +187,17 @@ const EstablishmentMailbox = () => {
               {isReceived && !message.read && (
                 <Badge variant="default" className="bg-primary text-xs">Nouveau</Badge>
               )}
-              <CardTitle className="text-base font-semibold">
+              <CardTitle className="text-base font-semibold md:text-white">
                 {message.subject}
               </CardTitle>
             </div>
-            <div className="text-sm text-muted-foreground space-y-1">
+            <div className="text-sm text-muted-foreground md:text-white/50 space-y-1">
               {isReceived ? (
                 <div className="flex items-center gap-2">
                   <User className="h-3 w-3" />
                   <span>De: {message.sender?.first_name} {message.sender?.last_name}</span>
                   {message.sender?.profile_type && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs md:border-white/20 md:text-white/60">
                       {getProfileTypeLabel(message.sender.profile_type)}
                     </Badge>
                   )}
@@ -208,14 +208,14 @@ const EstablishmentMailbox = () => {
                   <span>À: {message.recipient?.first_name} {message.recipient?.last_name}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 md:text-white/40">
                 <Clock className="h-3 w-3" />
                 <span>{format(new Date(message.created_at), "d MMMM yyyy 'à' HH:mm", { locale: fr })}</span>
               </div>
             </div>
           </div>
           {!isReceived && message.read && (
-            <CheckCircle className="h-4 w-4 text-green-500" title="Lu" />
+            <CheckCircle className="h-4 w-4 text-green-500 md:text-green-400" title="Lu" />
           )}
         </div>
       </CardHeader>
@@ -227,23 +227,23 @@ const EstablishmentMailbox = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-primary-dark py-8 md:py-12 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="flex flex-col items-center gap-3 md:gap-4">
-            <div className="bg-white/10 p-4 rounded-full relative">
-              <Mail className="h-10 w-10 md:h-12 md:w-12 text-white" />
+      <div className="bg-gradient-to-r from-primary to-primary-dark py-8 md:py-6 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="flex flex-col items-center gap-3 md:gap-2">
+            <div className="bg-white/10 p-4 md:p-2.5 rounded-full md:rounded-xl relative md:border md:border-white/20">
+              <Mail className="h-10 w-10 md:h-6 md:w-6 text-white" />
               {unreadCount > 0 && (
                 <Badge className="absolute -top-1 -right-1 bg-yellow-400 text-primary text-xs px-2">
                   {unreadCount}
                 </Badge>
               )}
             </div>
-            <h1 className="text-2xl md:text-4xl font-bold text-white tracking-wide">
+            <h1 className="text-2xl md:text-xl font-bold text-white tracking-wide md:tracking-tight">
               MESSAGERIE
             </h1>
-            <p className="text-white/70 text-sm md:text-base max-w-md">
+            <p className="text-white/70 text-sm md:text-xs max-w-md md:hidden">
               Gérez vos échanges avec les candidats
             </p>
           </div>
@@ -251,7 +251,7 @@ const EstablishmentMailbox = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto p-4">
+      <div className="max-w-4xl md:max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
         <Dialog open={!!selectedMessage} onOpenChange={(open) => !open && setSelectedMessage(null)}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
@@ -335,17 +335,17 @@ const EstablishmentMailbox = () => {
           </DialogContent>
         </Dialog>
 
-        <Card className="bg-white">
+        <Card className="bg-white md:bg-white/10 md:backdrop-blur-xl md:border md:border-white/10">
           <Tabs defaultValue="received" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-100">
-              <TabsTrigger value="received" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-100 md:bg-white/5 md:border md:border-white/10">
+              <TabsTrigger value="received" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white md:text-white/60 md:data-[state=active]:bg-gradient-to-r md:data-[state=active]:from-primary md:data-[state=active]:to-probain-blue">
                 <Mail className="h-4 w-4" />
                 Reçus ({receivedMessages.length})
                 {unreadCount > 0 && (
                   <Badge className="bg-yellow-400 text-primary text-xs ml-1">{unreadCount}</Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="sent" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+              <TabsTrigger value="sent" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white md:text-white/60 md:data-[state=active]:bg-gradient-to-r md:data-[state=active]:from-primary md:data-[state=active]:to-probain-blue">
                 <Send className="h-4 w-4" />
                 Envoyés ({sentMessages.length})
               </TabsTrigger>
@@ -354,8 +354,8 @@ const EstablishmentMailbox = () => {
             <TabsContent value="received" className="p-4">
               {receivedMessages.length === 0 ? (
                 <div className="text-center py-12">
-                  <Mail className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-muted-foreground">Aucun message reçu</p>
+                  <Mail className="h-12 w-12 text-gray-300 md:text-white/20 mx-auto mb-4" />
+                  <p className="text-muted-foreground md:text-white/50">Aucun message reçu</p>
                 </div>
               ) : (
                 receivedMessages.map(message => (
@@ -367,8 +367,8 @@ const EstablishmentMailbox = () => {
             <TabsContent value="sent" className="p-4">
               {sentMessages.length === 0 ? (
                 <div className="text-center py-12">
-                  <Send className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-muted-foreground">Aucun message envoyé</p>
+                  <Send className="h-12 w-12 text-gray-300 md:text-white/20 mx-auto mb-4" />
+                  <p className="text-muted-foreground md:text-white/50">Aucun message envoyé</p>
                 </div>
               ) : (
                 sentMessages.map(message => (

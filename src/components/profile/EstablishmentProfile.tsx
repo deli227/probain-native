@@ -160,7 +160,7 @@ const EstablishmentProfile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary-dark pb-20 md:pb-6">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent pb-20 md:pb-6">
       <ProfileHeader
         firstName={establishmentProfile.organization_name || ""}
         lastName=""
@@ -214,26 +214,35 @@ const EstablishmentProfile = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-        <ProfileStats
-          stats={[
-            { label: "Annonces", value: stats.jobsCount, icon: "jobs" },
-            { label: "Candidatures", value: stats.applicationsCount, icon: "applications" },
-          ]}
-        />
+        {/* Desktop: layout 2 colonnes */}
+        <div className="md:flex md:gap-8 md:mt-8">
+          {/* Colonne gauche: stats + completion */}
+          <div className="md:w-80 md:flex-shrink-0">
+            <ProfileStats
+              stats={[
+                { label: "Annonces", value: stats.jobsCount, icon: "jobs" },
+                { label: "Candidatures", value: stats.applicationsCount, icon: "applications" },
+              ]}
+            />
 
-        <ProfileCompletion
-          items={[
-            { label: "Photo de profil", completed: !!establishmentProfile.avatar_url },
-            { label: "Nom organisation", completed: !!establishmentProfile.organization_name },
-            { label: "Adresse", completed: !!establishmentProfile.street || !!establishmentProfile.city_zip },
-            { label: "Canton", completed: !!establishmentProfile.canton },
-            { label: "Site web", completed: !!establishmentProfile.website },
-            { label: "Réseaux sociaux", completed: !!establishmentProfile.facebook_url || !!establishmentProfile.instagram_url || !!establishmentProfile.linkedin_url },
-          ]}
-          className="mt-6"
-        />
+            <ProfileCompletion
+              items={[
+                { label: "Photo de profil", completed: !!establishmentProfile.avatar_url },
+                { label: "Nom organisation", completed: !!establishmentProfile.organization_name },
+                { label: "Adresse", completed: !!establishmentProfile.street || !!establishmentProfile.city_zip },
+                { label: "Canton", completed: !!establishmentProfile.canton },
+                { label: "Site web", completed: !!establishmentProfile.website },
+                { label: "Réseaux sociaux", completed: !!establishmentProfile.facebook_url || !!establishmentProfile.instagram_url || !!establishmentProfile.linkedin_url },
+              ]}
+              className="mt-6"
+            />
+          </div>
 
-        <JobPostings establishmentId={establishmentProfile.id} />
+          {/* Colonne droite: contenu */}
+          <div className="md:flex-1 md:min-w-0">
+            <JobPostings establishmentId={establishmentProfile.id} />
+          </div>
+        </div>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-primary to-transparent md:hidden">

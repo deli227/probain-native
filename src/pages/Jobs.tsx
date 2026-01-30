@@ -278,7 +278,7 @@ const Jobs = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-primary-dark">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent">
       <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark py-5 md:py-6 px-4 overflow-hidden">
         {/* Cercle décoratif */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
@@ -419,65 +419,108 @@ const Jobs = () => {
             <h2 className="text-xl font-semibold mb-6 text-white">
               {filteredJobs.length} offre{filteredJobs.length > 1 ? "s" : ""} disponible{filteredJobs.length > 1 ? "s" : ""}
             </h2>
-            <Carousel className="w-full" opts={{ align: "start", slidesToScroll: 1 }}>
-              <CarouselContent className="-ml-2 md:-ml-4">
-                {filteredJobs.map((job) => (
-                  <CarouselItem key={job.id} className="pl-2 md:pl-4 basis-[85%] sm:basis-[70%] md:basis-1/2 lg:basis-[38%]">
-                    <Card className="group p-5 bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
-                      {/* Effet de brillance */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
 
-                      <div className="relative flex-1">
-                        <div className="flex items-start justify-between mb-4">
-                          <h3 className="font-bold text-xl text-white leading-tight pr-3">{job.title}</h3>
-                          <Badge className="shrink-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold px-3 py-1 rounded-lg">
-                            {formatContractType(job.contract_type)}
-                          </Badge>
-                        </div>
-
-                        <div className="space-y-3 mb-4">
-                          <div className="flex items-center gap-2 text-white/90 text-sm">
-                            <div className="p-1.5 bg-white/10 rounded-lg">
-                              <MapPin className="h-4 w-4" />
-                            </div>
-                            <span className="font-medium">{job.location}</span>
+            {/* Mobile: Carousel avec swipe */}
+            <div className="md:hidden">
+              <Carousel className="w-full" opts={{ align: "start", slidesToScroll: 1 }}>
+                <CarouselContent className="-ml-2">
+                  {filteredJobs.map((job) => (
+                    <CarouselItem key={job.id} className="pl-2 basis-[85%] sm:basis-[70%]">
+                      <Card className="group p-5 bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                        <div className="relative flex-1">
+                          <div className="flex items-start justify-between mb-4">
+                            <h3 className="font-bold text-xl text-white leading-tight pr-3">{job.title}</h3>
+                            <Badge className="shrink-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold px-3 py-1 rounded-lg">
+                              {formatContractType(job.contract_type)}
+                            </Badge>
                           </div>
-
-                          {job.establishment_name && (
-                            <div className="flex items-center gap-3 text-white/90 text-sm">
-                              <Avatar className="h-9 w-9 border-2 border-blue-400/50 shadow-lg">
-                                <AvatarImage src={job.establishment_avatar} alt={job.establishment_name} />
-                                <AvatarFallback className="bg-gradient-to-br from-primary to-probain-blue text-white text-xs font-bold">
-                                  {job.establishment_name.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="font-medium">{job.establishment_name}</span>
+                          <div className="space-y-3 mb-4">
+                            <div className="flex items-center gap-2 text-white/90 text-sm">
+                              <div className="p-1.5 bg-white/10 rounded-lg">
+                                <MapPin className="h-4 w-4" />
+                              </div>
+                              <span className="font-medium">{job.location}</span>
                             </div>
-                          )}
-
-                          <p className="text-white/50 text-xs font-medium">
-                            Publié le {formatDateDisplay(job.created_at)}
+                            {job.establishment_name && (
+                              <div className="flex items-center gap-3 text-white/90 text-sm">
+                                <Avatar className="h-9 w-9 border-2 border-blue-400/50 shadow-lg">
+                                  <AvatarImage src={job.establishment_avatar} alt={job.establishment_name} />
+                                  <AvatarFallback className="bg-gradient-to-br from-primary to-probain-blue text-white text-xs font-bold">
+                                    {job.establishment_name.charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{job.establishment_name}</span>
+                              </div>
+                            )}
+                            <p className="text-white/50 text-xs font-medium">
+                              Publié le {formatDateDisplay(job.created_at)}
+                            </p>
+                          </div>
+                          <p className="text-white/70 text-sm line-clamp-3 mb-4 leading-relaxed">
+                            {job.description}
                           </p>
                         </div>
+                        <Button
+                          className="relative w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 group-hover:-translate-y-0.5"
+                          onClick={() => handleApply(job)}
+                        >
+                          POSTULER
+                        </Button>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+            </div>
 
-                        <p className="text-white/70 text-sm line-clamp-3 mb-4 leading-relaxed">
-                          {job.description}
-                        </p>
+            {/* Desktop: Grille de cartes */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+              {filteredJobs.map((job) => (
+                <Card key={job.id} className="group p-5 bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                  <div className="relative flex-1">
+                    <div className="flex items-start justify-between mb-4">
+                      <h3 className="font-bold text-xl text-white leading-tight pr-3">{job.title}</h3>
+                      <Badge className="shrink-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold px-3 py-1 rounded-lg">
+                        {formatContractType(job.contract_type)}
+                      </Badge>
+                    </div>
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-2 text-white/90 text-sm">
+                        <div className="p-1.5 bg-white/10 rounded-lg">
+                          <MapPin className="h-4 w-4" />
+                        </div>
+                        <span className="font-medium">{job.location}</span>
                       </div>
-
-                      <Button
-                        className="relative w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 group-hover:-translate-y-0.5"
-                        onClick={() => handleApply(job)}
-                      >
-                        POSTULER
-                      </Button>
-                    </Card>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="hidden md:flex" />
-              <CarouselNext className="hidden md:flex" />
-            </Carousel>
+                      {job.establishment_name && (
+                        <div className="flex items-center gap-3 text-white/90 text-sm">
+                          <Avatar className="h-9 w-9 border-2 border-blue-400/50 shadow-lg">
+                            <AvatarImage src={job.establishment_avatar} alt={job.establishment_name} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-probain-blue text-white text-xs font-bold">
+                              {job.establishment_name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium">{job.establishment_name}</span>
+                        </div>
+                      )}
+                      <p className="text-white/50 text-xs font-medium">
+                        Publié le {formatDateDisplay(job.created_at)}
+                      </p>
+                    </div>
+                    <p className="text-white/70 text-sm line-clamp-3 mb-4 leading-relaxed">
+                      {job.description}
+                    </p>
+                  </div>
+                  <Button
+                    className="relative w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 group-hover:-translate-y-0.5"
+                    onClick={() => handleApply(job)}
+                  >
+                    POSTULER
+                  </Button>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
       </div>

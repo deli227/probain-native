@@ -73,7 +73,7 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
     <div className="relative min-h-[200px] w-full sm:w-[320px] max-w-[95vw] sm:max-w-none">
       {/* Carte principale cliquable */}
       <div
-        className="min-h-full w-full rounded-2xl bg-white shadow-xl border border-gray-100 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 active:scale-[0.98] flex overflow-hidden relative cursor-pointer"
+        className="min-h-full w-full rounded-2xl bg-white md:bg-white/10 md:backdrop-blur-xl shadow-xl border border-gray-100 md:border-white/10 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 active:scale-[0.98] flex overflow-hidden relative cursor-pointer"
         onClick={() => setIsEditSheetOpen(true)}
       >
         {/* Boutons FIXES - position absolue par rapport à la CARTE */}
@@ -98,14 +98,14 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all duration-200 touch-manipulation"
+            className="h-10 w-10 rounded-xl bg-gray-100 md:bg-white/10 hover:bg-gray-200 md:hover:bg-white/20 transition-all duration-200 touch-manipulation"
             aria-label="Modifier l'expérience"
             onClick={(e) => {
               e.stopPropagation();
               setIsEditSheetOpen(true);
             }}
           >
-            <Pencil className="h-4 w-4 text-gray-600" />
+            <Pencil className="h-4 w-4 text-gray-600 md:text-white/70" />
           </Button>
         </div>
 
@@ -179,20 +179,20 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
 
           {/* Titre et lieu */}
           <div className="flex-1 flex flex-col justify-center">
-            <h3 className="font-bold text-lg text-gray-900 line-clamp-2 leading-snug mb-1">
+            <h3 className="font-bold text-lg text-gray-900 md:text-white line-clamp-2 leading-snug mb-1">
               {experience.title}
             </h3>
-            <p className="text-sm text-gray-500 font-medium line-clamp-1 flex items-center gap-1">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400" />
+            <p className="text-sm text-gray-500 md:text-white/50 font-medium line-clamp-1 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 md:bg-white/40" />
               {experience.location}
             </p>
           </div>
 
           {/* Footer avec dates */}
-          <div className="pt-3 mt-auto border-t border-gray-100">
+          <div className="pt-3 mt-auto border-t border-gray-100 md:border-white/10">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400 font-medium">Période</span>
-              <span className="text-sm font-semibold text-gray-700">
+              <span className="text-xs text-gray-400 md:text-white/40 font-medium">Période</span>
+              <span className="text-sm font-semibold text-gray-700 md:text-white/80">
                 {formatDate(experience.start_date)}
                 {experience.end_date
                   ? ` → ${formatDate(experience.end_date)}`

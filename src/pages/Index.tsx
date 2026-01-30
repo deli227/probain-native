@@ -1,11 +1,9 @@
 import { Link } from "react-router-dom";
 import { Shield, Clock, CheckCircle, UserCheck, Waves, GraduationCap, Building2, ArrowRight, Mail, Menu, Instagram } from "lucide-react";
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MovingBorderButton } from "@/components/ui/moving-border";
 import { Button as NeonButton } from "@/components/ui/neon-button";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 const Index = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -55,8 +53,54 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden" onMouseMove={handleMouseMove}>
-      <div className="fixed inset-0 pointer-events-none">
+    <div className="min-h-screen relative overflow-hidden bg-[#0a1628]" onMouseMove={handleMouseMove}>
+      {/* Fond Auth - dégradé profond */}
+      <div className="fixed inset-0 bg-gradient-to-br from-[#0a1628] via-[#0d2847] to-[#0a1628]" />
+
+      {/* Orbes lumineuses animées (style Auth) */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {/* Grande orbe bleue centrale */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] md:w-[800px] md:h-[800px] rounded-full opacity-30"
+          style={{
+            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, rgba(37, 99, 235, 0.2) 40%, transparent 70%)',
+            animation: 'pulse-glow 4s ease-in-out infinite',
+          }}
+        />
+
+        {/* Orbe cyan en haut à droite */}
+        <div
+          className="absolute -top-20 -right-20 w-[400px] h-[400px] rounded-full opacity-40"
+          style={{
+            background: 'radial-gradient(circle, rgba(6, 182, 212, 0.5) 0%, rgba(6, 182, 212, 0.1) 50%, transparent 70%)',
+            animation: 'float-slow 8s ease-in-out infinite',
+          }}
+        />
+
+        {/* Orbe violette en bas à gauche */}
+        <div
+          className="absolute -bottom-32 -left-32 w-[500px] h-[500px] rounded-full opacity-30"
+          style={{
+            background: 'radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(124, 58, 237, 0.1) 50%, transparent 70%)',
+            animation: 'float-slow 10s ease-in-out infinite reverse',
+          }}
+        />
+
+        {/* Petites particules lumineuses */}
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-cyan-400 rounded-full opacity-60 animate-ping" style={{ animationDuration: '3s' }} />
+        <div className="absolute top-1/3 right-1/3 w-1.5 h-1.5 bg-blue-400 rounded-full opacity-50 animate-ping" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+        <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-violet-400 rounded-full opacity-40 animate-ping" style={{ animationDuration: '5s', animationDelay: '2s' }} />
+
+        {/* Lignes de lumière diagonales */}
+        <div
+          className="absolute top-0 left-0 w-full h-full opacity-10"
+          style={{
+            background: 'linear-gradient(135deg, transparent 0%, transparent 45%, rgba(59, 130, 246, 0.3) 50%, transparent 55%, transparent 100%)',
+            animation: 'shimmer 8s linear infinite',
+          }}
+        />
+
+        {/* Particules suivant la souris */}
         {Array.from({ length: 50 }).map((_, i) => (
           <motion.div
             key={i}
@@ -79,37 +123,6 @@ const Index = () => {
     }} transition={{
       duration: 1
     }}>
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1E2761] via-[#408CFF] to-[#0EA5E9]">
-          <motion.div className="absolute inset-0" animate={{
-          background: ["radial-gradient(circle at 0% 0%, rgba(30,39,97,0.3) 0%, transparent 70%)", "radial-gradient(circle at 100% 100%, rgba(30,39,97,0.3) 0%, transparent 70%)", "radial-gradient(circle at 0% 100%, rgba(30,39,97,0.3) 0%, transparent 70%)", "radial-gradient(circle at 100% 0%, rgba(30,39,97,0.3) 0%, transparent 70%)"]
-        }} transition={{
-          duration: 15,
-          repeat: Infinity,
-          repeatType: "reverse"
-        }} />
-        </div>
-
-        <div className="absolute inset-0 overflow-hidden">
-          {Array.from({
-          length: 5
-        }).map((_, i) => <motion.div key={i} className="absolute rounded-full mix-blend-overlay backdrop-blur-3xl" style={{
-          width: `${Math.random() * 500 + 200}px`,
-          height: `${Math.random() * 500 + 200}px`,
-          background: `radial-gradient(circle, rgba(64,140,255,${Math.random() * 0.05 + 0.05}) 0%, transparent 70%)`,
-          left: `${Math.random() * 100}%`,
-          top: `${Math.random() * 100}%`
-        }} animate={{
-          x: [0, 20, 0],
-          y: [0, 20, 0],
-          scale: [1, 1.05, 1],
-          rotate: [0, 180, 360]
-        }} transition={{
-          duration: Math.random() * 15 + 15,
-          repeat: Infinity,
-          ease: "linear"
-        }} />)}
-        </div>
-
         <div className="relative z-30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             <div className="w-full flex justify-between items-center">
@@ -178,7 +191,7 @@ const Index = () => {
                   y: -20
                 }} transition={{
                   duration: 0.2
-                }} className="fixed top-[60px] right-4 p-2 min-w-[200px] rounded-lg bg-[#1E2761]/95 backdrop-blur-xl border border-white/20 shadow-2xl z-[150]">
+                }} className="fixed top-[60px] right-4 p-2 min-w-[200px] rounded-lg bg-[#0a1628]/95 backdrop-blur-xl border border-white/20 shadow-2xl z-[150]">
                       <div className="flex flex-col gap-2">
                         <Link to="/auth" state={{
                       mode: "login"
@@ -289,7 +302,7 @@ const Index = () => {
         </div>
       </motion.div>
 
-      <div className="relative py-16 sm:py-24 lg:py-32 overflow-hidden bg-[#0A1033]">
+      <div className="relative py-16 sm:py-24 lg:py-32 overflow-hidden bg-[#0a1628]">
         <motion.div className="absolute inset-0" animate={{
         background: ["radial-gradient(circle at 0% 0%, #408CFF 0%, transparent 50%)", "radial-gradient(circle at 100% 100%, #408CFF 0%, transparent 50%)", "radial-gradient(circle at 0% 100%, #408CFF 0%, transparent 50%)", "radial-gradient(circle at 100% 0%, #408CFF 0%, transparent 50%)"]
       }} transition={{
@@ -319,7 +332,7 @@ const Index = () => {
       </div>
 
       {/* Section: Un réseau engagé pour la sécurité aquatique */}
-      <div className="relative py-20 sm:py-28 lg:py-36 overflow-hidden bg-gradient-to-b from-[#0A1033] to-[#1E2761]">
+      <div className="relative py-20 sm:py-28 lg:py-36 overflow-hidden bg-gradient-to-b from-[#0a1628] to-[#0d2847]">
         <motion.div className="absolute inset-0" animate={{
         background: ["radial-gradient(circle at 0% 0%, #9b87f5 0%, transparent 50%)", "radial-gradient(circle at 100% 100%, #408CFF 0%, transparent 50%)", "radial-gradient(circle at 0% 100%, #0EA5E9 0%, transparent 50%)"]
       }} transition={{
@@ -420,11 +433,11 @@ const Index = () => {
       </div>
 
       {/* Section: Pourquoi choisir PROBAIN */}
-      <div className="relative py-20 sm:py-28 lg:py-36 bg-gradient-to-b from-[#1E2761] to-[#0A1033] overflow-hidden">
+      <div className="relative py-20 sm:py-28 lg:py-36 bg-gradient-to-b from-[#0d2847] to-[#0a1628] overflow-hidden">
         {/* Wave decoration top */}
         <div className="absolute top-0 left-0 w-full overflow-hidden leading-none rotate-180">
           <svg className="relative block w-full h-16 sm:h-24" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="#1E2761" fillOpacity="0.3"></path>
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="#0d2847" fillOpacity="0.3"></path>
           </svg>
         </div>
 
@@ -526,7 +539,7 @@ const Index = () => {
                         delay: index * 0.3
                       }}
                     >
-                      <div className="w-full h-full rounded-2xl bg-[#0A1033] flex items-center justify-center">
+                      <div className="w-full h-full rounded-2xl bg-[#0a1628] flex items-center justify-center">
                         <feature.icon className={`w-8 h-8 sm:w-10 sm:h-10 ${feature.iconColor}`} />
                       </div>
                     </motion.div>
@@ -546,7 +559,25 @@ const Index = () => {
         </div>
       </div>
 
-      <footer className="relative bg-[#1E2761] border-t border-white/10">
+      {/* Effet de vagues (style Auth) */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 overflow-hidden opacity-20 pointer-events-none z-0">
+        <svg className="absolute bottom-0 w-full" viewBox="0 0 1440 120" preserveAspectRatio="none">
+          <path
+            d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,30 1440,60 L1440,120 L0,120 Z"
+            fill="url(#wave-gradient-landing)"
+            className="animate-wave-landing"
+          />
+          <defs>
+            <linearGradient id="wave-gradient-landing" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#06b6d4" />
+              <stop offset="50%" stopColor="#3b82f6" />
+              <stop offset="100%" stopColor="#8b5cf6" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <footer className="relative bg-[#0a1628]/80 backdrop-blur-sm border-t border-white/10">
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
@@ -660,6 +691,33 @@ const Index = () => {
           </motion.div>
         </div>
       </footer>
+
+      {/* Styles animations (style Auth) */}
+      <style>{`
+        @keyframes pulse-glow {
+          0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        @keyframes float-slow {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-30px) rotate(5deg); }
+        }
+
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+
+        .animate-wave-landing {
+          animation: wave-landing 6s ease-in-out infinite;
+        }
+
+        @keyframes wave-landing {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(-25px); }
+        }
+      `}</style>
     </div>
   );
 };

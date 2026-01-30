@@ -549,7 +549,7 @@ const Training = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background md:bg-transparent">
       <div className="w-full bg-gradient-to-br from-probain-blue via-primary to-primary-dark py-4 md:py-6 px-4 relative overflow-hidden">
         {/* Cercle décoratif */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 rounded-full blur-2xl translate-x-1/3 -translate-y-1/3" />
@@ -609,7 +609,7 @@ const Training = () => {
             Laissez vide pour plus de résultats
           </p>
 
-          <div className="space-y-5 max-w-2xl mx-auto bg-white/5 backdrop-blur-sm p-6 md:p-8 rounded-2xl border border-white/10">
+          <div className="space-y-5 max-w-2xl md:max-w-4xl mx-auto bg-white/5 backdrop-blur-sm p-6 md:p-8 rounded-2xl border border-white/10">
             {/* Type de formation - 4 catégories */}
             <Select
               value={searchType}
@@ -800,7 +800,7 @@ const Training = () => {
 
       {/* Section des formations - Affichée seulement après recherche */}
       {hasSearched && (
-        <div id="formations-section" className="py-8 md:py-12 bg-gray-50">
+        <div id="formations-section" className="py-8 md:py-12 bg-gray-50 md:bg-transparent">
           <div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
             {selectedTrainer && selectedTrainer.startsWith('trainer_') ? (
               // Afficher les cours du formateur sélectionné

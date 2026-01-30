@@ -199,7 +199,7 @@ const TrainerProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark pb-20 md:pb-6">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent pb-20 md:pb-6">
       <ProfileHeader
         firstName={trainerProfile?.organization_name || ""}
         lastName=""
@@ -257,22 +257,30 @@ const TrainerProfile = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ProfileStats
-          stats={[
-            { label: "Étudiants", value: studentsCount, icon: "students" },
-          ]}
-        />
+        {/* Desktop: layout 2 colonnes */}
+        <div className="md:flex md:gap-8 md:mt-8">
+          {/* Colonne gauche: stats + completion */}
+          <div className="md:w-80 md:flex-shrink-0">
+            <ProfileStats
+              stats={[
+                { label: "Étudiants", value: studentsCount, icon: "students" },
+              ]}
+            />
 
-        <ProfileCompletion
-          items={[
-            { label: "Photo de profil", completed: !!trainerProfile?.avatar_url },
-            { label: "Nom organisation", completed: !!trainerProfile?.organization_name },
-            { label: "Description", completed: !!trainerProfile?.description },
-            { label: "Site web", completed: !!trainerProfile?.website },
-            { label: "Canton", completed: !!trainerProfile?.canton || !!baseProfile?.canton },
-          ]}
-          className="mt-6"
-        />
+            <ProfileCompletion
+              items={[
+                { label: "Photo de profil", completed: !!trainerProfile?.avatar_url },
+                { label: "Nom organisation", completed: !!trainerProfile?.organization_name },
+                { label: "Description", completed: !!trainerProfile?.description },
+                { label: "Site web", completed: !!trainerProfile?.website },
+                { label: "Canton", completed: !!trainerProfile?.canton || !!baseProfile?.canton },
+              ]}
+              className="mt-6"
+            />
+          </div>
+
+          {/* Colonne droite: contenu */}
+          <div className="md:flex-1 md:min-w-0">
 
         {/* Formations à venir */}
         {upcomingFormations.length > 0 && (
@@ -315,21 +323,21 @@ const TrainerProfile = () => {
                 return (
                   <div
                     key={f.id}
-                    className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                    className="bg-white md:bg-white/10 md:backdrop-blur-sm md:border md:border-white/10 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer"
                     onClick={() => f.url && window.open(f.url, '_blank', 'noopener,noreferrer')}
                   >
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">{f.titre}</p>
+                        <p className="font-semibold text-gray-900 md:text-white truncate">{f.titre}</p>
                         {f.lieu && (
                           <div className="flex items-center gap-1.5 mt-1.5">
                             <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                            <p className="text-sm text-gray-500 truncate">{f.lieu}</p>
+                            <p className="text-sm text-gray-500 md:text-white/60 truncate">{f.lieu}</p>
                           </div>
                         )}
                         <div className="flex items-center gap-1.5 mt-1">
                           <CalendarDays className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                          <p className="text-sm text-gray-400">
+                          <p className="text-sm text-gray-400 md:text-white/50">
                             {formatDate(f.debut)}{f.fin && f.fin !== f.debut ? ` - ${formatDate(f.fin)}` : ''}
                           </p>
                         </div>
@@ -342,6 +350,9 @@ const TrainerProfile = () => {
             </div>
           </div>
         )}
+
+          </div>
+        </div>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-primary to-transparent md:hidden">
