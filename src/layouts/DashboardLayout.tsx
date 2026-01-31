@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Sidebar } from "@/components/navigation/Sidebar";
 import { BottomTabBar } from "@/components/navigation/BottomTabBar";
+import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -13,12 +14,15 @@ interface DashboardLayoutProps {
  * Mobile (< 768px):
  * - Contenu avec padding-bottom pour la bottom tab bar
  * - BottomTabBar fixe en bas de l'ecran
+ * - Swipe horizontal pour changer d'onglet
  *
  * Desktop (>= 768px):
  * - Sidebar fixe a gauche (256px)
  * - Contenu decale avec md:pl-64
  */
 export const DashboardLayout = ({ children, profileType }: DashboardLayoutProps) => {
+  // Swipe horizontal entre onglets sur mobile
+  useSwipeNavigation(profileType);
   return (
     <div className="min-h-screen bg-primary-dark md:bg-[#0a1628]">
       {/* Orbes lumineuses - visibles uniquement sur desktop */}
