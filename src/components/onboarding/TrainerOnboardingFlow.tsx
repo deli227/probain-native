@@ -141,6 +141,13 @@ export const TrainerOnboardingFlow = () => {
       }
 
       const file = event.target.files[0];
+
+      // Validation taille fichier (5 MB max)
+      const MAX_FILE_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error("L'image ne doit pas dépasser 5 MB");
+      }
+
       const fileExt = file.name.split(".").pop();
 
       const { data: { user } } = await safeGetUser(supabase, 5000);
@@ -150,7 +157,10 @@ export const TrainerOnboardingFlow = () => {
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
 
       if (uploadError) throw uploadError;
 

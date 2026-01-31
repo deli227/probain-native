@@ -55,6 +55,13 @@ export const RescuerProfileHeader = ({
       }
 
       const file = event.target.files[0];
+      
+      // Validation taille fichier (5 MB max)
+      const MAX_FILE_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error('L\'image ne doit pas dépasser 5 MB');
+      }
+
       const fileExt = file.name.split('.').pop();
       
       const { data: { user } } = await safeGetUser(supabase, 5000);
@@ -63,10 +70,9 @@ export const RescuerProfileHeader = ({
       if (avatarUrl) {
         const oldFileName = avatarUrl.split('/').pop();
         if (oldFileName) {
-          const { error: removeError } = await supabase.storage
+          await supabase.storage
             .from('avatars')
             .remove([`${user.id}/${oldFileName}`]);
-          
           // Ignorer l'erreur de suppression de l'ancienne image
         }
       }

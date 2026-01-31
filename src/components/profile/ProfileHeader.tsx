@@ -57,6 +57,13 @@ export const ProfileHeader = ({
       }
 
       const file = event.target.files[0];
+      
+      // Validation taille fichier (5 MB max)
+      const MAX_FILE_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error('L\'image ne doit pas dépasser 5 MB');
+      }
+
       const fileExt = file.name.split('.').pop();
       
       const { data: { user } } = await safeGetUser(supabase, 5000);
@@ -66,10 +73,9 @@ export const ProfileHeader = ({
       if (avatarUrl) {
         const oldFileName = avatarUrl.split('/').pop();
         if (oldFileName) {
-          const { error: removeError } = await supabase.storage
+          await supabase.storage
             .from('avatars')
             .remove([`${user.id}/${oldFileName}`]);
-          
           // Ignorer l'erreur de suppression de l'ancienne image
         }
       }
@@ -89,20 +95,14 @@ export const ProfileHeader = ({
         .from('avatars')
         .getPublicUrl(fileName);
 
-      // Mettre à jour les deux tables avec la nouvelle URL
+      // Mettre à jour la table profiles (commune à tous les types)
+      // La table spécifique (*_profiles) est mise à jour par le callback onAvatarUpdate du parent
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
         .eq('id', user.id);
 
       if (profileError) throw profileError;
-
-      const { error: establishmentError } = await supabase
-        .from('establishment_profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user.id);
-
-      if (establishmentError) throw establishmentError;
 
       if (onAvatarUpdate) {
         onAvatarUpdate(publicUrl);
