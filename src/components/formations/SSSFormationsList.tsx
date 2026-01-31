@@ -175,7 +175,7 @@ function FormationCard({ formation }: { formation: SSSFormation }) {
           )}
 
           <div className="flex items-center justify-between pt-2">
-            {formation.places && (
+            {formation.places && !formation.places.toLowerCase().includes('consulter') && (
               <div className="flex items-center gap-2">
                 <span
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -277,7 +277,7 @@ function FormationCard({ formation }: { formation: SSSFormation }) {
                 </div>
               )}
 
-              {formation.places && (
+              {formation.places && !formation.places.toLowerCase().includes('consulter') && (
                 <div className={`flex items-center gap-3 p-3 rounded-xl border ${
                   formation.placesColor === 'red'
                     ? 'bg-red-50 border-red-200'
