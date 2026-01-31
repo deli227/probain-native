@@ -40,7 +40,7 @@ export default defineConfig({
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['auth-setup'],
-      testIgnore: /auth\.spec\.ts|auth\.setup\.ts|homepage\.spec\.ts|navigation\.spec\.ts/,
+      testIgnore: /auth\.spec\.ts|auth\.setup\.ts|homepage\.spec\.ts|navigation\.spec\.ts|onboarding\.spec\.ts/,
     },
 
     // Tests mobile (authentifies)
@@ -58,7 +58,7 @@ export default defineConfig({
     {
       name: 'public-tests',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /auth\.spec\.ts|homepage\.spec\.ts/,
+      testMatch: /auth\.spec\.ts|homepage\.spec\.ts|onboarding\.spec\.ts/,
     },
   ],
 
