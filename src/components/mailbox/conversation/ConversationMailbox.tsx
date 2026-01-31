@@ -62,48 +62,51 @@ export const ConversationMailbox = () => {
   const unreadTotal = conversations.reduce((acc, c) => acc + c.unreadCount, 0);
 
   // Mobile : affichage par navigation (liste OU conversation)
+  // min-h-screen + bg-[#0a1628] couvre tout le viewport pour masquer le bg-blue-50
+  // du DashboardLayout et eviter le flash blanc lors des transitions de route.
+  // Le container interne utilise une hauteur calculee pour le layout flex de messagerie.
   if (isMobile) {
-    // Container dark toujours rendu immediatement pour eviter le flash blanc
-    // Le spinner de chargement est inline, pas un remplacement complet du composant
     return (
-      <div className="h-[calc(100vh-56px-76px)] flex flex-col bg-[#0a1628]">
-        {isLoading ? (
-          <>
-            {/* Header identique au header final pour eviter le flash */}
-            <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-br from-primary via-probain-blue to-primary-dark flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-xl border border-white/10">
-                  <Mail className="h-5 w-5 text-cyan-400" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-white tracking-tight">MESSAGERIE</h2>
-                  <p className="text-[11px] text-white/40">Chargement...</p>
+      <div className="min-h-screen bg-[#0a1628]">
+        <div className="h-[calc(100vh-56px-76px)] flex flex-col">
+          {isLoading ? (
+            <>
+              {/* Header identique au header final pour eviter le flash */}
+              <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-br from-primary via-probain-blue to-primary-dark flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-xl border border-white/10">
+                    <Mail className="h-5 w-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-white tracking-tight">MESSAGERIE</h2>
+                    <p className="text-[11px] text-white/40">Chargement...</p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 text-white animate-spin" />
-            </div>
-          </>
-        ) : selectedContactId && selectedConversation && userId ? (
-          <ConversationView
-            conversation={selectedConversation}
-            currentUserId={userId}
-            onBack={handleBack}
-            onSendReply={handleSendReply}
-            onDeleteMessage={handleDeleteMessage}
-            onDeleteConversation={handleDeleteConversation}
-            isSending={isSending}
-            showBackButton={true}
-          />
-        ) : (
-          <ConversationList
-            conversations={conversations}
-            selectedContactId={null}
-            onSelectConversation={handleSelectConversation}
-            unreadTotal={unreadTotal}
-          />
-        )}
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+              </div>
+            </>
+          ) : selectedContactId && selectedConversation && userId ? (
+            <ConversationView
+              conversation={selectedConversation}
+              currentUserId={userId}
+              onBack={handleBack}
+              onSendReply={handleSendReply}
+              onDeleteMessage={handleDeleteMessage}
+              onDeleteConversation={handleDeleteConversation}
+              isSending={isSending}
+              showBackButton={true}
+            />
+          ) : (
+            <ConversationList
+              conversations={conversations}
+              selectedContactId={null}
+              onSelectConversation={handleSelectConversation}
+              unreadTotal={unreadTotal}
+            />
+          )}
+        </div>
       </div>
     );
   }

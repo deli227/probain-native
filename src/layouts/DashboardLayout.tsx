@@ -20,7 +20,7 @@ interface DashboardLayoutProps {
  */
 export const DashboardLayout = ({ children, profileType }: DashboardLayoutProps) => {
   return (
-    <div className="min-h-screen bg-blue-50 md:bg-[#0a1628]">
+    <div className="min-h-screen bg-primary-dark md:bg-[#0a1628]">
       {/* Orbes lumineuses - visibles uniquement sur desktop */}
       <div className="hidden md:block fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-3xl animate-pulse-slow" />

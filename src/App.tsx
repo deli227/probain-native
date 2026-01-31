@@ -225,7 +225,7 @@ function AppRoutes() {
   };
 
   return (
-    <div className="min-h-screen bg-blue-50 md:bg-[#0a1628]">
+    <div className="min-h-screen bg-primary-dark md:bg-[#0a1628]">
       <OfflineIndicator />
       <InstallPWAPrompt />
       <ContentWrapper>
