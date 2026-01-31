@@ -43,7 +43,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     profileTypeSelected,
     onboardingCompleted,
     isLoading,
-    isFetching,
     invalidateProfile,
     refetchProfile,
     updateProfileOptimistic,

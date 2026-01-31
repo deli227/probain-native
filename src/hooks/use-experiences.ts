@@ -78,7 +78,7 @@ export const useExperiences = (userId?: string) => {
           location: values.location,
           start_date: values.startDate.toISOString().split('T')[0],
           end_date: values.contractType === 'CDD' ? values.endDate?.toISOString().split('T')[0] : null,
-          document_url: documentUrl,
+          document_url: documentUrl || null,
           contract_type: values.contractType,
         }])
         .select();
@@ -129,7 +129,7 @@ export const useExperiences = (userId?: string) => {
         location: values.location,
         start_date: values.startDate.toISOString().split('T')[0],
         end_date: values.contractType === 'CDD' ? values.endDate?.toISOString().split('T')[0] : null,
-        document_url: documentUrl,
+        document_url: documentUrl || null,
         contract_type: values.contractType,
       };
 

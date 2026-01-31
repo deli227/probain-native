@@ -1,6 +1,7 @@
 
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Suspense, useEffect, useState, useRef } from "react";
+import type { Session } from '@supabase/supabase-js';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { supabase } from "@/integrations/supabase/client";
 import { ProfileProvider, useProfile } from "@/contexts/ProfileContext";
@@ -15,7 +16,6 @@ import { queryClient, persister } from "@/lib/queryClient";
 import { lazyRetry } from "@/utils/lazyRetry";
 
 // Navbars - chargées immédiatement car souvent utilisées
-import Navbar from "@/components/navbar/Navbar";
 import TrainerNavbar from "@/components/navbar/TrainerNavbar";
 import RescuerNavbar from "@/components/navbar/RescuerNavbar";
 import EstablishmentNavbar from "@/components/navbar/EstablishmentNavbar";
@@ -59,12 +59,12 @@ const hasAuthTokensInUrl = () => {
 
 function AppRoutes() {
   const location = useLocation();
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState<Session | null>(null);
   const { profileTypeSelected, onboardingCompleted, profileType, loading } = useProfile();
   const [isInitializing, setIsInitializing] = useState(true);
   const [isProcessingAuthTokens, setIsProcessingAuthTokens] = useState(hasAuthTokensInUrl());
   const isProcessingAuthTokensRef = useRef(isProcessingAuthTokens);
-  const sessionRef = useRef(null);
+  const sessionRef = useRef<Session | null>(null);
   const initHandledRef = useRef(false); // Pour éviter les race conditions
 
   // Sync ref avec le state pour utilisation dans l'effet auth (evite de re-souscrire)
@@ -175,7 +175,7 @@ function AppRoutes() {
     return null;
   };
 
-  const ProtectedRoute = ({ children }) => {
+  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     // Attendre que le profil soit chargé avant de décider
     if (loading) {
       return <LoadingScreen message="Chargement..." />;
@@ -190,7 +190,7 @@ function AppRoutes() {
     return children;
   };
 
-  const AuthRoute = ({ children }) => {
+  const AuthRoute = ({ children }: { children: React.ReactNode }) => {
     if (session) {
       // Attendre que le profil soit chargé avant de rediriger
       if (loading) {

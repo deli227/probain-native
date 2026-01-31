@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, MapPin, Building2, Globe, Lock } from "lucide-react";
 import { useState } from "react";
 import { ChangePasswordSection } from "./ChangePasswordSection";
+import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
+import { CANTONS_SUISSES } from "@/utils/swissCantons";
 
 const RegionEnum = z.enum(["nyon_la_cote", "geneve", "lausanne", "morges", "vaud"]);
 
@@ -30,35 +32,6 @@ export const trainerFormSchema = z.object({
     certifications: z.array(z.string())
   })
 });
-
-const CANTONS_SUISSES = [
-  { value: "AG", label: "Argovie" },
-  { value: "AI", label: "Appenzell Rhodes-Intérieures" },
-  { value: "AR", label: "Appenzell Rhodes-Extérieures" },
-  { value: "BE", label: "Berne" },
-  { value: "BL", label: "Bâle-Campagne" },
-  { value: "BS", label: "Bâle-Ville" },
-  { value: "FR", label: "Fribourg" },
-  { value: "GE", label: "Genève" },
-  { value: "GL", label: "Glaris" },
-  { value: "GR", label: "Grisons" },
-  { value: "JU", label: "Jura" },
-  { value: "LU", label: "Lucerne" },
-  { value: "NE", label: "Neuchâtel" },
-  { value: "NW", label: "Nidwald" },
-  { value: "OW", label: "Obwald" },
-  { value: "SG", label: "Saint-Gall" },
-  { value: "SH", label: "Schaffhouse" },
-  { value: "SO", label: "Soleure" },
-  { value: "SZ", label: "Schwytz" },
-  { value: "TG", label: "Thurgovie" },
-  { value: "TI", label: "Tessin" },
-  { value: "UR", label: "Uri" },
-  { value: "VD", label: "Vaud" },
-  { value: "VS", label: "Valais" },
-  { value: "ZG", label: "Zoug" },
-  { value: "ZH", label: "Zurich" }
-];
 
 interface TrainerProfileFormProps {
   defaultValues: z.infer<typeof trainerFormSchema>;
@@ -91,12 +64,7 @@ export const TrainerProfileForm = ({ defaultValues, onSubmit }: TrainerProfileFo
       {/* Fond avec dégradé */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0a1628] via-[#0d2847] to-[#0a1628]" />
 
-      {/* Orbes lumineuses animées */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse-glow" />
-        <div className="absolute top-1/3 -right-32 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-float-slow" />
-        <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-violet-500/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '2s' }} />
-      </div>
+      <DecorativeOrbs variant="sheet" />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="relative space-y-6 pb-24">

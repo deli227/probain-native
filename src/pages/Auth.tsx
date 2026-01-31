@@ -131,7 +131,7 @@ const Auth = () => {
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-30"
           style={{
             background: 'radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, rgba(37, 99, 235, 0.2) 40%, transparent 70%)',
-            animation: 'pulse 3s ease-in-out infinite',
+            animation: 'pulse-loading 3s ease-in-out infinite',
           }}
         />
 
@@ -147,12 +147,7 @@ const Auth = () => {
           </div>
         </div>
 
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
-            50% { opacity: 0.4; transform: translate(-50%, -50%) scale(1.1); }
-          }
-        `}</style>
+
       </div>
     );
   }
@@ -312,32 +307,7 @@ const Auth = () => {
         </p>
       </div>
 
-      {/* Styles pour les animations */}
-      <style>{`
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
-          50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.05); }
-        }
 
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-30px) rotate(5deg); }
-        }
-
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-
-        @keyframes wave {
-          0%, 100% { transform: translateX(0); }
-          50% { transform: translateX(-25px); }
-        }
-
-        .animate-wave {
-          animation: wave 6s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

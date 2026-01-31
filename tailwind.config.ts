@@ -119,8 +119,8 @@ export default {
           "50%": { transform: "translateY(-15px)" },
         },
         "float-slow": {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-25px)" },
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+          "50%": { transform: "translateY(-30px) rotate(5deg)" },
         },
         "slide-up": {
           "0%": { opacity: "0", transform: "translateY(20px)" },
@@ -142,6 +142,35 @@ export default {
           "0%": { transform: "translateY(0) rotate(0deg)", opacity: "1" },
           "100%": { transform: "translateY(100vh) rotate(720deg)", opacity: "0" },
         },
+        // --- Animations orbes decoratives (centralisees depuis les <style> inline) ---
+        "pulse-glow": {
+          "0%, 100%": { opacity: "0.3", transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { opacity: "0.5", transform: "translate(-50%, -50%) scale(1.05)" },
+        },
+        "pulse-glow-flat": {
+          "0%, 100%": { opacity: "0.2", transform: "translate(-50%, 0) scale(1)" },
+          "50%": { opacity: "0.3", transform: "translate(-50%, 0) scale(1.05)" },
+        },
+        "pulse-slow": {
+          "0%, 100%": { opacity: "0.3", transform: "scale(1)" },
+          "50%": { opacity: "0.5", transform: "scale(1.05)" },
+        },
+        "pulse-loading": {
+          "0%, 100%": { opacity: "0.2", transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { opacity: "0.4", transform: "translate(-50%, -50%) scale(1.1)" },
+        },
+        "shimmer": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+        "wave-landing": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "50%": { transform: "translateX(-25px)" },
+        },
+        "wave": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "50%": { transform: "translateX(-25px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -158,6 +187,14 @@ export default {
         "scale-in": "scale-in 0.3s ease-out",
         "pulse-ring": "pulse-ring 1.5s ease-out infinite",
         "confetti": "confetti 3s ease-out forwards",
+        // --- Animations orbes decoratives ---
+        "pulse-glow": "pulse-glow 8s ease-in-out infinite",
+        "pulse-glow-flat": "pulse-glow-flat 8s ease-in-out infinite",
+        "pulse-slow": "pulse-slow 8s ease-in-out infinite",
+        "pulse-loading": "pulse-loading 8s ease-in-out infinite",
+        "shimmer": "shimmer 2s linear infinite",
+        "wave-landing": "wave-landing 6s ease-in-out infinite",
+        "wave": "wave 6s ease-in-out infinite",
       },
       typography: {
         DEFAULT: {

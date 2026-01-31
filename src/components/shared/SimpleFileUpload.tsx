@@ -1,6 +1,6 @@
 
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Upload, AlertCircle, X, FileText, Loader2 } from "lucide-react";
+import { Upload, AlertCircle, X, FileText, Loader2, Trash2 } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,9 @@ interface SimpleFileUploadProps {
     error?: string;
   };
   onExternalReset?: () => void;
+  // PDF existant (déjà sauvegardé en BDD)
+  existingFileUrl?: string;
+  onRemoveExisting?: () => void;
 }
 
 export const SimpleFileUpload = ({
@@ -47,13 +50,17 @@ export const SimpleFileUpload = ({
   externalTrigger,
   externalFile,
   externalUploadState,
-  onExternalReset
+  onExternalReset,
+  // PDF existant
+  existingFileUrl,
+  onRemoveExisting
 }: SimpleFileUploadProps) => {
   // Mode externe activé si externalTrigger est fourni
   const isExternalMode = !!externalTrigger;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
   const [isUploading, setIsUploading] = React.useState(false);
+  const [showExisting, setShowExisting] = React.useState(!!existingFileUrl);
   
   const { state, handleFile, reset } = useFileUpload({
     acceptedTypes,
@@ -138,10 +145,22 @@ export const SimpleFileUpload = ({
     setIsUploading(false);
   }, [form, name, reset]);
 
+  const handleRemoveExisting = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowExisting(false);
+    form.setValue(`${name}Url`, undefined);
+    onRemoveExisting?.();
+  }, [form, name, onRemoveExisting]);
+
   const getContainerClassName = () => {
     const base = darkMode
       ? "relative w-full min-h-[5rem] border rounded-xl transition-colors duration-200 bg-white/5"
       : "relative w-full min-h-[5rem] border rounded-md transition-colors duration-200";
+
+    if (showExisting && existingFileUrl && effectiveStatus === 'idle' && !effectiveFile) {
+      return cn(base, darkMode ? "border-blue-400/50 bg-blue-500/10" : "border-blue-500 bg-blue-50/30");
+    }
 
     if (effectiveIsUploading) {
       return cn(base, darkMode ? "border-yellow-400/50 bg-yellow-500/10" : "border-yellow-500 bg-yellow-50/30");
@@ -205,6 +224,9 @@ export const SimpleFileUpload = ({
 
   // Handler pour le clic sur la zone - utilise externalTrigger en mode externe
   const handleZoneClick = React.useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // Ne rien faire si le PDF existant est affiché (le bouton Supprimer gère son propre clic)
+    if (showExisting && existingFileUrl) return;
+
     if (isExternalMode) {
       e.preventDefault();
       e.stopPropagation();
@@ -215,7 +237,7 @@ export const SimpleFileUpload = ({
     } else if (!isMobile && state.status === 'idle') {
       triggerFileSelect(e as React.MouseEvent);
     }
-  }, [isExternalMode, externalTrigger, disabled, effectiveIsUploading, isMobile, state.status, triggerFileSelect]);
+  }, [isExternalMode, externalTrigger, disabled, effectiveIsUploading, isMobile, state.status, triggerFileSelect, showExisting, existingFileUrl]);
 
   return (
     <FormField
@@ -233,7 +255,7 @@ export const SimpleFileUpload = ({
                 tabIndex={0}
                 aria-label="Zone de sélection de fichier"
               >
-                {/* Input file en overlay sur mobile - SEULEMENT si pas en mode externe */}
+                {/* Input file en overlay sur mobile - SEULEMENT si pas en mode externe et pas de PDF existant */}
                 {!isExternalMode && (
                   <input
                     ref={fileInputRef}
@@ -253,7 +275,7 @@ export const SimpleFileUpload = ({
                       }
                     }}
                     className={cn(
-                      isMobile && state.status === 'idle'
+                      isMobile && state.status === 'idle' && !(showExisting && existingFileUrl)
                         ? "absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         : "hidden"
                     )}
@@ -262,7 +284,35 @@ export const SimpleFileUpload = ({
                   />
                 )}
 
-                {effectiveStatus === 'idle' && !effectiveFile ? (
+                {showExisting && existingFileUrl && effectiveStatus === 'idle' && !effectiveFile ? (
+                  <div className="p-4 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <FileText className={cn("h-10 w-10", darkMode ? "text-blue-400" : "text-blue-500")} />
+                      <div className="flex flex-col">
+                        <span className={cn("font-medium text-sm", darkMode && "text-white")}>
+                          Document PDF
+                        </span>
+                        <span className={cn("text-xs", darkMode ? "text-green-400" : "text-green-600")}>
+                          Document enregistré
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveExisting}
+                      className={cn(
+                        "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border",
+                        darkMode
+                          ? "border-red-400/30 text-red-400 hover:bg-red-500/10"
+                          : "border-red-200 text-red-600 hover:bg-red-50"
+                      )}
+                      disabled={disabled}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Supprimer
+                    </button>
+                  </div>
+                ) : effectiveStatus === 'idle' && !effectiveFile ? (
                   <div className="w-full h-full min-h-[5rem] flex flex-col items-center justify-center gap-2 cursor-pointer relative">
                     <Upload className={cn("h-6 w-6", darkMode && "text-white/60")} />
                     <span className={cn("text-sm text-center px-2", darkMode && "text-white/60")}>

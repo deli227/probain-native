@@ -707,7 +707,7 @@ const Training = () => {
                   variant="outline"
                   onClick={() => startCalendar.open(startDate)}
                   className={cn(
-                    "w-full md:w-[200px] justify-start text-left font-normal bg-white text-sm md:text-base",
+                    "w-full md:w-[200px] justify-start text-left font-normal bg-white text-gray-900 text-sm md:text-base",
                     !startDate && "text-muted-foreground"
                   )}
                 >
@@ -721,7 +721,7 @@ const Training = () => {
                   variant="outline"
                   onClick={() => endCalendar.open(endDate)}
                   className={cn(
-                    "w-full md:w-[200px] justify-start text-left font-normal bg-white text-sm md:text-base",
+                    "w-full md:w-[200px] justify-start text-left font-normal bg-white text-gray-900 text-sm md:text-base",
                     !endDate && "text-muted-foreground"
                   )}
                 >

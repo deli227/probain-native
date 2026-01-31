@@ -1,5 +1,5 @@
-
-import { useState } from "react";
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import * as z from "zod";
 import { jobPostingsFormSchema } from "@/components/profile/forms/JobPostingsForm";
@@ -17,97 +17,159 @@ export interface JobPosting {
   created_at: string;
 }
 
-export const useJobPostings = () => {
-  const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
+// ------------------------------------------------------------------
+// Query keys
+// ------------------------------------------------------------------
+const jobPostingsKeys = {
+  all: ["job-postings"] as const,
+  byEstablishment: (id: string) => ["job-postings", id] as const,
+};
 
-  const fetchJobPostings = async (establishmentId: string) => {
-    const { data, error } = await supabase
-      .from("job_postings")
-      .select("*")
-      .eq("establishment_id", establishmentId)
-      .order("created_at", { ascending: false });
+// ------------------------------------------------------------------
+// Fetcher
+// ------------------------------------------------------------------
+async function fetchJobPostingsData(establishmentId: string): Promise<JobPosting[]> {
+  const { data, error } = await supabase
+    .from("job_postings")
+    .select("*")
+    .eq("establishment_id", establishmentId)
+    .order("created_at", { ascending: false });
 
-    if (error) {
-      logger.error("Erreur lors de la récupération des annonces:", error);
-      throw error;
-    }
+  if (error) {
+    logger.error("Erreur lors de la récupération des annonces:", error);
+    throw error;
+  }
 
-    if (data) {
-      const typedData = data as JobPosting[];
-      setJobPostings(typedData);
-    }
-  };
+  return (data ?? []) as JobPosting[];
+}
 
-  const addJobPosting = async (establishmentId: string, values: z.infer<typeof jobPostingsFormSchema>) => {
-    const newPosting = {
-      establishment_id: establishmentId,
-      title: values.title,
-      description: values.description,
-      location: values.location,
-      contract_type: values.contractType as ContractType,
-    };
+// ------------------------------------------------------------------
+// Hook
+// ------------------------------------------------------------------
+export const useJobPostings = (establishmentId?: string | null) => {
+  const queryClient = useQueryClient();
 
-    const { data, error } = await supabase
-      .from("job_postings")
-      .insert([newPosting])
-      .select()
-      .single();
+  const queryKey = jobPostingsKeys.byEstablishment(establishmentId ?? "");
 
-    if (error) {
-      logger.error("Erreur lors de l'ajout de l'annonce:", error);
-      throw error;
-    }
+  // ---- Query ----
+  const {
+    data: jobPostings = [],
+    isLoading: loading,
+    refetch,
+  } = useQuery<JobPosting[]>({
+    queryKey,
+    queryFn: () => fetchJobPostingsData(establishmentId!),
+    enabled: !!establishmentId,
+  });
 
-    if (data) {
-      const typedData = data as JobPosting;
-      setJobPostings((prev) => [typedData, ...prev]);
-    }
-  };
+  // ---- Add mutation ----
+  const addMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof jobPostingsFormSchema>) => {
+      if (!establishmentId) throw new Error("No establishment ID");
 
-  const updateJobPosting = async (id: string, values: z.infer<typeof jobPostingsFormSchema>) => {
-    const updatedPosting = {
-      title: values.title,
-      description: values.description,
-      location: values.location,
-      contract_type: values.contractType as ContractType,
-    };
+      const { data, error } = await supabase
+        .from("job_postings")
+        .insert([{
+          establishment_id: establishmentId,
+          title: values.title,
+          description: values.description,
+          location: values.location,
+          contract_type: values.contractType as ContractType,
+        }])
+        .select()
+        .single();
 
-    const { data, error } = await supabase
-      .from("job_postings")
-      .update(updatedPosting)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error("Erreur lors de la mise à jour de l'annonce:", error);
-      throw error;
-    }
-
-    if (data) {
-      const typedData = data as JobPosting;
-      setJobPostings((prev) =>
-        prev.map((posting) => (posting.id === id ? typedData : posting))
+      if (error) {
+        logger.error("Erreur lors de l'ajout de l'annonce:", error);
+        throw error;
+      }
+      return data as JobPosting;
+    },
+    onSuccess: (newPosting) => {
+      queryClient.setQueryData<JobPosting[]>(queryKey, (old) =>
+        [newPosting, ...(old ?? [])],
       );
-    }
-  };
+    },
+  });
 
-  const deleteJobPosting = async (id: string) => {
-    const { error } = await supabase
-      .from("job_postings")
-      .delete()
-      .eq("id", id);
+  // ---- Update mutation ----
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: string; values: z.infer<typeof jobPostingsFormSchema> }) => {
+      const { data, error } = await supabase
+        .from("job_postings")
+        .update({
+          title: values.title,
+          description: values.description,
+          location: values.location,
+          contract_type: values.contractType as ContractType,
+        })
+        .eq("id", id)
+        .select()
+        .single();
 
-    if (error) {
-      logger.error("Erreur lors de la suppression de l'annonce:", error);
-      throw error;
-    }
+      if (error) {
+        logger.error("Erreur lors de la mise à jour de l'annonce:", error);
+        throw error;
+      }
+      return data as JobPosting;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<JobPosting[]>(queryKey, (old) =>
+        (old ?? []).map((p) => (p.id === updated.id ? updated : p)),
+      );
+    },
+  });
 
-    setJobPostings((prev) => prev.filter((posting) => posting.id !== id));
-  };
+  // ---- Delete mutation ----
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("job_postings")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        logger.error("Erreur lors de la suppression de l'annonce:", error);
+        throw error;
+      }
+      return id;
+    },
+    onSuccess: (deletedId) => {
+      queryClient.setQueryData<JobPosting[]>(queryKey, (old) =>
+        (old ?? []).filter((p) => p.id !== deletedId),
+      );
+    },
+  });
+
+  // ---- Wrappers matching old API ----
+  const fetchJobPostings = useCallback(async (_establishmentId?: string) => {
+    await refetch();
+  }, [refetch]);
+
+  const addJobPosting = useCallback(
+    async (_establishmentId: string, values: z.infer<typeof jobPostingsFormSchema>) => {
+      await addMutation.mutateAsync(values);
+    },
+    [addMutation],
+  );
+
+  const updateJobPosting = useCallback(
+    async (id: string, values: z.infer<typeof jobPostingsFormSchema>) => {
+      await updateMutation.mutateAsync({ id, values });
+    },
+    [updateMutation],
+  );
+
+  const deleteJobPosting = useCallback(
+    async (id: string) => {
+      await deleteMutation.mutateAsync(id);
+    },
+    [deleteMutation],
+  );
 
   return {
     jobPostings,
+    loading,
     fetchJobPostings,
     addJobPosting,
     updateJobPosting,

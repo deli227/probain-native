@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { jobPostingsFormSchema } from "./forms/JobPostingsForm";
 import { Form } from "@/components/ui/form";
 import { useJobPostings, JobPosting } from "@/hooks/use-job-postings";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { JobPostingCard } from "./JobPostingCard";
@@ -16,7 +16,7 @@ import { JobPostingDialog } from "./JobPostingDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export const JobPostings = ({ establishmentId }: { establishmentId: string | null }) => {
-  const { jobPostings, fetchJobPostings, addJobPosting, updateJobPosting, deleteJobPosting } = useJobPostings();
+  const { jobPostings, addJobPosting, updateJobPosting, deleteJobPosting } = useJobPostings(establishmentId);
   const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,11 +36,7 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
     },
   });
 
-  useEffect(() => {
-    if (establishmentId) {
-      fetchJobPostings(establishmentId);
-    }
-  }, [establishmentId]);
+  // Data fetching is now handled by useQuery inside the hook
 
   const handleAdd = async (values: z.infer<typeof jobPostingsFormSchema>) => {
     if (!establishmentId) {

@@ -77,7 +77,13 @@ export const SUBCATEGORIES: Record<FormationCategory, SubcategoryConfig[]> = {
     { id: 'expert_lac', label: 'Expert Lac', keywords: ['expert lac', 'expert see'] },
     { id: 'expert_riviere', label: 'Expert Rivière', keywords: ['expert rivière', 'expert fluss'] },
   ],
-  repetition_base: [],
+  repetition_base: [
+    { id: 'cr_pool_plus', label: 'Pool Plus', keywords: ['pool plus', 'plus pool', 'brevet plus'] },
+    { id: 'cr_bls_aed', label: 'BLS AED', keywords: ['bls-aed', 'bls aed', 'bls/aed'] },
+    { id: 'cr_pro_pool', label: 'Pro Pool', keywords: ['pro pool'] },
+    { id: 'cr_module_lac', label: 'Module Lac', keywords: ['module lac', 'modul see', ' lac', ' see'] },
+    { id: 'cr_module_riviere', label: 'Module Rivière', keywords: ['module rivière', 'modul fluss', 'rivière', 'fluss'] },
+  ],
   repetition_expert: [],
 };
 

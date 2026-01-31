@@ -61,6 +61,7 @@
 | `useAppResume` | `useAppResume.ts` | Gestion PWA background |
 | `useMobile` | `use-mobile.tsx` | Détection mobile |
 | `useToast` | `use-toast.ts` | Notifications toast |
+| `useSwipeNavigation` | `useSwipeNavigation.ts` | Swipe horizontal entre onglets mobile |
 
 ---
 
@@ -410,6 +411,7 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 | `useSSSFormations` | sss_formations_cache | Cache formations SSS externes |
 | `useRecyclingReminders` | formations | Alertes recyclage certifications |
 | `useConversations` | internal_messages + *_profiles | Messagerie : fetch, groupement, real-time, mutations |
+| `useSwipeNavigation` | - | Swipe horizontal entre onglets mobile (touch events natifs) |
 
 ---
 
@@ -546,6 +548,9 @@ Passer a `true` immediatement, retarder `false` de 300ms. Evite les demontages t
 ### window.open() bloque sur mobile
 Appeler `window.open()` uniquement dans un `onClick` direct (geste utilisateur). Jamais dans `useEffect` ou callback async.
 
+### Flash blanc entre transitions de route (mobile)
+`DashboardLayout` et `App.tsx` utilisaient `bg-blue-50` sur mobile, visible brievement lors des changements de route car les pages lazy-loaded ne couvrent pas immediatement le viewport. **Solution** : remplacer `bg-blue-50` par `bg-primary-dark` dans `DashboardLayout.tsx` et `App.tsx`. Toutes les pages internes utilisent deja des fonds sombres sur mobile. De plus, `ConversationMailbox` doit rendre son wrapper `min-h-screen bg-[#0a1628]` immediatement (pas de `LoadingScreen` plein ecran qui laisserait voir le fond).
+
 ---
 
 ## Z-Index Hierarchy
@@ -656,6 +661,49 @@ pas de dates specifiques            → vert (disponible par defaut)
   - Etablissement : `EstablishmentProfileForm.tsx` (light mode)
 - Prop `darkMode` pour adapter le theme
 - Independant du formulaire principal (bouton propre, pas de submit form)
+- **AlertDialog de confirmation** avant le changement effectif (demande validation utilisateur)
+
+---
+
+## Swipe Navigation Mobile
+
+Navigation par swipe horizontal entre onglets sur mobile, activee dans `DashboardLayout`.
+
+### Fonctionnement
+- Hook `useSwipeNavigation(profileType)` appele dans `DashboardLayout.tsx`
+- Ecoute les touch events natifs (`touchstart`, `touchmove`, `touchend`) sur `document`
+- Seuil minimum : 50px horizontal, ratio direction 1.5x (horizontal > vertical)
+- Verrouillage de direction apres 10px de mouvement (evite conflits avec scroll vertical)
+- Haptic feedback (`light`) a chaque changement d'onglet
+- Actif uniquement sur mobile (media query `max-width: 767px`)
+
+### Routes par profil
+```
+maitre_nageur:  /profile → /jobs → /training → /rescuer/mail → /flux
+formateur:      /trainer-profile → /trainer-profile/students → /trainer-profile/mail → /flux
+etablissement:  /establishment-profile → /establishment-profile/announcements → /establishment-profile/rescuers → /establishment-profile/mail → /flux
+```
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `src/hooks/useSwipeNavigation.ts` | Hook swipe (touch events, direction lock, seuils) |
+| `src/layouts/DashboardLayout.tsx` | Appel du hook avec `profileType` |
+
+---
+
+## Formations SSS - Filtrage donnees scrapees
+
+Les formations SSS proviennent d'un scraper GitHub Actions qui alimente `sss_formations_cache`. Le champ `formation.places` contient parfois le texte "Consulter sur le site SSS" au lieu d'une vraie info de disponibilite.
+
+### Filtre applique
+```typescript
+formation.places && !formation.places.toLowerCase().includes('consulter')
+```
+
+Ce filtre est applique dans **4 endroits** (carte + dialog, x2 composants) :
+- `src/components/formations/SSSFormationsList.tsx` : `FormationCard` (carte + dialog)
+- `src/pages/Training.tsx` : `FormationCardLocal` (carte + dialog)
 
 ---
 

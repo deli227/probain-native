@@ -6,9 +6,19 @@ import * as z from "zod";
 import { formationFormSchema } from "./forms/FormationForm";
 import { sortCertificationsByLevel } from "@/utils/sortingUtils";
 import { getRecyclingInfo } from "@/utils/recyclingUtils";
+interface Formation {
+  id: string;
+  title: string;
+  organization: string;
+  start_date: string;
+  end_date?: string | null;
+  document_url?: string | null;
+  recycling_organization?: string | null;
+  [key: string]: unknown;
+}
 
 interface FormationCarouselProps {
-  formations: any[];
+  formations: Formation[];
   updateFormation: (id: string, values: z.infer<typeof formationFormSchema>) => Promise<boolean>;
   deleteFormation: (id: string) => Promise<void>;
   onAddClick?: () => void;

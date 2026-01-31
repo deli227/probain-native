@@ -9,6 +9,9 @@ const TAB_ROUTES: Record<string, string[]> = {
   etablissement: ['/establishment-profile', '/establishment-profile/announcements', '/establishment-profile/rescuers', '/establishment-profile/mail', '/flux'],
 };
 
+/** Pages profil exclues du swipe (contiennent des carousels horizontaux) */
+const SWIPE_EXCLUDED_ROUTES = ['/profile', '/trainer-profile', '/establishment-profile'];
+
 /** Seuil minimal de deplacement horizontal en pixels */
 const SWIPE_THRESHOLD = 50;
 /** Ratio minimum horizontal/vertical pour distinguer un swipe d'un scroll */
@@ -30,6 +33,9 @@ export function useSwipeNavigation(profileType: string | null) {
 
   const handleSwipe = useCallback((direction: 'left' | 'right') => {
     if (!profileType) return;
+
+    // Ne pas swiper sur les pages profil (carousels horizontaux)
+    if (SWIPE_EXCLUDED_ROUTES.includes(location.pathname)) return;
 
     const routes = TAB_ROUTES[profileType];
     if (!routes) return;

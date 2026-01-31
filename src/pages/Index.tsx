@@ -692,32 +692,7 @@ const Index = () => {
         </div>
       </footer>
 
-      {/* Styles animations (style Auth) */}
-      <style>{`
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
-          50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.05); }
-        }
 
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-30px) rotate(5deg); }
-        }
-
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-
-        .animate-wave-landing {
-          animation: wave-landing 6s ease-in-out infinite;
-        }
-
-        @keyframes wave-landing {
-          0%, 100% { transform: translateX(0); }
-          50% { transform: translateX(-25px); }
-        }
-      `}</style>
     </div>
   );
 };

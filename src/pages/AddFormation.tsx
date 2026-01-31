@@ -11,6 +11,7 @@ import { X, Loader2, Check } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/utils/logger";
+import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
 import * as z from "zod";
 
 interface AddFormationProps {
@@ -258,12 +259,7 @@ const AddFormation = ({ onClose: externalClose, onSuccess: externalSuccess }: Ad
 
       {/* Panneau style Sheet - Dark Theme avec orbes */}
       <div className="relative z-10 w-full sm:max-w-lg bg-[#0a1628] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
-        {/* Orbes lumineux animés */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse-glow" />
-          <div className="absolute top-1/3 -right-32 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-float-slow" />
-          <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-violet-500/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '2s' }} />
-        </div>
+        <DecorativeOrbs variant="sheet" />
 
         {/* Header avec bouton fermer - gradient */}
         <div className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-light px-6 py-4 shadow-lg">

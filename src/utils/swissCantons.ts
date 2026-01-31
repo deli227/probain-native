@@ -22,7 +22,22 @@ export const SWISS_CANTONS: CantonConfig[] = [
   {
     id: 'GE',
     label: 'Genève',
-    cities: ['genève', 'geneva', 'genf', 'carouge', 'vernier', 'lancy', 'meyrin', 'onex', 'thônex', 'versoix', 'chêne-bougeries', 'grand-saconnex', 'plan-les-ouates'],
+    cities: [
+      'genève', 'geneva', 'genf', 'carouge', 'vernier', 'lancy', 'meyrin',
+      'onex', 'thônex', 'versoix', 'chêne-bougeries', 'grand-saconnex',
+      'plan-les-ouates',
+      // Quartiers de la Ville de Genève
+      'acacias', 'eaux-vives', 'pâquis', 'plainpalais', 'champel',
+      'jonction', 'servette', 'petit-lancy', 'grand-lancy',
+      // Communes manquantes du canton
+      'chêne-bourg', 'bernex', 'confignon', 'aire-la-ville',
+      'avully', 'avusy', 'bardonnex', 'cartigny', 'céligny',
+      'chancy', 'choulex', 'collex-bossy', 'collonge-bellerive',
+      'corsier', 'dardagny', 'gy', 'hermance', 'jussy',
+      'laconnex', 'meinier', 'perly-certoux', 'pregny-chambésy',
+      'presinge', 'puplinge', 'russin', 'satigny', 'soral',
+      'troinex', 'vandoeuvres', 'veyrier',
+    ],
   },
   {
     id: 'VD',
@@ -151,6 +166,16 @@ export const SWISS_CANTONS: CantonConfig[] = [
     cities: ['appenzell', 'gonten', 'rüte', 'schlatt-haslen', 'schwende', 'oberegg'],
   },
 ];
+
+/**
+ * Liste simplifiee des cantons suisses (format value/label)
+ * Utilisee par les formulaires et l'onboarding
+ * Derivee de SWISS_CANTONS pour eviter la duplication
+ */
+export const CANTONS_SUISSES = SWISS_CANTONS.map(c => ({
+  value: c.id,
+  label: c.label,
+}));
 
 /**
  * Trouve le canton d'une ville donnée

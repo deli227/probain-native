@@ -2,6 +2,7 @@
  * Helpers pour gérer les appels async avec timeout
  * Évite les requêtes qui restent en pending infini (problème PWA)
  */
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Ajoute un timeout à n'importe quelle Promise
@@ -23,7 +24,7 @@ export const withTimeout = <T>(
  * getSession() est préféré car il utilise le localStorage et ne fait pas de requête réseau
  * getUser() fait une requête réseau à chaque appel, ce qui cause des timeouts en cascade
  */
-export const safeGetUser = async (supabase: any, _timeoutMs: number = 5000) => {
+export const safeGetUser = async (supabase: SupabaseClient, _timeoutMs?: number) => {
   try {
     // Utiliser getSession qui est instantané (cache local)
     const { data: { session }, error } = await supabase.auth.getSession();

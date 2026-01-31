@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ProfileSkeleton } from "@/components/skeletons";
 
@@ -24,11 +24,23 @@ import { ProfileForm } from "@/components/profile/ProfileForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/utils/logger";
-import { useAvailabilities } from "@/hooks/use-availabilities";
+import { useRescuerAvailability } from "@/hooks/useRescuerAvailability";
 import { useProfile } from "@/contexts/ProfileContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFormations } from "@/hooks/use-formations";
 import { useExperiences } from "@/hooks/use-experiences";
+
+/** Calcule l'age a partir d'une date de naissance ISO */
+const calculateAge = (birthDate: string) => {
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -36,7 +48,6 @@ const Profile = () => {
   const { id } = useParams();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { fetchAvailabilities } = useAvailabilities();
 
   // Utiliser les données du context (déjà en cache!)
   const {
@@ -45,18 +56,22 @@ const Profile = () => {
     baseProfile,
     rescuerProfile,
     refreshProfile,
-    updateProfileOptimistic
   } = useProfile();
 
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [isAvailable, setIsAvailable] = useState(rescuerProfile?.availability_status ?? true);
-  const [showSpecificDates, setShowSpecificDates] = useState(false);
-  const [isAlwaysAvailable, setIsAlwaysAvailable] = useState(rescuerProfile?.is_always_available ?? false);
-  const [isActuallyAvailableToday, setIsActuallyAvailableToday] = useState(rescuerProfile?.is_always_available ?? false);
-  const [userAvailabilityDates, setUserAvailabilityDates] = useState<Date[]>([]);
-  const [availabilityVersion, setAvailabilityVersion] = useState(0);
-  // Ref pour tracker l'initialisation depuis le context
-  const hasInitializedRef = useRef(!!rescuerProfile);
+  // Disponibilite (hook dedie)
+  const {
+    isAvailable,
+    isAlwaysAvailable,
+    isActuallyAvailableToday,
+    showSpecificDates,
+    selectedDates,
+    setAvailability,
+    toggleAlwaysAvailable,
+    handleDateSelect,
+    handleSpecificDatesToggle,
+    incrementAvailabilityVersion,
+  } = useRescuerAvailability();
+
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [showAddFormation, setShowAddFormation] = useState(false);
   const [showAddExperience, setShowAddExperience] = useState(false);
@@ -102,58 +117,6 @@ const Profile = () => {
     }
   }, [contextLoading, baseProfile, navigate]);
 
-  // Initialiser les états de disponibilité depuis le context (une seule fois)
-  useEffect(() => {
-    if (rescuerProfile && !hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      if (rescuerProfile.availability_status !== null) {
-        setIsAvailable(rescuerProfile.availability_status);
-      }
-      if (rescuerProfile.is_always_available !== null) {
-        setIsAlwaysAvailable(rescuerProfile.is_always_available);
-      }
-    }
-  }, [rescuerProfile]);
-
-  // Charger les disponibilités spécifiques depuis la BDD
-  useEffect(() => {
-    const loadAvailabilities = async () => {
-      if (!baseProfile?.id) return;
-      const dates = await fetchAvailabilities(baseProfile.id);
-      setUserAvailabilityDates(dates);
-    };
-
-    loadAvailabilities();
-  }, [baseProfile?.id, fetchAvailabilities, availabilityVersion]);
-
-  // Calculer la disponibilité du jour à partir des états LOCAUX (pas du context)
-  useEffect(() => {
-    if (!baseProfile?.id) return;
-
-    let availableToday = false;
-
-    if (!isAvailable) {
-      // Explicitement indisponible
-      availableToday = false;
-    } else if (isAlwaysAvailable) {
-      // Toujours disponible
-      availableToday = true;
-    } else if (userAvailabilityDates.length > 0) {
-      // A des dates spécifiques → vérifier si aujourd'hui est dedans
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      availableToday = userAvailabilityDates.some(date => {
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        return dateStr === todayStr;
-      });
-    } else {
-      // Disponible sans dates spécifiques = disponible par défaut
-      availableToday = true;
-    }
-
-    setIsActuallyAvailableToday(availableToday);
-  }, [isAvailable, isAlwaysAvailable, userAvailabilityDates, baseProfile?.id]);
-
   const handleAvatarUpdate = async (newAvatarUrl: string) => {
     if (!baseProfile?.id) return;
 
@@ -165,7 +128,6 @@ const Profile = () => {
 
       if (error) throw error;
 
-      // Rafraîchir le profil pour mettre à jour le cache
       await refreshProfile();
 
       toast({
@@ -182,151 +144,8 @@ const Profile = () => {
     }
   };
 
-  const setAvailability = async (newStatus: boolean) => {
-    if (!baseProfile?.id) return;
-    // Si déjà dans l'état voulu, ne rien faire
-    if (newStatus === isAvailable) return;
-
-    // Mise à jour optimiste immédiate
-    setIsAvailable(newStatus);
-
-    if (!newStatus) {
-      setIsActuallyAvailableToday(false);
-      setShowSpecificDates(false);
-      setSelectedDates([]);
-      setIsAlwaysAvailable(false);
-    }
-
-    try {
-      const { error } = await supabase
-        .from('rescuer_profiles')
-        .update({
-          availability_status: newStatus,
-          ...(!newStatus && { is_always_available: false })
-        })
-        .eq('id', baseProfile.id);
-
-      if (error) {
-        // Rollback
-        setIsAvailable(!newStatus);
-        throw error;
-      }
-
-      toast({
-        title: "Statut mis à jour",
-        description: newStatus ? "Vous êtes maintenant disponible" : "Vous êtes maintenant indisponible",
-      });
-
-      await refreshProfile();
-    } catch (error) {
-      logger.error("Erreur lors de la mise à jour:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre statut de disponibilité",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const toggleAlwaysAvailable = async () => {
-    if (!baseProfile?.id) return;
-
-    const newIsAlwaysAvailable = !isAlwaysAvailable;
-
-    // Mise à jour optimiste immédiate
-    setIsAlwaysAvailable(newIsAlwaysAvailable);
-
-    if (newIsAlwaysAvailable) {
-      setSelectedDates([]);
-      setIsAvailable(true);
-    } else {
-      setShowSpecificDates(false);
-    }
-
-    try {
-      const { error } = await supabase
-        .from('rescuer_profiles')
-        .update({
-          is_always_available: newIsAlwaysAvailable,
-          ...(newIsAlwaysAvailable && { availability_status: true })
-        })
-        .eq('id', baseProfile.id);
-
-      if (error) {
-        setIsAlwaysAvailable(!newIsAlwaysAvailable);
-        throw error;
-      }
-
-      toast({
-        title: "Disponibilité mise à jour",
-        description: newIsAlwaysAvailable ? "Vous êtes disponible tout le temps" : "Disponibilités spécifiques activées",
-      });
-
-      await refreshProfile();
-    } catch (error) {
-      logger.error("Erreur lors de la mise à jour:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre disponibilité",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDateSelect = (dates: Date[] | undefined) => {
-    setSelectedDates(dates || []);
-  };
-
-  const handleSpecificDatesToggle = async () => {
-    if (!baseProfile?.id) return;
-
-    const newShowSpecificDates = !showSpecificDates;
-    setShowSpecificDates(newShowSpecificDates);
-
-    if (newShowSpecificDates) {
-      setIsAlwaysAvailable(false);
-      setIsAvailable(true);
-
-      try {
-        const { error } = await supabase
-          .from('rescuer_profiles')
-          .update({
-            is_always_available: false,
-            availability_status: true,
-          })
-          .eq('id', baseProfile.id);
-
-        if (error) {
-          setShowSpecificDates(false);
-          throw error;
-        }
-      } catch (error) {
-        logger.error("Erreur:", error);
-        toast({
-          title: "Erreur",
-          description: "Impossible d'activer les dates spécifiques",
-          variant: "destructive",
-        });
-      }
-    } else {
-      setSelectedDates([]);
-    }
-  };
-
-  const calculateAge = (birthDate: string) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
   const handleProfileUpdated = async () => {
     await refreshProfile();
-    // Invalider aussi les formations et expériences
     queryClient.invalidateQueries({ queryKey: ['formations'] });
     queryClient.invalidateQueries({ queryKey: ['experiences'] });
   };
@@ -490,7 +309,7 @@ const Profile = () => {
                   toggleAlwaysAvailable={toggleAlwaysAvailable}
                   handleSpecificDatesToggle={handleSpecificDatesToggle}
                   handleDateSelect={handleDateSelect}
-                  onDatesValidated={() => setAvailabilityVersion(v => v + 1)}
+                  onDatesValidated={incrementAvailabilityVersion}
                 />
               )}
             </div>

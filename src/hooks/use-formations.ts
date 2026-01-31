@@ -6,6 +6,7 @@ import { formationFormSchema } from "@/components/profile/forms/FormationForm";
 import { logger } from "@/utils/logger";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { findTrainerIdByOrganizationName } from "@/hooks/use-organizations";
+import type { Database } from "@/integrations/supabase/types";
 
 // Clé de requête pour les formations
 const FORMATIONS_QUERY_KEY = ['formations'];
@@ -240,7 +241,7 @@ export const useFormations = (userId?: string) => {
       const recyclingOrg = resolveRecyclingOrg(values.recyclingOrganization, values.customRecyclingOrganization);
       const endDateStr = values.endDate ? values.endDate.toISOString().split('T')[0] : null;
 
-      const updateData: any = {
+      const updateData: Database['public']['Tables']['formations']['Update'] = {
         user_id: user.id,
         title: title,
         organization: values.organization,
@@ -249,9 +250,7 @@ export const useFormations = (userId?: string) => {
         recycling_organization: recyclingOrg,
       };
 
-      if (documentUrl) {
-        updateData.document_url = documentUrl;
-      }
+      updateData.document_url = documentUrl || null;
 
       logger.log('[useFormations] Données à mettre à jour:', updateData);
 

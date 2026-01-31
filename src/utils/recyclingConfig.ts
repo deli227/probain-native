@@ -21,8 +21,8 @@ export const RECYCLING_PERIODS: Record<string, number | null> = {
   "Module Rivière": 4,
   "Expert BLS-AED": 2,
   "Expert Pool": 2,
-  "Expert Lac": 4,
-  "Expert Rivière": 4,
+  "Expert Lac": 2,
+  "Expert Rivière": 2,
 };
 
 /** Aliases pour gérer les variantes de noms (espace vs tiret) */

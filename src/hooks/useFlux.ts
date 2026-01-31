@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,132 +34,202 @@ export interface FluxComment {
   user_avatar?: string;
 }
 
-export const useFlux = (userId: string | undefined, profileType?: string | null) => {
-  const [posts, setPosts] = useState<FluxPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const { toast } = useToast();
+// ------------------------------------------------------------------
+// Query key factory
+// ------------------------------------------------------------------
+const fluxKeys = {
+  all: ['flux'] as const,
+  posts: (userId: string | undefined, visibility: string | null) =>
+    ['flux', 'posts', userId ?? 'anon', visibility ?? 'all'] as const,
+  comments: (postId: string) => ['flux', 'comments', postId] as const,
+};
 
-  // Get the visibility value for the current user's profile type
-  const userVisibility = profileType ? PROFILE_TO_VISIBILITY[profileType] : null;
+// ------------------------------------------------------------------
+// Fetchers (use RPC when available, fallback to client-side N+1)
+// ------------------------------------------------------------------
 
-  const fetchPosts = useCallback(async () => {
-    try {
-      // Récupérer les posts publiés OU programmés dont la date est passée
-      const now = new Date().toISOString();
+/**
+ * Fetch posts via RPC `get_flux_posts`.
+ * Falls back to the legacy N+1 approach if the RPC doesn't exist yet
+ * (e.g. migration not yet applied on the database).
+ */
+async function fetchPostsViaRpc(
+  userId: string | undefined,
+  userVisibility: string | null,
+): Promise<FluxPost[]> {
+  // Try RPC first (cast needed: RPC not yet in generated types until migration is applied)
+  const { data, error } = await (supabase.rpc as CallableFunction)('get_flux_posts', {
+    p_user_id: userId ?? null,
+    p_user_visibility: userVisibility ?? null,
+  });
 
-      // Build the query - filter by visibility based on user's profile type
-      let query = supabase
-        .from('flux_posts')
-        .select('*')
-        .or(`is_published.eq.true,and(scheduled_at.not.is.null,scheduled_at.lte.${now})`);
-
-      // Filter by visibility: show posts for 'all' OR matching the user's profile type
-      if (userVisibility) {
-        query = query.or(`visibility.eq.all,visibility.eq.${userVisibility}`);
-      } else {
-        // If no profile type, only show 'all' posts
-        query = query.eq('visibility', 'all');
-      }
-
-      const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
-
-      if (postsError) throw postsError;
-
-      if (!postsData) {
-        setPosts([]);
-        return;
-      }
-
-      // Pour chaque post, récupérer les compteurs et si l'utilisateur a liké
-      const postsWithDetails = await Promise.all(
-        postsData.map(async (post) => {
-          // Compter les likes
-          const { count: likesCount } = await supabase
-            .from('flux_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
-
-          // Compter les commentaires
-          const { count: commentsCount } = await supabase
-            .from('flux_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
-
-          // Vérifier si l'utilisateur a liké
-          let userHasLiked = false;
-          if (userId) {
-            const { data: likeData } = await supabase
-              .from('flux_likes')
-              .select('id')
-              .eq('post_id', post.id)
-              .eq('user_id', userId)
-              .single();
-            userHasLiked = !!likeData;
-          }
-
-          return {
-            id: post.id,
-            title: post.title,
-            content: post.content,
-            image_url: post.image_url,
-            author_name: post.author_name || 'Probain',
-            author_avatar_url: post.author_avatar_url || null,
-            visibility: post.visibility || 'all',
-            created_at: post.created_at,
-            likes_count: likesCount || 0,
-            comments_count: commentsCount || 0,
-            user_has_liked: userHasLiked,
-          };
-        })
-      );
-
-      setPosts(postsWithDetails);
-    } catch {
-      toast({
-        title: 'Erreur',
-        description: 'Impossible de charger le flux',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [userId, userVisibility, toast]);
-
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchPosts();
-  }, [fetchPosts]);
-
-  const toggleLike = useCallback(async (postId: string) => {
-    if (!userId) {
-      toast({
-        title: 'Connexion requise',
-        description: 'Vous devez être connecté pour liker',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-
-    // Optimistic update
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          user_has_liked: !p.user_has_liked,
-          likes_count: p.user_has_liked ? p.likes_count - 1 : p.likes_count + 1,
-        };
-      }
-      return p;
+  if (!error && data) {
+    return (data as unknown as FluxPost[]).map((p) => ({
+      ...p,
+      // Ensure non-null defaults that the interface expects
+      author_name: p.author_name || 'Probain',
+      visibility: (p.visibility || 'all') as FluxPost['visibility'],
+      created_at: p.created_at ?? '',
+      likes_count: Number(p.likes_count) || 0,
+      comments_count: Number(p.comments_count) || 0,
+      user_has_liked: !!p.user_has_liked,
     }));
+  }
 
-    try {
-      if (post.user_has_liked) {
-        // Remove like
+  // ---------- Fallback: legacy N+1 ----------
+  const now = new Date().toISOString();
+  let query = supabase
+    .from('flux_posts')
+    .select('*')
+    .or(`is_published.eq.true,and(scheduled_at.not.is.null,scheduled_at.lte.${now})`);
+
+  if (userVisibility) {
+    query = query.or(`visibility.eq.all,visibility.eq.${userVisibility}`);
+  } else {
+    query = query.eq('visibility', 'all');
+  }
+
+  const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
+  if (postsError) throw postsError;
+  if (!postsData) return [];
+
+  const postsWithDetails = await Promise.all(
+    postsData.map(async (post) => {
+      const { count: likesCount } = await supabase
+        .from('flux_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post.id);
+
+      const { count: commentsCount } = await supabase
+        .from('flux_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post.id);
+
+      let userHasLiked = false;
+      if (userId) {
+        const { data: likeData } = await supabase
+          .from('flux_likes')
+          .select('id')
+          .eq('post_id', post.id)
+          .eq('user_id', userId)
+          .single();
+        userHasLiked = !!likeData;
+      }
+
+      return {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        image_url: post.image_url,
+        author_name: post.author_name || 'Probain',
+        author_avatar_url: post.author_avatar_url || null,
+        visibility: (post.visibility || 'all') as FluxPost['visibility'],
+        created_at: post.created_at ?? '',
+        likes_count: likesCount || 0,
+        comments_count: commentsCount || 0,
+        user_has_liked: userHasLiked,
+      };
+    }),
+  );
+
+  return postsWithDetails;
+}
+
+/**
+ * Fetch comments via RPC `get_flux_comments`.
+ * Falls back to the legacy N+1 approach if the RPC doesn't exist yet.
+ */
+async function fetchCommentsViaRpc(postId: string): Promise<FluxComment[]> {
+  // Cast needed: RPC not yet in generated types until migration is applied
+  const { data, error } = await (supabase.rpc as CallableFunction)('get_flux_comments', {
+    p_post_id: postId,
+  });
+
+  if (!error && data) {
+    return (data as unknown as FluxComment[]).map((c) => ({
+      ...c,
+      created_at: c.created_at ?? '',
+      user_name: c.user_name || 'Utilisateur',
+      user_avatar: c.user_avatar || undefined,
+    }));
+  }
+
+  // ---------- Fallback: legacy N+1 ----------
+  const { data: commentsData, error: commentsError } = await supabase
+    .from('flux_comments')
+    .select('id, post_id, user_id, content, created_at')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+
+  if (commentsError) throw commentsError;
+
+  const commentsWithUsers = await Promise.all(
+    (commentsData || []).map(async (comment) => {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', comment.user_id)
+        .single();
+
+      const { data: rescuerData } = await supabase
+        .from('rescuer_profiles')
+        .select('first_name, last_name, avatar_url')
+        .eq('id', comment.user_id)
+        .single();
+
+      const firstName = rescuerData?.first_name || profileData?.first_name || '';
+      const lastName = rescuerData?.last_name || profileData?.last_name || '';
+
+      return {
+        ...comment,
+        created_at: comment.created_at ?? '',
+        user_name: `${firstName} ${lastName}`.trim() || 'Utilisateur',
+        user_avatar: rescuerData?.avatar_url || undefined,
+      };
+    }),
+  );
+
+  return commentsWithUsers;
+}
+
+// ------------------------------------------------------------------
+// Hook
+// ------------------------------------------------------------------
+
+export const useFlux = (userId: string | undefined, profileType?: string | null) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const userVisibility = profileType ? PROFILE_TO_VISIBILITY[profileType] ?? null : null;
+
+  // Stable ref for toast (avoid re-creating callbacks when toast identity changes)
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+
+  // ---- Posts query ----
+  const {
+    data: posts = [],
+    isLoading: loading,
+    isRefetching: refreshing,
+    refetch,
+  } = useQuery<FluxPost[]>({
+    queryKey: fluxKeys.posts(userId, userVisibility),
+    queryFn: () => fetchPostsViaRpc(userId, userVisibility),
+    // Keep enabled even without userId (anonymous read)
+    enabled: true,
+  });
+
+  // ---- Refresh helper (matches old API) ----
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  // ---- Toggle like mutation ----
+  const toggleLikeMutation = useMutation({
+    mutationFn: async ({ postId, currentlyLiked }: { postId: string; currentlyLiked: boolean }) => {
+      if (!userId) throw new Error('NOT_AUTHENTICATED');
+
+      if (currentlyLiked) {
         const { error } = await supabase
           .from('flux_likes')
           .delete()
@@ -166,172 +237,192 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
           .eq('user_id', userId);
         if (error) throw error;
       } else {
-        // Add like
         const { error } = await supabase
           .from('flux_likes')
           .insert({ post_id: postId, user_id: userId });
         if (error) throw error;
       }
-    } catch {
+    },
+    // Optimistic update
+    onMutate: async ({ postId, currentlyLiked }) => {
+      const queryKey = fluxKeys.posts(userId, userVisibility);
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousPosts = queryClient.getQueryData<FluxPost[]>(queryKey);
+
+      queryClient.setQueryData<FluxPost[]>(queryKey, (old) =>
+        (old ?? []).map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                user_has_liked: !currentlyLiked,
+                likes_count: currentlyLiked ? p.likes_count - 1 : p.likes_count + 1,
+              }
+            : p,
+        ),
+      );
+
+      return { previousPosts };
+    },
+    onError: (_err, _vars, context) => {
       // Revert optimistic update
-      setPosts(prev => prev.map(p => {
-        if (p.id === postId) {
-          return {
-            ...p,
-            user_has_liked: post.user_has_liked,
-            likes_count: post.likes_count,
-          };
-        }
-        return p;
-      }));
-      toast({
+      if (context?.previousPosts) {
+        queryClient.setQueryData(fluxKeys.posts(userId, userVisibility), context.previousPosts);
+      }
+      toastRef.current({
         title: 'Erreur',
         description: 'Impossible de modifier le like',
         variant: 'destructive',
       });
-    }
-  }, [userId, posts, toast]);
+    },
+    // No onSettled refetch needed – optimistic state is source of truth until next real-time event
+  });
 
-  const fetchComments = useCallback(async (postId: string): Promise<FluxComment[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('flux_comments')
-        .select(`
-          id,
-          post_id,
-          user_id,
-          content,
-          created_at
-        `)
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true });
+  const toggleLike = useCallback(
+    async (postId: string) => {
+      if (!userId) {
+        toastRef.current({
+          title: 'Connexion requise',
+          description: 'Vous devez être connecté pour liker',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const post = posts.find((p) => p.id === postId);
+      if (!post) return;
 
-      if (error) throw error;
+      toggleLikeMutation.mutate({ postId, currentlyLiked: post.user_has_liked });
+    },
+    [userId, posts, toggleLikeMutation],
+  );
 
-      // Récupérer les infos des utilisateurs
-      const commentsWithUsers = await Promise.all(
-        (data || []).map(async (comment) => {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', comment.user_id)
-            .single();
+  // ---- Fetch comments (useQuery-based, lazy per post) ----
+  const fetchComments = useCallback(
+    async (postId: string): Promise<FluxComment[]> => {
+      try {
+        // Use queryClient.fetchQuery to benefit from cache + dedup
+        return await queryClient.fetchQuery({
+          queryKey: fluxKeys.comments(postId),
+          queryFn: () => fetchCommentsViaRpc(postId),
+          staleTime: 2 * 60 * 1000, // 2 minutes
+        });
+      } catch {
+        return [];
+      }
+    },
+    [queryClient],
+  );
 
-          const { data: rescuerData } = await supabase
-            .from('rescuer_profiles')
-            .select('first_name, last_name, avatar_url')
-            .eq('id', comment.user_id)
-            .single();
+  // ---- Add comment mutation ----
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ postId, content }: { postId: string; content: string }) => {
+      if (!userId) throw new Error('NOT_AUTHENTICATED');
 
-          const firstName = rescuerData?.first_name || profileData?.first_name || '';
-          const lastName = rescuerData?.last_name || profileData?.last_name || '';
-
-          return {
-            ...comment,
-            user_name: `${firstName} ${lastName}`.trim() || 'Utilisateur',
-            user_avatar: rescuerData?.avatar_url || undefined,
-          };
-        })
-      );
-
-      return commentsWithUsers;
-    } catch {
-      return [];
-    }
-  }, []);
-
-  const addComment = useCallback(async (postId: string, content: string) => {
-    if (!userId) {
-      toast({
-        title: 'Connexion requise',
-        description: 'Vous devez être connecté pour commenter',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    if (!content.trim()) {
-      toast({
-        title: 'Erreur',
-        description: 'Le commentaire ne peut pas être vide',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    try {
       const { error } = await supabase
         .from('flux_comments')
-        .insert({
-          post_id: postId,
-          user_id: userId,
-          content: content.trim(),
-        });
-
+        .insert({ post_id: postId, user_id: userId, content: content.trim() });
       if (error) throw error;
+    },
+    onSuccess: (_data, { postId }) => {
+      // Increment comments_count optimistically on the posts cache
+      const queryKey = fluxKeys.posts(userId, userVisibility);
+      queryClient.setQueryData<FluxPost[]>(queryKey, (old) =>
+        (old ?? []).map((p) =>
+          p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p,
+        ),
+      );
+      // Invalidate comments cache for this post so next fetch gets fresh data
+      queryClient.invalidateQueries({ queryKey: fluxKeys.comments(postId) });
 
-      // Update comments count
-      setPosts(prev => prev.map(p => {
-        if (p.id === postId) {
-          return { ...p, comments_count: p.comments_count + 1 };
-        }
-        return p;
-      }));
-
-      toast({
+      toastRef.current({
         title: 'Commentaire ajouté',
         description: 'Votre commentaire a été publié',
       });
-
-      return true;
-    } catch {
-      toast({
+    },
+    onError: () => {
+      toastRef.current({
         title: 'Erreur',
-        description: 'Impossible d\'ajouter le commentaire',
+        description: "Impossible d'ajouter le commentaire",
         variant: 'destructive',
       });
-      return false;
-    }
-  }, [userId, toast]);
+    },
+  });
 
-  const deleteComment = useCallback(async (commentId: string, postId: string) => {
-    try {
+  const addComment = useCallback(
+    async (postId: string, content: string): Promise<boolean> => {
+      if (!userId) {
+        toastRef.current({
+          title: 'Connexion requise',
+          description: 'Vous devez être connecté pour commenter',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      if (!content.trim()) {
+        toastRef.current({
+          title: 'Erreur',
+          description: 'Le commentaire ne peut pas être vide',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      try {
+        await addCommentMutation.mutateAsync({ postId, content });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [userId, addCommentMutation],
+  );
+
+  // ---- Delete comment mutation ----
+  const deleteCommentMutation = useMutation({
+    mutationFn: async ({ commentId }: { commentId: string; postId: string }) => {
+      if (!userId) throw new Error('NOT_AUTHENTICATED');
       const { error } = await supabase
         .from('flux_comments')
         .delete()
         .eq('id', commentId)
         .eq('user_id', userId);
-
       if (error) throw error;
+    },
+    onSuccess: (_data, { postId }) => {
+      // Decrement comments_count
+      const queryKey = fluxKeys.posts(userId, userVisibility);
+      queryClient.setQueryData<FluxPost[]>(queryKey, (old) =>
+        (old ?? []).map((p) =>
+          p.id === postId ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p,
+        ),
+      );
+      // Invalidate comments cache
+      queryClient.invalidateQueries({ queryKey: fluxKeys.comments(postId) });
 
-      // Update comments count
-      setPosts(prev => prev.map(p => {
-        if (p.id === postId) {
-          return { ...p, comments_count: Math.max(0, p.comments_count - 1) };
-        }
-        return p;
-      }));
-
-      toast({
-        title: 'Commentaire supprimé',
-      });
-
-      return true;
-    } catch {
-      toast({
+      toastRef.current({ title: 'Commentaire supprimé' });
+    },
+    onError: () => {
+      toastRef.current({
         title: 'Erreur',
         description: 'Impossible de supprimer le commentaire',
         variant: 'destructive',
       });
-      return false;
-    }
-  }, [userId, toast]);
+    },
+  });
 
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  const deleteComment = useCallback(
+    async (commentId: string, postId: string): Promise<boolean> => {
+      try {
+        await deleteCommentMutation.mutateAsync({ commentId, postId });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [deleteCommentMutation],
+  );
 
-  // Real-time subscription for new posts
+  // ---- Real-time: invalidate cache on DB changes ----
   useEffect(() => {
     const channel = supabase
       .channel('flux_posts_changes')
@@ -339,15 +430,22 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
         'postgres_changes',
         { event: '*', schema: 'public', table: 'flux_posts' },
         () => {
-          fetchPosts();
-        }
+          queryClient.invalidateQueries({ queryKey: fluxKeys.posts(userId, userVisibility) });
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'flux_likes' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: fluxKeys.posts(userId, userVisibility) });
+        },
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchPosts]);
+  }, [userId, userVisibility, queryClient]);
 
   return {
     posts,

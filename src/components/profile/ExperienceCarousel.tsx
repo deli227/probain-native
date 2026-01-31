@@ -3,9 +3,19 @@ import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carouse
 import { ExperienceCard } from "./ExperienceCard";
 import * as z from "zod";
 import { experienceFormSchema } from "./forms/ExperienceForm";
+interface Experience {
+  id: string;
+  title: string;
+  location: string;
+  start_date: string;
+  end_date?: string | null;
+  document_url?: string | null;
+  contract_type: string;
+  [key: string]: unknown;
+}
 
 interface ExperienceCarouselProps {
-  experiences: any[];
+  experiences: Experience[];
   updateExperience: (id: string, values: z.infer<typeof experienceFormSchema>) => Promise<boolean>;
   deleteExperience: (id: string) => Promise<void>;
   onAddClick?: () => void;

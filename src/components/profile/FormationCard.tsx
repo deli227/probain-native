@@ -9,8 +9,9 @@ import { FormationForm, formationFormSchema } from "./forms/FormationForm";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useState, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { PDFViewerDialog } from "./PDFViewerDialog";
+import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
 import * as z from "zod";
 import type { RecyclingInfo } from "@/utils/recyclingConfig";
 import { getRecyclingLabel } from "@/utils/recyclingUtils";
@@ -21,8 +22,8 @@ interface FormationCardProps {
     title: string;
     organization: string;
     start_date: string;
-    end_date?: string;
-    document_url?: string;
+    end_date?: string | null;
+    document_url?: string | null;
     recycling_organization?: string | null;
   };
   onUpdate: (id: string, values: z.infer<typeof formationFormSchema>) => Promise<void>;
@@ -36,6 +37,14 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const [docRemoved, setDocRemoved] = useState(false);
+  const existingDocUrl = docRemoved ? '' : (formation.document_url || '');
+
+  // Reset le flag quand les données reviennent de la BDD (après sauvegarde)
+  useEffect(() => {
+    setDocRemoved(false);
+  }, [formation.document_url]);
+
   const editForm = useForm<z.infer<typeof formationFormSchema>>({
     resolver: zodResolver(formationFormSchema),
     defaultValues: {
@@ -45,6 +54,7 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
       endDate: formation.end_date ? new Date(formation.end_date) : undefined,
       customCertification: formation.title.startsWith("Autre: ") ? formation.title.substring(7) : undefined,
       recyclingOrganization: formation.recycling_organization || undefined,
+      documentUrl: formation.document_url || undefined,
     },
   });
 
@@ -69,13 +79,13 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
       >
         {/* Boutons FIXES - position absolue par rapport à la CARTE */}
         <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-          {formation.document_url && (
+          {existingDocUrl && (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 if (isMobile) {
-                  window.open(formation.document_url, '_blank', 'noopener,noreferrer');
+                  window.open(existingDocUrl, '_blank', 'noopener,noreferrer');
                 } else {
                   setIsPdfViewerOpen(true);
                 }
@@ -103,12 +113,7 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
         {/* Sheet d'édition contrôlé */}
         <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
           <SheetContent className="w-full sm:max-w-md md:max-w-xl overflow-y-auto bg-[#0a1628] p-0" closeButtonColor="white" onClose={() => setIsEditSheetOpen(false)} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-            {/* Orbes lumineux animés */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse-glow" />
-              <div className="absolute top-1/3 -right-32 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-float-slow" />
-              <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-violet-500/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '2s' }} />
-            </div>
+            <DecorativeOrbs variant="sheet" />
 
             {/* Header gradient */}
             <SheetHeader className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-light px-6 py-4 shadow-lg">
@@ -129,7 +134,14 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
                   }
                 })} className="space-y-6">
                   <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-5 border border-white/10">
-                    <FormationForm form={editForm} onDelete={handleDelete} isEdit darkMode />
+                    <FormationForm
+                      form={editForm}
+                      onDelete={handleDelete}
+                      isEdit
+                      darkMode
+                      existingFileUrl={existingDocUrl}
+                      onRemoveExisting={() => setDocRemoved(true)}
+                    />
                   </div>
                   <Button
                     type="submit"
@@ -224,11 +236,11 @@ export const FormationCard = memo(function FormationCard({ formation, onUpdate, 
       </div>
 
       {/* Dialog pour la visualisation du PDF */}
-      {formation.document_url && (
+      {existingDocUrl && (
         <PDFViewerDialog
           isOpen={isPdfViewerOpen}
           onClose={() => setIsPdfViewerOpen(false)}
-          documentUrl={formation.document_url}
+          documentUrl={existingDocUrl}
           documentTitle={`${displayTitle} - Document`}
         />
       )}

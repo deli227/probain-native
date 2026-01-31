@@ -9,8 +9,9 @@ import { ExperienceForm, experienceFormSchema } from "./forms/ExperienceForm";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useState, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { PDFViewerDialog } from "./PDFViewerDialog";
+import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
 import * as z from "zod";
 
 interface ExperienceCardProps {
@@ -19,8 +20,8 @@ interface ExperienceCardProps {
     title: string;
     location: string;
     start_date: string;
-    end_date?: string;
-    document_url?: string;
+    end_date?: string | null;
+    document_url?: string | null;
     contract_type: string;
   };
   onUpdate: (id: string, values: z.infer<typeof experienceFormSchema>) => Promise<void>;
@@ -33,6 +34,14 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const [docRemoved, setDocRemoved] = useState(false);
+  const existingDocUrl = docRemoved ? '' : (experience.document_url || '');
+
+  // Reset le flag quand les données reviennent de la BDD (après sauvegarde)
+  useEffect(() => {
+    setDocRemoved(false);
+  }, [experience.document_url]);
+
   const editForm = useForm<z.infer<typeof experienceFormSchema>>({
     resolver: zodResolver(experienceFormSchema),
     defaultValues: {
@@ -41,6 +50,7 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
       startDate: new Date(experience.start_date),
       endDate: experience.end_date ? new Date(experience.end_date) : undefined,
       contractType: experience.contract_type as 'CDI' | 'CDD',
+      documentUrl: experience.document_url || undefined,
     },
   });
 
@@ -78,13 +88,13 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
       >
         {/* Boutons FIXES - position absolue par rapport à la CARTE */}
         <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-          {experience.document_url && (
+          {existingDocUrl && (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 if (isMobile) {
-                  window.open(experience.document_url, '_blank', 'noopener,noreferrer');
+                  window.open(existingDocUrl, '_blank', 'noopener,noreferrer');
                 } else {
                   setIsPdfViewerOpen(true);
                 }
@@ -112,12 +122,7 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
         {/* Sheet d'édition contrôlé */}
         <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
           <SheetContent className="w-full sm:max-w-md md:max-w-xl overflow-y-auto bg-[#0a1628] p-0" closeButtonColor="white" onClose={() => setIsEditSheetOpen(false)} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-            {/* Orbes lumineux animés */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse-glow" />
-              <div className="absolute top-1/3 -right-32 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-float-slow" />
-              <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-violet-500/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '2s' }} />
-            </div>
+            <DecorativeOrbs variant="sheet" />
 
             {/* Header gradient */}
             <SheetHeader className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-light px-6 py-4 shadow-lg">
@@ -143,6 +148,8 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
                       onDelete={() => onDelete(experience.id)}
                       isEdit
                       darkMode
+                      existingFileUrl={existingDocUrl}
+                      onRemoveExisting={() => setDocRemoved(true)}
                     />
                   </div>
                   <Button
@@ -205,11 +212,11 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
       </div>
 
       {/* Dialog pour la visualisation du PDF */}
-      {experience.document_url && (
+      {existingDocUrl && (
         <PDFViewerDialog
           isOpen={isPdfViewerOpen}
           onClose={() => setIsPdfViewerOpen(false)}
-          documentUrl={experience.document_url}
+          documentUrl={existingDocUrl}
           documentTitle={`${experience.title} - Document`}
         />
       )}

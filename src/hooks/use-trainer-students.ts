@@ -1,207 +1,221 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { getRecyclingInfo, getRecyclingLabel, normalizeCertName } from "@/utils/recyclingUtils";
 import type { StudentData, SelectedStudent, ExternalFormation } from "@/components/profile/trainer-students/types";
 
+// ------------------------------------------------------------------
+// Query key factory
+// ------------------------------------------------------------------
+const trainerStudentsKeys = {
+  all: ['trainer-students'] as const,
+  students: () => ['trainer-students', 'list'] as const,
+  externalFormations: (studentId: string | null) =>
+    ['trainer-students', 'external-formations', studentId] as const,
+};
+
+// ------------------------------------------------------------------
+// Data types returned by the students fetcher
+// ------------------------------------------------------------------
+interface StudentsQueryResult {
+  students: StudentData[];
+  studentFormationsMap: Map<string, string[]>;
+}
+
+// ------------------------------------------------------------------
+// Fetchers
+// ------------------------------------------------------------------
+
+async function fetchStudentsData(): Promise<StudentsQueryResult> {
+  const { data: { user } } = await safeGetUser(supabase);
+  if (!user) throw new Error("Non authentifié");
+
+  const { data, error: fetchError } = await supabase
+    .from("trainer_students")
+    .select(`
+      id,
+      training_date,
+      training_type,
+      certification_issued,
+      student_id,
+      profiles!student_id(
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        avatar_url
+      )
+    `)
+    .eq("trainer_id", user.id);
+
+  if (fetchError) throw fetchError;
+
+  // Fetch phone_visible from rescuer_profiles for each student
+  const studentIds = (data || []).map(item => item.student_id);
+  let phoneVisibilityMap: Record<string, boolean> = {};
+
+  if (studentIds.length > 0) {
+    const { data: rescuerProfiles } = await supabase
+      .from("rescuer_profiles")
+      .select("id, phone_visible")
+      .in("id", studentIds);
+
+    if (rescuerProfiles) {
+      phoneVisibilityMap = Object.fromEntries(
+        rescuerProfiles.map(rp => [rp.id, rp.phone_visible ?? false])
+      );
+    }
+  }
+
+  const formattedStudents: StudentData[] = (data || []).map(item => {
+    const recyclingInfo = getRecyclingInfo({
+      id: item.id,
+      title: item.training_type,
+      start_date: item.training_date,
+    });
+    const recyclingLabel = getRecyclingLabel(recyclingInfo);
+
+    return {
+      id: item.id,
+      student_id: item.student_id,
+      name: `${item.profiles?.first_name || ''} ${item.profiles?.last_name || ''}`.trim(),
+      email: item.profiles?.email || '',
+      phone: item.profiles?.phone || null,
+      phoneVisible: phoneVisibilityMap[item.student_id] ?? false,
+      avatarUrl: item.profiles?.avatar_url || null,
+      certification_issued: item.certification_issued ?? false,
+      date: new Date(item.training_date).toLocaleDateString('fr-FR'),
+      training_type: item.training_type,
+      training_date: item.training_date,
+      recyclingStatus: recyclingInfo.status,
+      recyclingLabel,
+    };
+  });
+
+  // Fetch external formations (table `formations`) for the filter system
+  let studentFormationsMap = new Map<string, string[]>();
+  if (studentIds.length > 0) {
+    try {
+      const BATCH_SIZE = 200;
+      const batches: string[][] = [];
+      for (let i = 0; i < studentIds.length; i += BATCH_SIZE) {
+        batches.push(studentIds.slice(i, i + BATCH_SIZE));
+      }
+      const results = await Promise.all(
+        batches.map(batch =>
+          supabase.from("formations").select("user_id, title").in("user_id", batch)
+        )
+      );
+      const fMap = new Map<string, string[]>();
+      for (const { data: batchData } of results) {
+        if (batchData) {
+          for (const item of batchData) {
+            if (!item.user_id) continue;
+            const arr = fMap.get(item.user_id) || [];
+            arr.push(item.title ?? '');
+            fMap.set(item.user_id, arr);
+          }
+        }
+      }
+      studentFormationsMap = fMap;
+    } catch (err) {
+      console.error('[TrainerStudents] Bulk formations fetch error:', err);
+      // Non-blocking: filter will work only with own data
+    }
+  }
+
+  return { students: formattedStudents, studentFormationsMap };
+}
+
+async function fetchExternalFormationsData(studentId: string): Promise<ExternalFormation[]> {
+  const { data, error: extError } = await supabase
+    .from("formations")
+    .select("id, title, organization, start_date, end_date")
+    .eq("user_id", studentId);
+
+  if (extError) {
+    console.error("[ExternalFormations] Query error:", extError.message);
+    return [];
+  }
+
+  if (!data || data.length === 0) return [];
+
+  return data.map(item => {
+    const recyclingInfo = getRecyclingInfo({
+      id: item.id,
+      title: item.title,
+      start_date: item.start_date,
+      end_date: item.end_date,
+    });
+    const recyclingLabel = getRecyclingLabel(recyclingInfo);
+
+    return {
+      id: item.id,
+      title: item.title || '',
+      organization: item.organization || '',
+      start_date: item.start_date,
+      date: new Date(item.end_date || item.start_date).toLocaleDateString('fr-FR'),
+      recyclingStatus: recyclingInfo.status,
+      recyclingLabel,
+    };
+  });
+}
+
+// ------------------------------------------------------------------
+// Hook
+// ------------------------------------------------------------------
+
 export function useTrainerStudents() {
-  const [students, setStudents] = useState<StudentData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // ---- UI state (not data-fetching) ----
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudents, setSelectedStudents] = useState<SelectedStudent[]>([]);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [detailStudent, setDetailStudent] = useState<StudentData | null>(null);
-  const [externalFormations, setExternalFormations] = useState<ExternalFormation[]>([]);
-  const [loadingExternal, setLoadingExternal] = useState(false);
-  // Filtres brevet + source
-  const [studentFormationsMap, setStudentFormationsMap] = useState<Map<string, string[]>>(new Map());
   const [selectedBrevet, setSelectedBrevet] = useState<string | null>(null);
   const [formationSource, setFormationSource] = useState<'all' | 'own' | 'others'>('all');
   const [showFilters, setShowFilters] = useState(false);
-  const { toast } = useToast();
 
-  // Récupérer les élèves du formateur
-  const fetchStudents = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await safeGetUser(supabase, 5000);
-      if (!user) throw new Error("Non authentifié");
+  // ---- Students query ----
+  const {
+    data: studentsResult,
+    isLoading: loading,
+    error: queryError,
+    refetch: refetchStudents,
+  } = useQuery<StudentsQueryResult>({
+    queryKey: trainerStudentsKeys.students(),
+    queryFn: fetchStudentsData,
+    staleTime: 3 * 60 * 1000, // 3 minutes
+  });
 
-      const { data, error: fetchError } = await supabase
-        .from("trainer_students")
-        .select(`
-          id,
-          training_date,
-          training_type,
-          certification_issued,
-          student_id,
-          profiles!student_id(
-            id,
-            first_name,
-            last_name,
-            email,
-            phone,
-            avatar_url
-          )
-        `)
-        .eq("trainer_id", user.id);
+  const students = studentsResult?.students ?? [];
+  const studentFormationsMap = studentsResult?.studentFormationsMap ?? new Map<string, string[]>();
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Erreur inconnue') : null;
 
-      if (fetchError) throw fetchError;
+  // Show toast on error (only once per error via query)
+  // useQuery's onError is deprecated, so we handle it via the error state in the UI
 
-      // Récupérer phone_visible depuis rescuer_profiles pour chaque élève
-      const studentIds = (data || []).map(item => item.student_id);
-      let phoneVisibilityMap: Record<string, boolean> = {};
+  // ---- External formations query (lazy: enabled when detailStudent is set) ----
+  const {
+    data: externalFormations = [],
+    isLoading: loadingExternal,
+  } = useQuery<ExternalFormation[]>({
+    queryKey: trainerStudentsKeys.externalFormations(detailStudent?.student_id ?? null),
+    queryFn: () => {
+      if (!detailStudent) return Promise.resolve([]);
+      return fetchExternalFormationsData(detailStudent.student_id);
+    },
+    enabled: !!detailStudent,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
 
-      if (studentIds.length > 0) {
-        const { data: rescuerProfiles } = await supabase
-          .from("rescuer_profiles")
-          .select("id, phone_visible")
-          .in("id", studentIds);
+  // ---- fetchStudents wrapper for retry button ----
+  const fetchStudents = useCallback(async () => {
+    await refetchStudents();
+  }, [refetchStudents]);
 
-        if (rescuerProfiles) {
-          phoneVisibilityMap = Object.fromEntries(
-            rescuerProfiles.map(rp => [rp.id, rp.phone_visible ?? false])
-          );
-        }
-      }
-
-      const formattedStudents: StudentData[] = (data || []).map(item => {
-        // Calculer le statut de recyclage
-        const recyclingInfo = getRecyclingInfo({
-          id: item.id,
-          title: item.training_type,
-          start_date: item.training_date,
-        });
-        const recyclingLabel = getRecyclingLabel(recyclingInfo);
-
-        return {
-          id: item.id,
-          student_id: item.student_id,
-          name: `${item.profiles?.first_name || ''} ${item.profiles?.last_name || ''}`.trim(),
-          email: item.profiles?.email || '',
-          phone: item.profiles?.phone || null,
-          phoneVisible: phoneVisibilityMap[item.student_id] ?? false,
-          avatarUrl: item.profiles?.avatar_url || null,
-          certification_issued: item.certification_issued ?? false,
-          date: new Date(item.training_date).toLocaleDateString('fr-FR'),
-          training_type: item.training_type,
-          training_date: item.training_date,
-          recyclingStatus: recyclingInfo.status,
-          recyclingLabel,
-        };
-      });
-
-      setStudents(formattedStudents);
-
-      // Charger les formations externes (table `formations`) pour le système de filtres
-      if (studentIds.length > 0) {
-        try {
-          const BATCH_SIZE = 200;
-          const batches: string[][] = [];
-          for (let i = 0; i < studentIds.length; i += BATCH_SIZE) {
-            batches.push(studentIds.slice(i, i + BATCH_SIZE));
-          }
-          const results = await Promise.all(
-            batches.map(batch =>
-              supabase.from("formations").select("user_id, title").in("user_id", batch)
-            )
-          );
-          const fMap = new Map<string, string[]>();
-          for (const { data: batchData } of results) {
-            if (batchData) {
-              for (const item of batchData) {
-                const arr = fMap.get(item.user_id) || [];
-                arr.push(item.title);
-                fMap.set(item.user_id, arr);
-              }
-            }
-          }
-          setStudentFormationsMap(fMap);
-        } catch (err) {
-          console.error('[TrainerStudents] Bulk formations fetch error:', err);
-          // Non-bloquant : le filtre fonctionnera uniquement avec les données propres
-        }
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erreur inconnue';
-      setError(msg);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger vos élèves",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  // Charger les formations externes quand on ouvre le détail d'un élève
-  useEffect(() => {
-    if (!detailStudent) {
-      setExternalFormations([]);
-      return;
-    }
-
-    const fetchExternalFormations = async () => {
-      setLoadingExternal(true);
-      try {
-        // Récupérer toutes les formations du sauveteur depuis la table `formations`
-        // Inclure end_date (date du dernier recyclage) pour calculer correctement le statut
-        const { data, error: extError } = await supabase
-          .from("formations")
-          .select("id, title, organization, start_date, end_date")
-          .eq("user_id", detailStudent.student_id);
-
-        if (extError) {
-          console.error("[ExternalFormations] Query error:", extError.message);
-          setExternalFormations([]);
-          return;
-        }
-
-        if (!data || data.length === 0) {
-          setExternalFormations([]);
-          return;
-        }
-
-        const formatted: ExternalFormation[] = data.map(item => {
-          const recyclingInfo = getRecyclingInfo({
-            id: item.id,
-            title: item.title,
-            start_date: item.start_date,
-            end_date: item.end_date,
-          });
-          const recyclingLabel = getRecyclingLabel(recyclingInfo);
-
-          return {
-            id: item.id,
-            title: item.title || '',
-            organization: item.organization || '',
-            start_date: item.start_date,
-            date: new Date(item.end_date || item.start_date).toLocaleDateString('fr-FR'),
-            recyclingStatus: recyclingInfo.status,
-            recyclingLabel,
-          };
-        });
-
-        setExternalFormations(formatted);
-      } catch (err) {
-        console.error("[ExternalFormations] Unexpected error:", err);
-        setExternalFormations([]);
-      } finally {
-        setLoadingExternal(false);
-      }
-    };
-
-    fetchExternalFormations();
-  }, [detailStudent]);
-
-  // Liste des brevets disponibles (propres + externes)
+  // ---- Derived: available brevets ----
   const availableBrevets = useMemo(() => {
     const set = new Set<string>();
     for (const s of students) {
@@ -215,16 +229,15 @@ export function useTrainerStudents() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
   }, [students, studentFormationsMap]);
 
-  // Reset source quand on change de brevet
+  // ---- Brevet filter handler ----
   const handleSelectBrevet = useCallback((brevet: string | null) => {
     setSelectedBrevet(brevet);
     if (!brevet) setFormationSource('all');
   }, []);
 
-  // Filtrer : recherche + onglet + brevet + source
+  // ---- Filter logic ----
   const getFilteredStudents = useCallback((tab: 'active' | 'all') => {
     return students.filter(student => {
-      // 1. Recherche texte (existant)
       const matchesSearch = searchQuery === "" ||
         student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -232,12 +245,10 @@ export function useTrainerStudents() {
 
       if (!matchesSearch) return false;
 
-      // 2. Filtre onglet (existant)
       if (tab === 'active' && student.recyclingStatus === 'expired') {
         return false;
       }
 
-      // 3. Filtre brevet + source (nouveau)
       if (selectedBrevet) {
         const norm = normalizeCertName(selectedBrevet);
         const ownMatch = normalizeCertName(student.training_type) === norm;
@@ -256,7 +267,7 @@ export function useTrainerStudents() {
   const activeStudents = useMemo(() => getFilteredStudents('active'), [getFilteredStudents]);
   const allStudents = useMemo(() => getFilteredStudents('all'), [getFilteredStudents]);
 
-  // Sélection
+  // ---- Selection handlers ----
   const toggleStudentSelection = (studentId: string) => {
     setSelectedStudents(prev => {
       const isSelected = prev.some(s => s.student_id === studentId);
@@ -312,7 +323,7 @@ export function useTrainerStudents() {
     }
   };
 
-  // Counts (sans filtre de recherche)
+  // ---- Counts (without search filter) ----
   const totalCount = students.length;
   const activeCount = students.filter(s => s.recyclingStatus !== 'expired').length;
 

@@ -98,29 +98,6 @@ export function useSSSFormations(filters?: { region?: string; type?: string }) {
 }
 
 /**
- * Filtrer les formations par région et/ou type
- */
-function filterFormations(formations: SSSFormation[], filters?: { region?: string; type?: string }): SSSFormation[] {
-  let result = [...formations];
-
-  // Filtrer par région si spécifié
-  if (filters?.region) {
-    result = result.filter(f =>
-      f.lieu?.toLowerCase().includes(filters.region!.toLowerCase())
-    );
-  }
-
-  // Filtrer par type si spécifié
-  if (filters?.type) {
-    result = result.filter(f =>
-      f.titre?.toLowerCase().includes(filters.type!.toLowerCase())
-    );
-  }
-
-  return result;
-}
-
-/**
  * Hook pour récupérer les détails d'une formation SSS
  * Note: Pour l'instant, retourne les infos de base car le scraping détaillé
  * nécessiterait une Edge Function supplémentaire
@@ -148,32 +125,4 @@ export function useSSSFormationDetails(id: string, formationUrl: string) {
   });
 }
 
-/**
- * Fonction pour forcer le rafraîchissement des données
- */
-export async function refreshSSSFormations(): Promise<SSSFormation[]> {
-  const { data, error } = await supabase.functions.invoke("sss-scraper", {
-    body: { forceRefresh: true },
-  });
 
-  if (error) {
-    throw new Error("Erreur lors du rafraîchissement");
-  }
-
-  const response = data as SSSFormationsResponse;
-  return response.formations;
-}
-
-/**
- * Fonction pour vérifier si la Edge Function SSS est disponible
- */
-export async function checkSSSApiHealth(): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.functions.invoke("sss-scraper", {
-      body: { healthCheck: true },
-    });
-    return !error && data?.success !== false;
-  } catch {
-    return false;
-  }
-}

@@ -1,107 +1,120 @@
-
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { logger } from "@/utils/logger";
 import { safeGetUser } from "@/utils/asyncHelpers";
+import { useCallback } from "react";
+import type { Database } from "@/integrations/supabase/types";
 
-export const useEstablishmentProfile = () => {
-  const [profileData, setProfileData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+type EstablishmentProfileRow = Database["public"]["Tables"]["establishment_profiles"]["Row"];
+type EstablishmentProfileUpdate = Database["public"]["Tables"]["establishment_profiles"]["Update"];
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
-  const fetchEstablishmentProfile = async () => {
-    try {
-      logger.log("Début du chargement du profil");
-      const { data: { user } } = await safeGetUser(supabase, 5000);
-      
-      if (!user) {
-        logger.log("Utilisateur non authentifié, redirection vers /auth");
-        navigate('/auth');
-        return;
-      }
+export interface EstablishmentProfileData extends ProfileRow {
+  establishment: EstablishmentProfileRow;
+}
 
-      logger.log("Utilisateur authentifié:", user.id);
+// ------------------------------------------------------------------
+// Query keys
+// ------------------------------------------------------------------
+const establishmentKeys = {
+  all: ["establishment-profile"] as const,
+  profile: () => ["establishment-profile", "data"] as const,
+};
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+// ------------------------------------------------------------------
+// Fetcher
+// ------------------------------------------------------------------
+async function fetchEstablishmentData(
+  navigate: ReturnType<typeof useNavigate>,
+): Promise<EstablishmentProfileData | null> {
+  logger.log("Début du chargement du profil");
+  const { data: { user } } = await safeGetUser(supabase);
 
-      if (profileError) {
-        logger.error("Erreur lors du chargement du profil:", profileError);
-        throw profileError;
-      }
+  if (!user) {
+    logger.log("Utilisateur non authentifié, redirection vers /auth");
+    navigate('/auth');
+    return null;
+  }
 
-      if (!profile) {
-        logger.log("Profil non trouvé, redirection vers /onboarding");
-        navigate('/onboarding');
-        return;
-      }
+  logger.log("Utilisateur authentifié:", user.id);
 
-      logger.log("Profil chargé:", profile);
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
 
-      const { data: establishmentProfile, error: establishmentError } = await supabase
-        .from('establishment_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+  if (profileError) {
+    logger.error("Erreur lors du chargement du profil:", profileError);
+    throw profileError;
+  }
 
-      if (establishmentError) {
-        logger.error("Erreur lors du chargement du profil établissement:", establishmentError);
-        throw establishmentError;
-      }
+  if (!profile) {
+    logger.log("Profil non trouvé, redirection vers /onboarding");
+    navigate('/onboarding');
+    return null;
+  }
 
-      logger.log("Profil établissement chargé:", establishmentProfile);
+  const { data: establishmentProfile, error: establishmentError } = await supabase
+    .from('establishment_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
 
-      if (!establishmentProfile) {
-        logger.log("Création d'un nouveau profil établissement");
-        const { error: createError } = await supabase
-          .from('establishment_profiles')
-          .insert({
-            id: user.id,
-            organization_name: "Nouvel établissement"
-          });
+  if (establishmentError) {
+    logger.error("Erreur lors du chargement du profil établissement:", establishmentError);
+    throw establishmentError;
+  }
 
-        if (createError) {
-          logger.error("Erreur lors de la création du profil établissement:", createError);
-          throw createError;
-        }
-        
-        return fetchEstablishmentProfile();
-      }
+  if (!establishmentProfile) {
+    logger.log("Création d'un nouveau profil établissement");
+    const { data: newProfile, error: createError } = await supabase
+      .from('establishment_profiles')
+      .insert({ id: user.id, organization_name: "Nouvel établissement" })
+      .select()
+      .single();
 
-      setProfileData({
-        ...profile,
-        establishment: establishmentProfile
-      });
-    } catch (error) {
-      logger.error('Erreur lors du chargement du profil:', error);
-    } finally {
-      setLoading(false);
+    if (createError) {
+      logger.error("Erreur lors de la création du profil établissement:", createError);
+      throw createError;
     }
-  };
 
-  const handleProfileUpdate = async (values: any) => {
-    try {
+    return { ...profile, establishment: newProfile };
+  }
+
+  return { ...profile, establishment: establishmentProfile };
+}
+
+// ------------------------------------------------------------------
+// Hook
+// ------------------------------------------------------------------
+export const useEstablishmentProfile = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const {
+    data: profileData = null,
+    isLoading: loading,
+  } = useQuery<EstablishmentProfileData | null>({
+    queryKey: establishmentKeys.profile(),
+    queryFn: () => fetchEstablishmentData(navigate),
+  });
+
+  // ---- Update mutation ----
+  const updateMutation = useMutation({
+    mutationFn: async (values: EstablishmentProfileUpdate) => {
       logger.log("Début de la mise à jour du profil");
-      const { data: { user } } = await safeGetUser(supabase, 5000);
-      
+      const { data: { user } } = await safeGetUser(supabase);
+
       if (!user) {
         logger.error("Utilisateur non authentifié");
         throw new Error('Non authentifié');
       }
 
-      logger.log("Utilisateur authentifié:", user.id);
-      logger.log("Valeurs à mettre à jour:", values);
-
       const { data, error: establishmentError } = await supabase
         .from('establishment_profiles')
-        .update({
-          ...values,
-          updated_at: new Date().toISOString()
-        })
+        .update({ ...values, updated_at: new Date().toISOString() })
         .eq('id', user.id)
         .select()
         .single();
@@ -111,23 +124,24 @@ export const useEstablishmentProfile = () => {
         throw establishmentError;
       }
 
-      logger.log("Mise à jour réussie, nouvelles données:", data);
+      logger.log("Mise à jour réussie");
+      return data;
+    },
+    onSuccess: (updatedEstablishment) => {
+      // Optimistic update
+      queryClient.setQueryData<EstablishmentProfileData | null>(
+        establishmentKeys.profile(),
+        (old) => old ? { ...old, establishment: updatedEstablishment } : null,
+      );
+    },
+  });
 
-      // Mise à jour immédiate des données locales
-      setProfileData(prev => ({
-        ...prev,
-        establishment: data
-      }));
-
-    } catch (error) {
-      logger.error('Erreur lors de la mise à jour du profil:', error);
-      throw error;
-    }
-  };
-
-  useEffect(() => {
-    fetchEstablishmentProfile();
-  }, []);
+  const handleProfileUpdate = useCallback(
+    async (values: EstablishmentProfileUpdate) => {
+      await updateMutation.mutateAsync(values);
+    },
+    [updateMutation],
+  );
 
   return {
     profileData,

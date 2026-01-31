@@ -46,6 +46,9 @@ interface ExperienceFormProps {
     error?: string;
   };
   onExternalReset?: () => void;
+  // PDF existant
+  existingFileUrl?: string;
+  onRemoveExisting?: () => void;
 }
 
 export const ExperienceForm = ({
@@ -61,7 +64,10 @@ export const ExperienceForm = ({
   externalTrigger,
   externalFile,
   externalUploadState,
-  onExternalReset
+  onExternalReset,
+  // PDF existant
+  existingFileUrl,
+  onRemoveExisting
 }: ExperienceFormProps) => {
   const watchContractType = form.watch('contractType');
 
@@ -403,6 +409,9 @@ export const ExperienceForm = ({
         externalFile={externalFile}
         externalUploadState={externalUploadState}
         onExternalReset={onExternalReset}
+        // PDF existant
+        existingFileUrl={existingFileUrl}
+        onRemoveExisting={onRemoveExisting}
       />
 
       {isEdit && onDelete && (

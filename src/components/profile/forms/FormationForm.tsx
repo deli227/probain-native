@@ -82,6 +82,9 @@ interface FormationFormProps {
     error?: string;
   };
   onExternalReset?: () => void;
+  // PDF existant
+  existingFileUrl?: string;
+  onRemoveExisting?: () => void;
 }
 
 export const FormationForm = ({
@@ -96,7 +99,9 @@ export const FormationForm = ({
   externalTrigger,
   externalFile,
   externalUploadState,
-  onExternalReset
+  onExternalReset,
+  existingFileUrl,
+  onRemoveExisting
 }: FormationFormProps) => {
   const { data: organizations = [], isLoading: loadingOrgs } = useOrganizations();
 
@@ -589,6 +594,9 @@ export const FormationForm = ({
         externalFile={externalFile}
         externalUploadState={externalUploadState}
         onExternalReset={onExternalReset}
+        // PDF existant
+        existingFileUrl={existingFileUrl}
+        onRemoveExisting={onRemoveExisting}
       />
 
       {isEdit && onDelete && (
