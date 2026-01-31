@@ -129,18 +129,6 @@ export function SSSFormationsList({ filters }: SSSFormationsListProps) {
         </Card>
       )}
 
-      {/* Lien vers le site SSS */}
-      <div className="text-center pt-4 border-t">
-        <a
-          href="https://formation.sss.ch/Calendrier-des-Cours"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center text-sm text-primary hover:underline"
-        >
-          Voir toutes les formations sur le site SSS
-          <ExternalLink className="h-3 w-3 ml-1" />
-        </a>
-      </div>
     </div>
   );
 }
