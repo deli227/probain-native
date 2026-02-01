@@ -10,6 +10,10 @@ interface PhotoPickerSheetProps {
   uploading?: boolean;
   cameraFacing?: "user" | "environment";
   title?: string;
+  /** Ref externe pour l'input camera (place hors du Portal pour Android WebView) */
+  externalCameraRef?: React.RefObject<HTMLInputElement>;
+  /** Ref externe pour l'input galerie (place hors du Portal pour Android WebView) */
+  externalGalleryRef?: React.RefObject<HTMLInputElement>;
 }
 
 export const PhotoPickerSheet = ({
@@ -19,9 +23,14 @@ export const PhotoPickerSheet = ({
   uploading = false,
   cameraFacing = "user",
   title = "Ajouter une photo",
+  externalCameraRef,
+  externalGalleryRef,
 }: PhotoPickerSheetProps) => {
-  const cameraInputRef = React.useRef<HTMLInputElement>(null);
-  const galleryInputRef = React.useRef<HTMLInputElement>(null);
+  const internalCameraRef = React.useRef<HTMLInputElement>(null);
+  const internalGalleryRef = React.useRef<HTMLInputElement>(null);
+
+  const cameraInputRef = externalCameraRef ?? internalCameraRef;
+  const galleryInputRef = externalGalleryRef ?? internalGalleryRef;
 
   const handleCameraClick = () => {
     cameraInputRef.current?.click();
@@ -89,23 +98,29 @@ export const PhotoPickerSheet = ({
           Annuler
         </Button>
 
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture={cameraFacing}
-          onChange={handleFileChange}
-          className="hidden"
-          aria-hidden="true"
-        />
-        <input
-          ref={galleryInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="hidden"
-          aria-hidden="true"
-        />
+        {/* Inputs internes : rendus seulement si pas de refs externes
+            (sur Android WebView, les inputs dans un Portal Radix perdent l'onChange) */}
+        {!externalCameraRef && (
+          <input
+            ref={internalCameraRef}
+            type="file"
+            accept="image/*"
+            capture={cameraFacing}
+            onChange={handleFileChange}
+            className="hidden"
+            aria-hidden="true"
+          />
+        )}
+        {!externalGalleryRef && (
+          <input
+            ref={internalGalleryRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+            aria-hidden="true"
+          />
+        )}
       </SheetContent>
     </Sheet>
   );

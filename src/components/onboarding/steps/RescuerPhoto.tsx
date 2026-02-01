@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, ChevronLeft, Loader2 } from "lucide-react";
@@ -24,6 +24,19 @@ export const RescuerPhoto = ({
   onBack,
 }: RescuerPhotoProps) => {
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Refs pour les inputs file — places a la racine du composant (hors du Portal Radix)
+  // pour que l'onChange fonctionne sur Android WebView (Despia)
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      onAvatarUpload(e);
+      setPickerOpen(false);
+    }
+    e.target.value = '';
+  }, [onAvatarUpload]);
 
   return (
     <div className="flex-1 flex flex-col px-6 pt-4 animate-slide-up">
@@ -117,13 +130,37 @@ export const RescuerPhoto = ({
         </Button>
       </div>
 
-      {/* PhotoPickerSheet - s'affiche au-dessus de tout */}
+      {/* PhotoPickerSheet - UI boutons camera/galerie */}
       <PhotoPickerSheet
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         onFileSelected={onAvatarUpload}
         uploading={uploading}
         title="Ajouter une photo de profil"
+        externalCameraRef={cameraRef}
+        externalGalleryRef={galleryRef}
+      />
+
+      {/* Inputs file a la racine du composant (hors du Portal Radix)
+          pour compatibilite Android WebView — meme pattern que RescuerProfileHeader */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        onChange={handleFileChange}
+        disabled={uploading}
+        className="hidden"
+        aria-hidden="true"
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        disabled={uploading}
+        className="hidden"
+        aria-hidden="true"
       />
     </div>
   );
