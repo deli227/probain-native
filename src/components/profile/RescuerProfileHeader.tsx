@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { usePhotoPicker } from "@/hooks/usePhotoPicker";
 import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
+import { ImageCropDialog } from "@/components/shared/ImageCropDialog";
 
 
 interface RescuerProfileHeaderProps {
@@ -46,30 +47,25 @@ export const RescuerProfileHeader = ({
 }: RescuerProfileHeaderProps) => {
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
   const { toast } = useToast();
 
   // Refs pour les inputs file — places hors du Portal Radix pour Android WebView (Despia)
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload un File (apres crop) vers Supabase
+  const uploadFile = useCallback(async (file: Blob) => {
     try {
       setUploading(true);
-      
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('Vous devez sélectionner une image');
-      }
 
-      const file = event.target.files[0];
-      
       // Validation taille fichier (5 MB max)
       const MAX_FILE_SIZE = 5 * 1024 * 1024;
       if (file.size > MAX_FILE_SIZE) {
         throw new Error('L\'image ne doit pas dépasser 5 MB');
       }
 
-      const fileExt = file.name.split('.').pop();
-      
       const { data: { user } } = await safeGetUser(supabase, 5000);
       if (!user) throw new Error('Non authentifié');
 
@@ -79,17 +75,17 @@ export const RescuerProfileHeader = ({
           await supabase.storage
             .from('avatars')
             .remove([`${user.id}/${oldFileName}`]);
-          // Ignorer l'erreur de suppression de l'ancienne image
         }
       }
 
-      const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+      const fileName = `${user.id}/${crypto.randomUUID()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true,
+          contentType: 'image/jpeg',
         });
 
       if (uploadError) throw uploadError;
@@ -123,19 +119,62 @@ export const RescuerProfileHeader = ({
     } finally {
       setUploading(false);
     }
-  };
+  }, [avatarUrl, onAvatarUpdate, toast]);
+
+  // Intercepte la selection de fichier pour ouvrir le crop
+  const handleFileForCrop = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+
+    const file = event.target.files[0];
+
+    // Validation taille avant meme le crop
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "Erreur",
+        description: "L'image ne doit pas dépasser 5 MB",
+        variant: "destructive",
+      });
+      event.target.value = '';
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setCropImageSrc(objectUrl);
+    setCropOpen(true);
+    setPickerOpen(false);
+    event.target.value = '';
+  }, [toast]);
+
+  // Callback du crop : upload le blob recadre
+  const handleCropComplete = useCallback((croppedBlob: Blob) => {
+    setCropOpen(false);
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+      setCropImageSrc(null);
+    }
+    uploadFile(croppedBlob);
+  }, [cropImageSrc, uploadFile]);
+
+  // Fermeture du crop sans valider
+  const handleCropClose = useCallback(() => {
+    setCropOpen(false);
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+      setCropImageSrc(null);
+    }
+  }, [cropImageSrc]);
 
   const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
-    onFileSelected: handleAvatarUpload,
+    onFileSelected: handleFileForCrop,
   });
 
   const handleMobileFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.length) {
-      handleAvatarUpload(e);
-      setPickerOpen(false);
+      handleFileForCrop(e);
     }
     e.target.value = '';
-  }, [handleAvatarUpload]);
+  }, [handleFileForCrop]);
 
   return (
     <div className="relative overflow-hidden">
@@ -279,7 +318,7 @@ export const RescuerProfileHeader = ({
         <PhotoPickerSheet
           open={pickerOpen}
           onOpenChange={setPickerOpen}
-          onFileSelected={handleAvatarUpload}
+          onFileSelected={handleFileForCrop}
           uploading={uploading}
           title="Photo de profil"
           externalCameraRef={cameraRef}
@@ -290,6 +329,14 @@ export const RescuerProfileHeader = ({
       {/* Inputs file a la racine du composant (hors Portal Radix) pour Android WebView */}
       <input ref={cameraRef} type="file" accept="image/*" capture="user" onChange={handleMobileFileChange} disabled={uploading} className="hidden" aria-hidden="true" />
       <input ref={galleryRef} type="file" accept="image/*" onChange={handleMobileFileChange} disabled={uploading} className="hidden" aria-hidden="true" />
+
+      {/* Dialog de recadrage */}
+      <ImageCropDialog
+        imageSrc={cropImageSrc}
+        open={cropOpen}
+        onClose={handleCropClose}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 };

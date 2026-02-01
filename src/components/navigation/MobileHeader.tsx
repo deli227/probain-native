@@ -144,7 +144,7 @@ export const MobileHeader = memo(({ profileType }: MobileHeaderProps) => {
             <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
               <PopoverTrigger asChild>
                 <button
-                  className="p-2 rounded-full hover:bg-primary-light transition-colors"
+                  className="p-2 rounded-full hover:bg-primary-light transition-colors focus:outline-none focus-visible:outline-none"
                   aria-label="Paramètres"
                   aria-expanded={isSettingsOpen}
                   aria-haspopup="dialog"
