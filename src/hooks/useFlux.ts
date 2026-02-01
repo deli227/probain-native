@@ -351,11 +351,7 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
       );
       // Invalidate comments cache for this post so next fetch gets fresh data
       queryClient.invalidateQueries({ queryKey: fluxKeys.comments(postId) });
-
-      toastRef.current({
-        title: 'Commentaire ajouté',
-        description: 'Votre commentaire a été publié',
-      });
+      // Pas de toast ici — le commentaire visible dans la liste suffit comme feedback
     },
     onError: () => {
       toastRef.current({
