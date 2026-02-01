@@ -697,16 +697,45 @@ Les 3 handlers d'upload dans les flows d'onboarding n'utilisaient pas `cacheCont
 ### Bug 5 : Menu natif camera/galerie masque par le footer sur mobile (onboarding)
 `RescuerPhoto.tsx` utilisait `usePhotoPicker` + un `<input type="file">` cache. Sur mobile, cela declenchait le menu natif de l'OS (choix camera/galerie) qui apparaissait en bas de l'ecran et etait masque par le bouton "CONTINUER/PASSER". **Fix** : remplacement par `PhotoPickerSheet` (bottom sheet Radix, z-50, portail DOM) qui s'affiche proprement au-dessus de tout avec deux boutons explicites "Prendre une photo" / "Choisir depuis la galerie".
 
+### Bug 6 : onChange perdu sur Android WebView (Despia) — inputs dans Portal Radix
+`PhotoPickerSheet.tsx` placait les `<input type="file">` a l'interieur du `SheetContent`, qui est rendu dans un Portal Radix (`@radix-ui/react-dialog`). Sur Android WebView (app Despia via Google Play), quand le picker natif retourne le fichier selectionne, l'evenement `onChange` est silencieusement perdu car le DOM du Portal est detache du flux principal. Resultat : l'utilisateur choisit une photo mais rien ne se passe (pas de photo, pas d'erreur, pas de loader).
+
+**Fix** : `PhotoPickerSheet` accepte maintenant des props `externalCameraRef` et `externalGalleryRef`. Quand fournies, le composant utilise ces refs au lieu de creer des inputs internes dans le Portal. Le composant parent place les `<input type="file">` a la racine de son propre DOM (hors du Portal). Applique a `RescuerPhoto.tsx` (onboarding etape 3). Retrocompatible : sans les props, le composant fonctionne comme avant.
+
+**Fichiers modifies** :
+- `src/components/shared/PhotoPickerSheet.tsx` — nouvelles props `externalCameraRef`/`externalGalleryRef`, inputs internes rendus conditionnellement
+- `src/components/onboarding/steps/RescuerPhoto.tsx` — cree 2 refs + 2 inputs a la racine, passe les refs au Sheet
+
 ### Pattern d'upload photo — Regle
 
-- **Onboarding (mobile)** : toujours utiliser `PhotoPickerSheet` (bottom sheet avec boutons camera/galerie). Ne PAS utiliser `usePhotoPicker` + input cache car le menu natif de l'OS est masque par les boutons de navigation.
-- **Profil (post-onboarding)** : `usePhotoPicker` est OK car le layout est different (pas de bouton plein ecran en bas).
-- **Reset input** : `usePhotoPicker.ts` reset automatiquement `event.target.value = ''` apres chaque selection.
+- **Android WebView (Despia)** : les `<input type="file">` doivent etre places HORS d'un Portal Radix (Sheet/Dialog). Utiliser les props `externalCameraRef`/`externalGalleryRef` de `PhotoPickerSheet` pour externaliser les inputs.
+- **Onboarding (mobile)** : utiliser `PhotoPickerSheet` avec refs externes (inputs a la racine du composant). Ne PAS utiliser `usePhotoPicker` seul car le menu natif de l'OS est masque par les boutons de navigation.
+- **Profil (post-onboarding)** : `RescuerProfileHeader` utilise `PhotoPickerSheet` sur mobile + `usePhotoPicker` sur desktop. Les inputs sont deja a la racine du composant.
+- **Reset input** : `usePhotoPicker.ts` et `PhotoPickerSheet` font tous deux `event.target.value = ''` apres chaque selection.
 - **Fichiers concernes** :
-  - `src/components/onboarding/steps/RescuerPhoto.tsx` → `PhotoPickerSheet`
-  - `src/components/shared/PhotoPickerSheet.tsx` → Sheet Radix (camera + galerie + reset input)
+  - `src/components/onboarding/steps/RescuerPhoto.tsx` → `PhotoPickerSheet` + refs externes
+  - `src/components/shared/PhotoPickerSheet.tsx` → Sheet Radix (camera + galerie + refs externes optionnelles)
   - `src/hooks/usePhotoPicker.ts` → Hook simple (input file + reset)
-  - `src/components/profile/RescuerProfileHeader.tsx` → `usePhotoPicker` (profil)
+  - `src/components/profile/RescuerProfileHeader.tsx` → `PhotoPickerSheet` mobile + `usePhotoPicker` desktop
+
+---
+
+## Flux — Commentaires : bugs corriges
+
+### Bug 1 : Nom "Utilisateur" au lieu du vrai nom dans les commentaires
+La RPC `get_flux_comments` ne faisait un `LEFT JOIN` que sur `rescuer_profiles`. Les formateurs et etablissements apparaissaient comme "Utilisateur" car leurs noms sont dans `trainer_profiles.organization_name` ou `establishment_profiles.organization_name`.
+
+**Fix** : nouvelle migration SQL (`20260201000000_fix_flux_comments_all_profiles.sql`) qui joint les 4 tables de profil (`profiles`, `rescuer_profiles`, `trainer_profiles`, `establishment_profiles`) avec COALESCE pour resoudre le nom et l'avatar depuis la bonne table. Le fallback N+1 dans `useFlux.ts` a aussi ete corrige pour chercher dans les 4 tables.
+
+**IMPORTANT** : La migration doit etre appliquee manuellement sur Supabase (SQL Editor ou `supabase db push`). Sans ca, seul le fallback N+1 fonctionne.
+
+### Bug 2 : Commentaires visibles uniquement en cliquant "Commenter"
+Le compteur de commentaires (`X commentaire(s)`) n'etait pas cliquable. La seule facon de voir les commentaires etait de cliquer le bouton "Commenter". **Fix** : le compteur est maintenant cliquable (`cursor-pointer`, `hover:underline`, `onClick → handleToggleComments`).
+
+**Fichiers modifies** :
+- `supabase/migrations/20260201000000_fix_flux_comments_all_profiles.sql` — RPC avec 4 LEFT JOINs
+- `src/hooks/useFlux.ts` — fallback N+1 avec `trainer_profiles` et `establishment_profiles`
+- `src/pages/Flux.tsx` — compteur de commentaires cliquable
 
 ---
 
