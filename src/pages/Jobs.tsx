@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar as CalendarIcon, Search, MapPin, Briefcase, Building2, Loader2, Upload, FileText, X, ExternalLink, Clock } from "lucide-react";
+import DOMPurify from "dompurify";
 import { CalendarModal } from "@/components/shared/CalendarModal";
 import { useCalendarModal } from "@/hooks/use-calendar-modal";
 import { SWISS_CANTONS, isCityInCanton } from "@/utils/swissCantons";
@@ -284,6 +285,12 @@ const Jobs = () => {
     return types[type] || type;
   }, []);
 
+  // Strip HTML tags for plain-text card previews
+  const stripHtml = useCallback((html: string) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || '';
+  }, []);
+
   return (
     <div className="min-h-screen bg-primary-dark md:bg-transparent">
       <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark px-4 py-3 overflow-hidden">
@@ -459,7 +466,7 @@ const Jobs = () => {
                             </p>
                           </div>
                           <p className="text-white/70 text-sm line-clamp-3 mb-4 leading-relaxed">
-                            {job.description}
+                            {stripHtml(job.description)}
                           </p>
                         </div>
                         <div className="relative flex gap-2">
@@ -580,9 +587,10 @@ const Jobs = () => {
               {/* Full description */}
               <div className="mt-2">
                 <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Description du poste</h3>
-                <div className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap">
-                  {selectedJob.description}
-                </div>
+                <div
+                  className="prose prose-sm prose-invert max-w-none prose-p:text-white/80 prose-headings:text-white prose-strong:text-white prose-li:text-white/80 prose-ul:text-white/80"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedJob.description) }}
+                />
               </div>
 
               {/* Action buttons */}
