@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, MapPin, Building2, Globe, Lock } from "lucide-react";
+import { Loader2, MapPin, Building2, Globe, Lock, Save } from "lucide-react";
 import { useState } from "react";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
@@ -67,7 +67,7 @@ export const TrainerProfileForm = ({ defaultValues, onSubmit }: TrainerProfileFo
       <DecorativeOrbs variant="sheet" />
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="relative space-y-6 pb-24">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="relative space-y-6 pb-44 md:pb-24">
           {/* Section Organisation */}
           <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-5 border border-white/10 shadow-xl space-y-4">
             <div className="flex items-center gap-2 mb-2">
@@ -256,19 +256,22 @@ export const TrainerProfileForm = ({ defaultValues, onSubmit }: TrainerProfileFo
           <ChangePasswordSection darkMode />
 
           {/* Bouton Sauvegarder fixe en bas */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/95 to-transparent z-20">
+          <div className="fixed bottom-[100px] md:bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-full md:max-w-xl p-4 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/95 to-transparent z-20">
             <Button
               type="submit"
-              className="w-full h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold text-lg shadow-lg shadow-blue-500/30 transition-all duration-300 active:scale-[0.98]"
+              className="w-full md:max-w-sm md:mx-auto md:block h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold text-lg shadow-lg shadow-blue-500/30 transition-all duration-300 active:scale-[0.98]"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Sauvegarde...
+                  Sauvegarde en cours...
                 </>
               ) : (
-                "Sauvegarder"
+                <>
+                  <Save className="mr-2 h-5 w-5" />
+                  Sauvegarder les modifications
+                </>
               )}
             </Button>
           </div>
