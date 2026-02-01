@@ -3,6 +3,23 @@ export function register() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/service-worker.js')
+        .then((registration) => {
+          // Verifier les mises a jour du SW toutes les 5 minutes
+          setInterval(() => registration.update(), 5 * 60 * 1000);
+
+          // Quand un nouveau SW est detecte, attendre qu'il s'active puis reload
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (!newWorker) return;
+
+            newWorker.addEventListener('statechange', () => {
+              // Le nouveau SW est actif ET il y avait deja un ancien SW controlant la page
+              if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                window.location.reload();
+              }
+            });
+          });
+        })
         .catch(error => {
           console.error('Erreur lors de l\'enregistrement du Service Worker:', error);
         });
