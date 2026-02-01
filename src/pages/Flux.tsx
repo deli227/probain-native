@@ -13,7 +13,7 @@ import { RescuerProfileSheet } from '@/components/shared/RescuerProfileSheet';
 
 const Flux = () => {
   const [userId, setUserId] = useState<string | undefined>(undefined);
-  const { profileType } = useProfile();
+  const { profileType, rescuerProfile, trainerProfile, establishmentProfile } = useProfile();
   const { posts, loading, toggleLike, fetchComments, addComment, deleteComment } = useFlux(userId, profileType);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<Record<string, FluxComment[]>>({});
@@ -51,21 +51,51 @@ const Flux = () => {
     });
   }, [comments, fetchComments]);
 
+  // Derive current user display name for optimistic comment
+  const currentUserName = rescuerProfile
+    ? `${rescuerProfile.first_name || ''} ${rescuerProfile.last_name || ''}`.trim()
+    : trainerProfile?.organization_name || establishmentProfile?.organization_name || 'Moi';
+  const currentUserAvatar = rescuerProfile?.avatar_url || trainerProfile?.avatar_url || establishmentProfile?.avatar_url || undefined;
+
   const handleAddComment = useCallback(async (postId: string, content: string) => {
     if (!content?.trim()) return;
 
     setSubmittingComment(prev => ({ ...prev, [postId]: true }));
+
+    // Optimistic: add the comment locally before the server responds
+    const optimisticComment: FluxComment = {
+      id: `optimistic-${Date.now()}`,
+      post_id: postId,
+      user_id: userId || '',
+      content: content.trim(),
+      created_at: new Date().toISOString(),
+      user_name: currentUserName,
+      user_avatar: currentUserAvatar,
+      profile_type: profileType || undefined,
+    };
+    setComments(prev => ({
+      ...prev,
+      [postId]: [...(prev[postId] || []), optimisticComment],
+    }));
+    setNewComment(prev => ({ ...prev, [postId]: '' }));
+    setReplyingTo(prev => ({ ...prev, [postId]: null }));
+
     const success = await addComment(postId, content);
 
     if (success) {
-      setNewComment(prev => ({ ...prev, [postId]: '' }));
-      setReplyingTo(prev => ({ ...prev, [postId]: null }));
-      // Refresh comments
-      const postComments = await fetchComments(postId);
-      setComments(prev => ({ ...prev, [postId]: postComments }));
+      // Background refresh to get the real comment with proper ID
+      fetchComments(postId).then(postComments => {
+        setComments(prev => ({ ...prev, [postId]: postComments }));
+      });
+    } else {
+      // Revert optimistic comment on failure
+      setComments(prev => ({
+        ...prev,
+        [postId]: (prev[postId] || []).filter(c => c.id !== optimisticComment.id),
+      }));
     }
     setSubmittingComment(prev => ({ ...prev, [postId]: false }));
-  }, [addComment, fetchComments]);
+  }, [addComment, fetchComments, userId, currentUserName, currentUserAvatar, profileType]);
 
   const handleDeleteComment = useCallback(async (commentId: string, postId: string) => {
     const success = await deleteComment(commentId, postId);
