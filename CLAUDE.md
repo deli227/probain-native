@@ -320,6 +320,8 @@ interface ExtendedProfileContextType {
 | `NotificationBell.tsx` | Icone cloche avec badge |
 | `CalendarModal.tsx` | Calendrier interactif francais |
 | `PhotoPickerSheet.tsx` | Picker photo mobile |
+| `ImageCropDialog.tsx` | Recadrage photo circulaire (react-easy-crop) avant upload |
+| `RescuerProfileSheet.tsx` | Sheet profil sauveteur (etablissements cliquent depuis flux) |
 | `SimpleFileUpload.tsx` | Upload fichier basique |
 | `PullToRefresh.tsx` | Pull-to-refresh mobile |
 
@@ -561,6 +563,19 @@ Appeler `window.open()` uniquement dans un `onClick` direct (geste utilisateur).
 ### Flash couleur sur la messagerie (mobile)
 `ConversationMailbox` utilisait `bg-[#0a1628]` (bleu-marine) alors que `DashboardLayout`, `LoadingScreen` et le Suspense fallback utilisent `bg-primary-dark` (`#0A1033`, violet-marine). Lors du lazy-loading du chunk JS, le fond `#0A1033` du Suspense etait visible, puis changement brusque vers `#0a1628` au montage du composant. **Solution** : aligner `ConversationMailbox` sur `bg-primary-dark` pour unifier la couleur avec le reste du layout. **Regle** : toute page lazy-loaded doit utiliser `bg-primary-dark` comme fond principal mobile, jamais un hex hardcode different.
 
+### Focus ring bleu sur les boutons natifs (Popover/Sheet triggers)
+Un `<button>` HTML brut (pas le composant `Button` de Shadcn) garde le focus ring natif du navigateur (bleu) apres interaction. Le `Button` de Shadcn a `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring` qui masque ce probleme. **Solution** : ajouter `focus:outline-none focus-visible:outline-none` sur tout `<button>` natif utilise comme trigger de Popover, Sheet, ou Dialog. Fichier exemple : `MobileHeader.tsx` (engrenage settings).
+
+### Controles caches derriere la BottomTabBar sur mobile
+Tout overlay, modal ou dialog avec des boutons d'action en bas (`fixed bottom-0` ou en fin de `flex-col`) doit prendre en compte la BottomTabBar (76px + safe-area). **Solutions** :
+- Boutons fixes : `bottom-[100px] md:bottom-0`
+- Padding bas de conteneur : `pb-24 md:pb-4` ou `max(6rem, calc(env(safe-area-inset-bottom) + 5rem))`
+- Formulaires scrollables : `pb-44 md:pb-24` si un bouton fixed est present
+Fichiers impactes : `TrainerProfileForm.tsx`, `ProfileForm.tsx`, `ImageCropDialog.tsx`
+
+### Card bg-card blanc invisible sur fond sombre
+Le composant `Card` de Shadcn/UI applique `bg-card` (blanc pur) par defaut. Sur un fond sombre, si le texte est `text-white`, tout devient invisible. Le gradient semi-transparent (`from-white/15 to-white/5`) ne masque pas le blanc. **Solution** : ajouter `bg-transparent` au `Card` pour neutraliser `bg-card`. Ne PAS modifier `card.tsx`.
+
 ---
 
 ## Z-Index Hierarchy
@@ -568,6 +583,7 @@ Appeler `window.open()` uniquement dans un `onClick` direct (geste utilisateur).
 | Composant | Z-Index |
 |-----------|---------|
 | CalendarModal overlay | `z-[100]` |
+| ImageCropDialog | `z-[100]` |
 | Bottom Tab Bar | `z-[60]` |
 | FAB bouton message | `z-[55]` |
 | Sheet overlay | `z-50` |
@@ -720,6 +736,48 @@ Les 3 handlers d'upload dans les flows d'onboarding n'utilisaient pas `cacheCont
 
 ---
 
+## Recadrage Photo Avatar (ImageCropDialog)
+
+### Fonctionnement
+Quand un sauveteur selectionne une photo de profil, un dialog de recadrage circulaire s'ouvre avant l'upload. L'utilisateur peut zoomer et deplacer l'image pour cadrer son visage.
+
+### Flow
+```
+Selection photo (PhotoPickerSheet mobile / file picker desktop)
+    ↓
+Validation taille (5 MB max) — rejet immediat si trop gros
+    ↓
+ImageCropDialog s'ouvre (crop circulaire + slider zoom)
+    ↓
+Utilisateur ajuste le cadrage → "Valider"
+    ↓
+Canvas API genere un Blob JPEG (quality 0.9) aux dimensions du crop
+    ↓
+Upload vers Supabase Storage (pipeline existant)
+```
+
+### Details techniques
+- **Lib** : `react-easy-crop` (~12kb gzip, zero dep) — `cropShape="round"`, `aspect={1}`
+- **Zoom** : slider range (min 1, max 3, step 0.1) avec icone ZoomIn
+- **Export** : `getCroppedImg()` utilise un `<canvas>` pour extraire la zone croppee → `canvas.toBlob('image/jpeg', 0.9)`
+- **Layout mobile** : `fixed inset-0 z-[100]` (au-dessus de tout), padding-bottom `max(6rem, calc(env(safe-area-inset-bottom) + 5rem))` pour degager la BottomTabBar et la barre de geste
+- **Cleanup** : `URL.revokeObjectURL()` a la fermeture (valider ou annuler)
+
+### Scope
+- **Actif** : profil sauveteur uniquement (`RescuerProfileHeader.tsx`)
+- **Pas actif** : onboarding sauveteur, profil formateur, profil etablissement (upload direct sans crop)
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `src/components/shared/ImageCropDialog.tsx` | Dialog plein ecran avec react-easy-crop + Canvas API |
+| `src/components/profile/RescuerProfileHeader.tsx` | Intercepte le fichier → ouvre crop → upload blob recadre |
+
+### Regle mobile-first pour les overlays plein ecran
+Tout overlay `fixed inset-0` avec des controles en bas (boutons, sliders) doit avoir un padding-bottom suffisant pour degager la BottomTabBar (76px) ET la safe-area. Utiliser `max(6rem, calc(env(safe-area-inset-bottom) + 5rem))` comme reference. Ne JAMAIS mettre des boutons d'action en `fixed bottom-0` sans prendre en compte la BottomTabBar.
+
+---
+
 ## Flux — Commentaires : bugs corriges
 
 ### Bug 1 : Nom "Utilisateur" au lieu du vrai nom dans les commentaires
@@ -743,6 +801,51 @@ L'avatar dans les commentaires du flux utilisait un `<img>` brut avec seulement 
 **Fix** : ajout de `h-full w-full object-cover` sur l'`<img>` et `shrink-0` sur l'`<Avatar>` pour empecher l'ecrasement dans le flex.
 
 **Fichier** : `src/pages/Flux.tsx` (ligne ~222)
+
+---
+
+## Flux — Profil sauveteur cliquable (etablissements)
+
+### Fonctionnement
+Les etablissements peuvent cliquer sur les noms/avatars des sauveteurs dans les commentaires du flux pour voir leur profil dans un bottom sheet.
+
+### Conditions d'affichage
+- Le viewer est un **etablissement** (`profile_type === 'etablissement'`)
+- L'auteur du commentaire est un **sauveteur** (`comment.profile_type === 'maitre_nageur'`)
+- Ce n'est **pas** le propre commentaire de l'utilisateur (`comment.user_id !== userId`)
+
+### RescuerProfileSheet
+- Bottom sheet (Radix Sheet) en dark theme
+- Fetch les tables `profiles` + `rescuer_profiles` en parallele
+- Affiche : avatar, prenom/nom, email, telephone (si phone_visible), canton
+- Bouton "Envoyer un message" → ouvre `SendRescuerMessageDialog`
+- Le `SendRescuerMessageDialog` est rendu HORS du Sheet (evite le piege Radix Dialog + portail)
+
+### Migration SQL requise
+`supabase/migrations/20260201100000_add_profile_type_to_flux_comments.sql` — ajoute `p.profile_type::TEXT` au retour de `get_flux_comments`. **Doit etre appliquee avec `DROP FUNCTION` puis `CREATE`** car la signature de retour change. Sans migration, le fallback N+1 dans `useFlux.ts` fonctionne mais est plus lent.
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `src/components/shared/RescuerProfileSheet.tsx` | Bottom sheet profil sauveteur |
+| `src/pages/Flux.tsx` | Noms/avatars cliquables + sheet |
+| `src/hooks/useFlux.ts` | `profile_type` dans `FluxComment` interface + RPC/fallback |
+| `supabase/migrations/20260201100000_add_profile_type_to_flux_comments.sql` | Migration RPC |
+
+---
+
+## Cartes d'emploi invisibles sur mobile (fix)
+
+### Probleme
+Les cartes d'offres d'emploi sur la page Jobs apparaissaient vides sur mobile : texte blanc (`text-white`) sur fond blanc. Le composant `Card` de Shadcn/UI applique `bg-card` par defaut (`--card: 0 0% 100%` = blanc pur). Le gradient `from-white/15 to-white/5` est semi-transparent et ne masque pas le fond blanc.
+
+### Fix
+Ajout de `bg-transparent` aux 3 instances de `Card` dans `src/pages/Jobs.tsx` pour neutraliser `bg-card`. `tailwind-merge` (via `cn()`) resout `bg-transparent` en supprimant `bg-card` car ils sont dans la meme categorie CSS (`background-color`). Le `bg-gradient-to-br` (`background-image`) reste intact.
+
+### Regle
+Tout `Card` utilise sur un fond sombre avec du texte `text-white` DOIT avoir `bg-transparent` pour neutraliser le `bg-card` blanc par defaut. Ne PAS modifier `card.tsx` (composant Shadcn/UI partage).
+
+**Fichier** : `src/pages/Jobs.tsx` (3 instances de Card)
 
 ---
 
