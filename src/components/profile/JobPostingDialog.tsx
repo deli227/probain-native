@@ -65,7 +65,7 @@ export const JobPostingDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto bg-[#0a1628] border-white/10 text-white">
+      <DialogContent className="sm:max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto bg-[#0a1628] border-white/10 text-white [&>button]:text-white/70 [&>button]:hover:text-white">
         <DialogHeader className="relative pb-4 border-b border-white/10 mb-4">
           {/* Badge type de contrat */}
           <div className="mb-2">

@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SendRescuerMessageDialog } from "@/components/profile/SendRescuerMessageDialog";
 import { PDFViewerDialog } from "@/components/profile/PDFViewerDialog";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Loader2, Mail, MapPin, CheckCircle, XCircle, Eye, Phone, Users, X } from "lucide-react";
+import { FileText, Loader2, Mail, MapPin, CheckCircle, XCircle, Eye, Phone, Users, X, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useState } from "react";
@@ -78,6 +77,290 @@ interface RescuerProfile {
   user_availabilities: RescuerAvailability[];
   is_available_today: boolean;
 }
+
+// Nombre max de disponibilites visibles avant "Voir plus"
+const MAX_VISIBLE_AVAILABILITIES = 6;
+
+const RescuerProfileDialog = ({
+  rescuer,
+  calculateAge,
+  formatDate,
+  handleViewPdf,
+  onMessage,
+}: {
+  rescuer: RescuerProfile;
+  calculateAge: (date: string) => number;
+  formatDate: (date: string) => string;
+  handleViewPdf: (url: string, title: string) => void;
+  onMessage: () => void;
+}) => {
+  const [showAllAvailabilities, setShowAllAvailabilities] = useState(false);
+
+  const availabilities = rescuer.user_availabilities || [];
+  const hasMoreAvailabilities = availabilities.length > MAX_VISIBLE_AVAILABILITIES;
+  const visibleAvailabilities = showAllAvailabilities
+    ? availabilities
+    : availabilities.slice(0, MAX_VISIBLE_AVAILABILITIES);
+
+  return (
+    <DialogContent className="w-[95vw] max-w-4xl mx-auto max-h-[90vh] overflow-y-auto rounded-2xl bg-[#0a1628] border-white/10 text-white [&>button]:text-white/70 [&>button]:hover:text-white">
+      {/* Header avec avatar et infos */}
+      <div className="relative -mx-6 -mt-6 mb-6 px-6 pt-8 pb-6 bg-gradient-to-br from-primary via-probain-blue to-primary-dark rounded-t-2xl border-b border-white/10">
+        <DialogHeader>
+          <DialogTitle asChild>
+            <div className="flex flex-col gap-5">
+              <div className="flex items-start gap-5">
+                <div className="relative flex-shrink-0">
+                  <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-3 border-white/20 shadow-lg">
+                    <AvatarImage
+                      src={rescuer.avatar_url || "/placeholder.svg"}
+                      alt={`${rescuer.first_name} ${rescuer.last_name}`}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="text-xl font-bold bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
+                      {rescuer.first_name?.[0]}{rescuer.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1.5 -right-1.5 rounded-full p-1 bg-[#0a1628]">
+                    {rescuer.is_available_today ? (
+                      <CheckCircle className="h-5 w-5 text-green-400" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-400" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 truncate">
+                    {rescuer.first_name} {rescuer.last_name}
+                  </h2>
+
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {rescuer.is_available_today ? (
+                      <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-300 text-xs font-semibold px-3 py-1 rounded-full border border-green-500/30">
+                        <CheckCircle className="h-3 w-3" />
+                        Disponible
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-300 text-xs font-semibold px-3 py-1 rounded-full border border-red-500/30">
+                        <XCircle className="h-3 w-3" />
+                        Non disponible
+                      </span>
+                    )}
+
+                    {rescuer.profile.birth_date && (
+                      <span className="inline-flex items-center bg-white/10 text-white/70 text-xs px-3 py-1 rounded-full border border-white/10">
+                        {calculateAge(rescuer.profile.birth_date)} ans
+                      </span>
+                    )}
+
+                    {rescuer.years_of_experience && (
+                      <span className="inline-flex items-center bg-white/10 text-white/70 text-xs px-3 py-1 rounded-full border border-white/10">
+                        {rescuer.years_of_experience} ans d'exp.
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {rescuer.profile.canton && (
+                      <div className="flex items-center gap-1 bg-white/10 text-white/60 px-3 py-1.5 rounded-full border border-white/10">
+                        <MapPin className="h-3.5 w-3.5 text-cyan-400" />
+                        <span>{rescuer.profile.canton}</span>
+                      </div>
+                    )}
+                    {rescuer.profile.city_zip && (
+                      <div className="bg-white/10 text-white/60 px-3 py-1.5 rounded-full border border-white/10">
+                        {rescuer.profile.city_zip}
+                      </div>
+                    )}
+                    {rescuer.phone_visible && rescuer.profile.phone && (
+                      <a
+                        href={`tel:${rescuer.profile.phone}`}
+                        className="flex items-center gap-1 bg-green-500/20 text-green-300 px-3 py-1.5 rounded-full border border-green-500/30 hover:bg-green-500/30 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                        <span>{rescuer.profile.phone}</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                className="w-full sm:w-auto sm:self-start rounded-full h-11 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold shadow-lg shadow-blue-500/20 transition-all"
+                onClick={onMessage}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Envoyer un message
+              </Button>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+      </div>
+
+      <div className="px-1 space-y-4">
+        {/* Biographie */}
+        {rescuer.profile.biography && (
+          <div className="backdrop-blur-xl bg-white/10 p-5 rounded-2xl border border-white/10">
+            <h4 className="font-semibold text-sm text-white mb-2">
+              Biographie
+            </h4>
+            <p className="text-sm text-white/60 whitespace-pre-wrap leading-relaxed">
+              {rescuer.profile.biography}
+            </p>
+          </div>
+        )}
+
+        {/* Disponibilites specifiques */}
+        {rescuer.availability_status && !rescuer.is_always_available && availabilities.length > 0 && (
+          <div className="backdrop-blur-xl bg-green-500/10 p-5 rounded-2xl border border-green-500/20">
+            <h4 className="font-semibold text-sm text-white mb-3 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+              Disponibilites specifiques
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {visibleAvailabilities.map((avail: RescuerAvailability) => (
+                <span
+                  key={avail.id}
+                  className="inline-block bg-green-500/20 text-green-300 text-xs font-medium px-3 py-1.5 rounded-full border border-green-500/30"
+                >
+                  {format(new Date(avail.date), 'dd MMMM yyyy', { locale: fr })}
+                </span>
+              ))}
+            </div>
+            {hasMoreAvailabilities && (
+              <button
+                onClick={() => setShowAllAvailabilities(!showAllAvailabilities)}
+                className="mt-3 flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors focus:outline-none"
+              >
+                {showAllAvailabilities ? (
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    Voir moins
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    Voir {availabilities.length - MAX_VISIBLE_AVAILABILITIES} date{availabilities.length - MAX_VISIBLE_AVAILABILITIES > 1 ? 's' : ''} de plus
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Toujours disponible */}
+        {rescuer.availability_status && rescuer.is_always_available && (
+          <div className="backdrop-blur-xl bg-green-500/10 p-5 rounded-2xl border border-green-500/20">
+            <h4 className="font-semibold text-sm text-white flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+              Disponible tout le temps
+            </h4>
+          </div>
+        )}
+
+        {/* Onglets Formations / Experiences */}
+        <Tabs defaultValue="formations" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 p-1 rounded-2xl h-11 bg-white/10 border border-white/10">
+            <TabsTrigger
+              value="formations"
+              className="rounded-xl text-white/60 data-[state=active]:bg-white/15 data-[state=active]:text-white transition-all text-sm"
+            >
+              Formations
+            </TabsTrigger>
+            <TabsTrigger
+              value="experiences"
+              className="rounded-xl text-white/60 data-[state=active]:bg-white/15 data-[state=active]:text-white transition-all text-sm"
+            >
+              Experiences
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="formations" className="mt-4">
+            <div className="space-y-3">
+              {rescuer.user_formations?.map((formation: RescuerFormation) => (
+                <div key={formation.id} className="backdrop-blur-xl bg-white/10 p-4 rounded-2xl border border-white/10 hover:bg-white/15 transition-all">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm text-white mb-1 truncate">{formation.title}</h4>
+                      <p className="text-xs text-white/50 mb-2">{formation.organization}</p>
+                      <span className="inline-block bg-white/10 text-white/60 text-xs px-2.5 py-1 rounded-full border border-white/10">
+                        {formatDate(formation.start_date)}
+                        {formation.end_date && ` - ${formatDate(formation.end_date)}`}
+                      </span>
+                    </div>
+                    {formation.document_url && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-full shrink-0 text-white/50 hover:text-cyan-400 hover:bg-white/10"
+                        onClick={() => handleViewPdf(formation.document_url, formation.title)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(!rescuer.user_formations || rescuer.user_formations.length === 0) && (
+                <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10">
+                  <FileText className="h-10 w-10 text-white/20 mx-auto mb-2" />
+                  <p className="text-sm text-white/40 italic">Aucune formation disponible</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="experiences" className="mt-4">
+            <div className="space-y-3">
+              {rescuer.user_experiences?.map((experience: RescuerExperience) => (
+                <div key={experience.id} className="backdrop-blur-xl bg-white/10 p-4 rounded-2xl border border-white/10 hover:bg-white/15 transition-all">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm text-white mb-1 truncate">{experience.title}</h4>
+                      <p className="text-xs text-white/50 mb-2 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {experience.location}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-block bg-white/10 text-white/60 text-xs px-2.5 py-1 rounded-full border border-white/10">
+                          {formatDate(experience.start_date)}
+                          {experience.end_date && ` - ${formatDate(experience.end_date)}`}
+                        </span>
+                        {experience.contract_type && (
+                          <span className="inline-block bg-cyan-500/15 text-cyan-300 text-xs px-2.5 py-1 rounded-full border border-cyan-500/20">
+                            {experience.contract_type}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {experience.document_url && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-full shrink-0 text-white/50 hover:text-cyan-400 hover:bg-white/10"
+                        onClick={() => handleViewPdf(experience.document_url, experience.title)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(!rescuer.user_experiences || rescuer.user_experiences.length === 0) && (
+                <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10">
+                  <FileText className="h-10 w-10 text-white/20 mx-auto mb-2" />
+                  <p className="text-sm text-white/40 italic">Aucune experience disponible</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DialogContent>
+  );
+};
 
 const EstablishmentRescuers = () => {
   const [selectedRescuer, setSelectedRescuer] = useState<RescuerProfile | null>(null);
@@ -421,243 +704,16 @@ const EstablishmentRescuers = () => {
               </div>
             </DialogTrigger>
             
-            <DialogContent className="w-[95vw] max-w-4xl mx-auto max-h-[90vh] overflow-y-auto rounded-2xl">
-              <div className="relative -mx-6 -mt-6 mb-6 px-6 pt-8 pb-6 bg-muted/30 rounded-t-2xl border-b">
-                <DialogHeader>
-                  <DialogTitle>
-                    <div className="flex flex-col gap-6">
-                      <div className="flex items-start gap-6">
-                        <div className="relative">
-                          <Avatar className="h-24 w-24 sm:h-28 sm:w-28 border-4 border-white shadow-lg">
-                            <AvatarImage
-                              src={rescuer.avatar_url || "/placeholder.svg"}
-                              alt={`${rescuer.first_name} ${rescuer.last_name}`}
-                            />
-                            <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
-                              {rescuer.first_name?.[0]}{rescuer.last_name?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1.5 shadow-md">
-                            {rescuer.is_available_today ? (
-                              <CheckCircle className="h-6 w-6 text-green-500" />
-                            ) : (
-                              <XCircle className="h-6 w-6 text-red-500" />
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex-1">
-                          <h2 className="text-2xl sm:text-3xl font-bold mb-2">
-                            {rescuer.first_name} {rescuer.last_name}
-                          </h2>
-
-                          <div className="flex flex-wrap items-center gap-2 mb-3">
-                            {rescuer.is_available_today ? (
-                              <Badge className="bg-green-500 text-white rounded-full px-3 py-1">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Disponible
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-red-500 text-white rounded-full px-3 py-1">
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Non disponible
-                              </Badge>
-                            )}
-
-                            {rescuer.profile.birth_date && (
-                              <Badge variant="secondary" className="rounded-full px-3 py-1">
-                                {calculateAge(rescuer.profile.birth_date)} ans
-                              </Badge>
-                            )}
-
-                            {rescuer.years_of_experience && (
-                              <Badge variant="secondary" className="rounded-full px-3 py-1">
-                                {rescuer.years_of_experience} ans d'expérience
-                              </Badge>
-                            )}
-                          </div>
-
-                          <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                            {rescuer.profile.canton && (
-                              <div className="flex items-center gap-1 bg-muted px-3 py-1.5 rounded-full">
-                                <MapPin className="h-4 w-4 text-primary" />
-                                <span>{rescuer.profile.canton}</span>
-                              </div>
-                            )}
-                            {rescuer.profile.city_zip && (
-                              <div className="bg-muted px-3 py-1.5 rounded-full">
-                                {rescuer.profile.city_zip}
-                              </div>
-                            )}
-                            {rescuer.phone_visible && rescuer.profile.phone && (
-                              <a
-                                href={`tel:${rescuer.profile.phone}`}
-                                className="flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1.5 rounded-full hover:bg-green-200 transition-colors"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Phone className="h-4 w-4" />
-                                <span>{rescuer.profile.phone}</span>
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <Button
-                        className="w-full sm:w-auto sm:self-start rounded-full h-12"
-                        onClick={() => {
-                          setSelectedRescuer(rescuer);
-                          setIsMessageDialogOpen(true);
-                        }}
-                      >
-                        <Mail className="h-4 w-4 mr-2" />
-                        Envoyer un message
-                      </Button>
-                    </div>
-                  </DialogTitle>
-                </DialogHeader>
-              </div>
-              
-              <div className="px-2">
-                {rescuer.profile.biography && (
-                  <div className="mb-6 bg-muted/50 p-6 rounded-2xl border">
-                    <h4 className="font-semibold text-lg mb-3">
-                      Biographie
-                    </h4>
-                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                      {rescuer.profile.biography}
-                    </p>
-                  </div>
-                )}
-
-                {rescuer.availability_status && !rescuer.is_always_available && rescuer.user_availabilities && rescuer.user_availabilities.length > 0 && (
-                  <div className="mb-6 bg-green-50 p-6 rounded-2xl border border-green-200">
-                    <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      Disponibilités spécifiques
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {rescuer.user_availabilities.map((avail: RescuerAvailability) => (
-                        <span
-                          key={avail.id}
-                          className="inline-block bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full border border-green-300"
-                        >
-                          {format(new Date(avail.date), 'dd MMMM yyyy', { locale: fr })}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {rescuer.availability_status && rescuer.is_always_available && (
-                  <div className="mb-6 bg-green-50 p-6 rounded-2xl border border-green-200">
-                    <h4 className="font-semibold text-lg flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      Disponible tout le temps
-                    </h4>
-                  </div>
-                )}
-
-                <Tabs defaultValue="formations" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 p-1 rounded-2xl h-12">
-                    <TabsTrigger
-                      value="formations"
-                      className="rounded-xl transition-all"
-                    >
-                      Formations
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="experiences"
-                      className="rounded-xl transition-all"
-                    >
-                      Expériences
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="formations" className="mt-6">
-                    <div className="space-y-4">
-                      {rescuer.user_formations?.map((formation: RescuerFormation) => (
-                        <Card key={formation.id} className="p-5 rounded-2xl hover:shadow-md transition-all">
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                              <h4 className="font-bold text-lg mb-1">{formation.title}</h4>
-                              <p className="text-sm text-muted-foreground mb-2">{formation.organization}</p>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className="rounded-full text-xs">
-                                  {formatDate(formation.start_date)}
-                                  {formation.end_date && ` - ${formatDate(formation.end_date)}`}
-                                </Badge>
-                              </div>
-                            </div>
-                            {formation.document_url && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-10 w-10 rounded-full shrink-0"
-                                onClick={() => handleViewPdf(formation.document_url, formation.title)}
-                              >
-                                <Eye className="h-5 w-5" />
-                              </Button>
-                            )}
-                          </div>
-                        </Card>
-                      ))}
-                      {(!rescuer.user_formations || rescuer.user_formations.length === 0) && (
-                        <div className="text-center py-12 bg-muted/50 rounded-2xl">
-                          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                          <p className="text-sm text-muted-foreground italic">Aucune formation disponible</p>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="experiences" className="mt-6">
-                    <div className="space-y-4">
-                      {rescuer.user_experiences?.map((experience: RescuerExperience) => (
-                        <Card key={experience.id} className="p-5 rounded-2xl hover:shadow-md transition-all">
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                              <h4 className="font-bold text-lg mb-1">{experience.title}</h4>
-                              <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {experience.location}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="secondary" className="rounded-full text-xs">
-                                  {formatDate(experience.start_date)}
-                                  {experience.end_date && ` - ${formatDate(experience.end_date)}`}
-                                </Badge>
-                                {experience.contract_type && (
-                                  <Badge variant="outline" className="rounded-full text-xs">
-                                    {experience.contract_type}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            {experience.document_url && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-10 w-10 rounded-full shrink-0"
-                                onClick={() => handleViewPdf(experience.document_url, experience.title)}
-                              >
-                                <Eye className="h-5 w-5" />
-                              </Button>
-                            )}
-                          </div>
-                        </Card>
-                      ))}
-                      {(!rescuer.user_experiences || rescuer.user_experiences.length === 0) && (
-                        <div className="text-center py-12 bg-muted/50 rounded-2xl">
-                          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                          <p className="text-sm text-muted-foreground italic">Aucune expérience disponible</p>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </DialogContent>
+            <RescuerProfileDialog
+              rescuer={rescuer}
+              calculateAge={calculateAge}
+              formatDate={formatDate}
+              handleViewPdf={handleViewPdf}
+              onMessage={() => {
+                setSelectedRescuer(rescuer);
+                setIsMessageDialogOpen(true);
+              }}
+            />
           </Dialog>
         ))}
       </div>
