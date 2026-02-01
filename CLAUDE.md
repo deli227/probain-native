@@ -291,7 +291,7 @@ interface ExtendedProfileContextType {
 | `SendRescuerMessageDialog.tsx` | Message vers sauveteur |
 | `PDFViewerDialog.tsx` | Visionneuse PDF inline |
 | `CourseParticipantsDialog.tsx` | Participants d'un cours |
-| `JobPostingCard.tsx` / `JobPostingDialog.tsx` | Offre d'emploi |
+| `JobPostingCard.tsx` / `JobPostingDialog.tsx` | Offre d'emploi (dark theme, badge contrat colore) |
 | `MyCourses.tsx` / `AvailableCourses.tsx` | Cours formateur |
 | `ErrorState.tsx` / `LoadingState.tsx` | Etats placeholder |
 
@@ -303,7 +303,7 @@ interface ExtendedProfileContextType {
 | `FormationForm.tsx` | Ajout/edition formation (CalendarModal) |
 | `ExperienceForm.tsx` | Ajout/edition experience (CalendarModal) |
 | `TrainerProfileForm.tsx` | Edition profil formateur (dark theme) |
-| `EstablishmentProfileForm.tsx` | Edition profil etablissement |
+| `EstablishmentProfileForm.tsx` | Edition profil etablissement (dark theme, toggles notifications) |
 | `JobPostingsForm.tsx` | Creation offre d'emploi |
 | `OrganizationForm.tsx` | Details organisme |
 | `FileUploadField.tsx` | Picker document/photo |
@@ -342,10 +342,10 @@ interface ExtendedProfileContextType {
 |---------|------|
 | `index.ts` | Barrel export |
 | `types.ts` | `ConversationContact`, `Conversation`, helpers groupement |
-| `useConversations.ts` | Hook : fetch, groupement par contact, real-time, mutations |
+| `useConversations.ts` | Hook : fetch, groupement par contact, real-time, mutations, resolution noms etablissements/formateurs |
 | `ConversationMailbox.tsx` | Orchestrateur : layout responsive, permissions par profil |
 | `ConversationList.tsx` | Panel gauche : liste des conversations + header compact |
-| `ConversationListItem.tsx` | Ligne : avatar, nom, apercu, heure, badge non-lu |
+| `ConversationListItem.tsx` | Ligne : avatar, nom, apercu, heure, badge non-lu, bouton suppression au hover |
 | `ConversationView.tsx` | Panel droit : bulles + input + separateurs de date |
 | `MessageBubble.tsx` | Bulle individuelle (envoye=droite cyan, recu=gauche glass) |
 | `ConversationHeader.tsx` | Barre haut conversation : avatar, nom, retour, suppression |
@@ -506,6 +506,8 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 - Le groupement par conversation est fait cote client (pas de `thread_id` en BDD)
 - `Mailbox.tsx` et `EstablishmentMailbox.tsx` sont des re-exports vers `ConversationMailbox`
 - Les anciens fichiers (`RescuerMailbox.tsx`, `MessageCard.tsx`, `MessageDialog.tsx`) sont obsoletes mais encore presents
+- **Resolution des noms** : les etablissements et formateurs n'ont pas de `first_name` dans `profiles`. `useConversations.ts` fait un post-fetch pour resoudre `organization_name` depuis `establishment_profiles` et `trainer_profiles` (evite d'afficher "Utilisateur")
+- **Suppression depuis la liste** : `ConversationListItem` affiche une icone poubelle au hover, `ConversationList` gere la confirmation et l'appel a `onDeleteConversation`
 
 ### Inscription par type de profil
 - **Sauveteurs** : inscription directe (email + mot de passe) via `AuthForm.tsx` → `handleRescuerSignup()`. IDs des champs : `#rescuer-email`, `#rescuer-password`, `#rescuer-password-confirm`
@@ -534,6 +536,8 @@ Named exports: `.then(m => ({ default: m.ComponentName }))`
 - Badge de la cloche: gated par `isNotificationsReady` (attend toutes les sources)
 - `notifyRecycling` default `false` pendant le chargement (pas `true`)
 - Ne PAS utiliser de toast succes dans un Sheet (Radix Dialog focus management)
+- **Badge sizing** : utiliser `h-[18px] min-w-[18px] px-1 text-[10px]` (pas de taille fixe `h-5 w-5`) pour eviter le clipping sur les nombres a 2+ chiffres (ex: 99). Applique dans `NotificationsPopup.tsx` et `NotificationBell.tsx`
+- **Toggles par profil** : les 3 profils ont des toggles dans leur formulaire d'edition, via `useNotificationPreferences(userId)` + composant `Switch`. L'etablissement a les toggles "Messages" et "Flux" dans `EstablishmentProfileForm.tsx`
 
 ---
 
@@ -575,6 +579,12 @@ Fichiers impactes : `TrainerProfileForm.tsx`, `ProfileForm.tsx`, `ImageCropDialo
 
 ### Card bg-card blanc invisible sur fond sombre
 Le composant `Card` de Shadcn/UI applique `bg-card` (blanc pur) par defaut. Sur un fond sombre, si le texte est `text-white`, tout devient invisible. Le gradient semi-transparent (`from-white/15 to-white/5`) ne masque pas le blanc. **Solution** : ajouter `bg-transparent` au `Card` pour neutraliser `bg-card`. Ne PAS modifier `card.tsx`.
+
+### Shadcn Button variant="outline" invisible sur fond sombre
+Le `Button` de Shadcn avec `variant="outline"` applique `bg-background` (blanc) et `text-foreground` (noir) par defaut. Sur un fond sombre (`bg-[#0a1628]`), meme si on ajoute `text-white/70`, la specificite de Shadcn peut l'overrider. **Solution** : utiliser un `<button>` natif avec des classes Tailwind explicites (`bg-white/10 text-white/70 border-white/20`) au lieu du `Button` Shadcn sur les fonds sombres. Meme probleme pour le bouton X de fermeture de `DialogContent` : ajouter `[&>button]:text-white/70 [&>button]:hover:text-white` au `DialogContent` pour styler le bouton enfant.
+
+### Shadcn DialogContent double bouton fermeture
+Le composant `DialogContent` de Shadcn/UI genere automatiquement un bouton X de fermeture (`DialogPrimitive.Close`) en haut a droite. Ne PAS ajouter un `<DialogClose>` manuel dans le contenu du dialog, sinon deux boutons X apparaissent. **Fichier reference** : `src/components/ui/dialog.tsx` (lignes 44-48).
 
 ---
 
@@ -684,7 +694,7 @@ pas de dates specifiques            → vert (disponible par defaut)
 - Composant `ChangePasswordSection` ajoute aux 3 profils :
   - Sauveteur : `ProfileForm.tsx` (dark mode)
   - Formateur : `TrainerProfileForm.tsx` (dark mode)
-  - Etablissement : `EstablishmentProfileForm.tsx` (light mode)
+  - Etablissement : `EstablishmentProfileForm.tsx` (dark mode)
 - Prop `darkMode` pour adapter le theme
 - Independant du formulaire principal (bouton propre, pas de submit form)
 - **AlertDialog de confirmation** avant le changement effectif (demande validation utilisateur)
@@ -926,6 +936,95 @@ formation.places && !formation.places.toLowerCase().includes('consulter')
 Ce filtre est applique dans **4 endroits** (carte + dialog, x2 composants) :
 - `src/components/formations/SSSFormationsList.tsx` : `FormationCard` (carte + dialog)
 - `src/pages/Training.tsx` : `FormationCardLocal` (carte + dialog)
+
+---
+
+## Onglet Sauveteurs (etablissement) — Filtres et dialog profil
+
+### Filtres
+- **Canton** : `Select` dropdown avec les 26 cantons suisses (`CANTONS_SUISSES`), filtre par ID 2 lettres (ex: "GE", pas "Geneve"). Remplace l'ancien `Input` texte qui ne matchait jamais
+- **Brevets** : les valeurs du filtre correspondent aux titres en BDD (`"Base Pool"`, `"Plus Pool"`, `"Pro Pool"`, `"BLS-AED"`, `"Module Lac"`, `"Module Riviere"`, `"Expert Pool"`, `"Expert BLS-AED"`, `"Expert Lac"`, `"Expert Riviere"`). Ne PAS prefixer par "Brevet"
+- **Disponibilite** : filtre base sur `is_available_today` (calcule cote client a partir de `availability_status`, `is_always_available` et dates dans `availabilities`)
+
+### Dialog profil sauveteur (dark theme)
+Le dialog qui s'ouvre quand un etablissement clique sur un sauveteur utilise le dark theme de l'app :
+- Fond `bg-[#0a1628]` + `border-white/10`
+- Header gradient `from-primary via-probain-blue to-primary-dark`
+- Avatar avec fallback gradient cyan/bleu, pastille disponibilite
+- Badges glassmorphism (`bg-white/10`, `border-white/10`)
+- Cartes formations/experiences en `bg-white/10 backdrop-blur-xl`
+- Onglets sombres (`bg-white/10`, actif `bg-white/15`)
+- Bouton "Envoyer un message" gradient cyan-bleu
+- Bouton X fermeture : `[&>button]:text-white/70`
+- **Composant extrait** : `RescuerProfileDialog` (dans le meme fichier, au-dessus de `EstablishmentRescuers`)
+
+### Disponibilites "Voir plus/moins"
+Quand un sauveteur a beaucoup de dates de disponibilite specifiques, seules les 6 premieres sont affichees. Un bouton "Voir X dates de plus" / "Voir moins" permet de toggler l'affichage complet.
+- Constante `MAX_VISIBLE_AVAILABILITIES = 6`
+- State local `showAllAvailabilities` dans `RescuerProfileDialog`
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `src/pages/EstablishmentRescuers.tsx` | Page Sauveteurs + `RescuerProfileDialog` + filtres |
+| `src/utils/swissCantons.ts` | `CANTONS_SUISSES` (26 cantons, value=ID, label=nom) |
+
+---
+
+## JobPostingDialog — Dark theme
+
+### Probleme initial
+Le dialog d'annonce avait 3 bugs :
+1. **Double bouton X** : un `<DialogClose>` manuel + le X auto de `DialogContent` → deux croix
+2. **Style light** sur fond sombre : couleurs par defaut de Shadcn (blanc/noir)
+3. **Bouton "Partager" invisible** : `Button variant="outline"` applique `bg-background` (blanc)
+
+### Fix
+- Suppression du `<DialogClose>` manuel (le `DialogContent` gere deja le X)
+- Restyle complet dark theme : `bg-[#0a1628]`, `border-white/10`, `text-white`
+- Badge colore par type de contrat (meme pattern que `JobPostingCard`)
+- Prose inversee (`prose-invert`) pour le HTML sanitize
+- Bouton X rendu visible : `[&>button]:text-white/70 [&>button]:hover:text-white`
+- Bouton "Partager" : remplace `Button variant="outline"` par `<button>` natif avec `bg-white/10 text-white/70`
+
+### Fichier
+`src/components/profile/JobPostingDialog.tsx`
+
+---
+
+## Profil etablissement — Completude et notifications
+
+### Checklist de completude
+Les items "Site web" et "Reseaux sociaux" ont ete retires de la checklist de completude du profil etablissement. Ces champs restent editables mais ne sont plus requis pour le pourcentage de completude.
+
+**Fichier** : `src/components/profile/EstablishmentProfile.tsx` (array `items` de `ProfileCompletion`)
+
+### Toggles notifications
+La page d'edition du profil etablissement inclut une section "Notifications" avec deux toggles Switch :
+- **Messages** (`notify_messages`) : notifications pour les nouveaux messages
+- **Flux** (`notify_formations`) : notifications pour les nouveaux posts du flux
+
+Ces toggles utilisent le hook `useNotificationPreferences(userId)` avec optimistic updates. Le `userId` est recupere via `supabase.auth.getSession()` a l'interieur du formulaire.
+
+**Fichier** : `src/components/profile/forms/EstablishmentProfileForm.tsx`
+
+---
+
+## Suppression d'annonce — Refresh UI immediat
+
+### Probleme
+Quand un etablissement supprimait une annonce depuis l'onglet profil, la liste ne se mettait pas a jour immediatement. Le `AlertDialogAction` de Radix ferme automatiquement le dialog au `onClick`, AVANT que la mutation async ne s'execute.
+
+### Fix
+- `e.preventDefault()` sur le `AlertDialogAction` pour empecher la fermeture prematuree
+- Le dialog ne se ferme qu'une fois la suppression terminee (`isDeleting` gere le state)
+- Ajout de `queryClient.invalidateQueries({ queryKey: ['establishment-stats'] })` dans les 3 mutations (add, update, delete) de `useJobPostings` pour mettre a jour les compteurs en temps reel
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `src/components/profile/EstablishmentJobPostings.tsx` | `e.preventDefault()` sur AlertDialogAction |
+| `src/hooks/use-job-postings.ts` | Invalidation `establishment-stats` dans onSuccess |
 
 ---
 
