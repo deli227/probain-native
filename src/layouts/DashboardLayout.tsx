@@ -31,8 +31,8 @@ export const DashboardLayout = ({ children, profileType }: DashboardLayoutProps)
       {/* Sidebar - visible uniquement sur desktop */}
       <Sidebar profileType={profileType} />
 
-      {/* Contenu principal */}
-      <div className="pb-20 md:pb-0 md:pl-64 relative z-10">
+      {/* Contenu principal — pb-28 (112px) couvre BottomTabBar (76px) + safe-area (jusqu'a 34px) */}
+      <div className="pb-28 md:pb-0 md:pl-64 relative z-10">
         <div className="md:max-w-[1400px] md:mx-auto">
           {children}
         </div>

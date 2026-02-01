@@ -187,7 +187,7 @@ App.tsx
 ```
 Mobile (< 768px):
   MobileHeader (56px sticky top)
-  Content (pb-20 pour tab bar)
+  Content (pb-28 pour tab bar + safe-area)
   BottomTabBar (76px fixed bottom, safe-area)
 
 Desktop (>= 768px):
@@ -575,7 +575,8 @@ Tout overlay, modal ou dialog avec des boutons d'action en bas (`fixed bottom-0`
 - Boutons fixes : `bottom-[100px] md:bottom-0`
 - Padding bas de conteneur : `pb-24 md:pb-4` ou `max(6rem, calc(env(safe-area-inset-bottom) + 5rem))`
 - Formulaires scrollables : `pb-44 md:pb-24` si un bouton fixed est present
-Fichiers impactes : `TrainerProfileForm.tsx`, `ProfileForm.tsx`, `ImageCropDialog.tsx`
+- DashboardLayout : `pb-28 md:pb-0` (112px) couvre BottomTabBar (76px) + safe-area (jusqu'a 34px sur iPhone 14 Pro)
+Fichiers impactes : `DashboardLayout.tsx`, `TrainerProfileForm.tsx`, `ProfileForm.tsx`, `ImageCropDialog.tsx`
 
 ### Card bg-card blanc invisible sur fond sombre
 Le composant `Card` de Shadcn/UI applique `bg-card` (blanc pur) par defaut. Sur un fond sombre, si le texte est `text-white`, tout devient invisible. Le gradient semi-transparent (`from-white/15 to-white/5`) ne masque pas le blanc. **Solution** : ajouter `bg-transparent` au `Card` pour neutraliser `bg-card`. Ne PAS modifier `card.tsx`.
@@ -1047,8 +1048,20 @@ Les utilisateurs de tous les profils peuvent repondre a un commentaire specifiqu
 - `cancelReply(postId)` : clear replyingTo + clear input
 - Pas de modification BDD necessaire (mentions textuelles uniquement)
 
-### Fichier
-`src/pages/Flux.tsx`
+### Commentaires optimistes (pas de flash de page)
+L'ajout d'un commentaire utilise une insertion optimiste locale :
+1. Un objet `FluxComment` avec `id: optimistic-${Date.now()}` est insere dans le state local immediatement
+2. Le vrai `addComment()` est appele en arriere-plan
+3. En cas de succes, `fetchComments()` est appele en background pour synchroniser le vrai ID
+4. En cas d'echec, le commentaire optimiste est retire du state local
+
+Le nom et l'avatar de l'utilisateur courant sont derives du `ProfileContext` (`rescuerProfile`, `trainerProfile`, `establishmentProfile`).
+
+**Important** : le `addCommentMutation.onSuccess` dans `useFlux.ts` ne contient PAS de toast de succes. Le toast creait un portail DOM hors du flux, causant une perturbation visuelle (meme piege Radix Dialog + Toast documente plus haut). Le commentaire visible dans la liste suffit comme feedback.
+
+### Fichiers
+- `src/pages/Flux.tsx` — UI replies, optimistic insertion, @mentions
+- `src/hooks/useFlux.ts` — mutation sans toast succes (erreur uniquement)
 
 ---
 
@@ -1074,6 +1087,39 @@ Les sauveteurs ne pouvaient pas lire la description complete d'une offre d'emplo
 
 ### Fichier
 `src/pages/Jobs.tsx`
+
+---
+
+## Audit BottomTabBar — padding-bottom DashboardLayout
+
+### Probleme
+Le `DashboardLayout.tsx` utilisait `pb-20` (80px) sur le wrapper du contenu principal. La BottomTabBar fait 76px + `env(safe-area-inset-bottom)` (jusqu'a 34px sur iPhone 14 Pro). Sur les appareils avec safe-area, les 80px de padding ne couvraient pas la hauteur totale de la BottomTabBar (~110px), laissant ~30px de contenu potentiellement caches.
+
+### Fix
+`pb-20` remplace par `pb-28` (112px) dans `DashboardLayout.tsx`. 112px couvre 76px (tab bar) + 34px (safe-area max). Les pages qui ajoutent leur propre padding (`Profile.tsx`, `Flux.tsx`, `EstablishmentRescuers.tsx` avec `pb-20 md:pb-6`) gardent du padding supplementaire au-dessus du layout.
+
+### Audit complet des pages (3 profils)
+
+| Page | Padding propre | + Layout `pb-28` | Statut |
+|------|---------------|-------------------|--------|
+| Profile.tsx | `pb-20 md:pb-6` | 192px total | OK |
+| Jobs.tsx | aucun | 112px (layout) | OK |
+| Training.tsx | aucun | 112px (layout) | OK |
+| Flux.tsx | `pb-20 md:pb-6` | 192px total | OK |
+| Settings.tsx | aucun | 112px (layout) | OK |
+| EstablishmentRescuers.tsx | `pb-20 md:pb-6` | 192px total | OK |
+| TrainerProfile.tsx | via sous-composants | 112px+ | OK |
+| EstablishmentProfile.tsx | via sous-composants | 112px+ | OK |
+| Mailbox (mobile) | `h-[calc(100vh-56px-76px)]` | hauteur calculee | OK |
+| ProfileForm (Sheet) | `pb-44 md:pb-24` + `bottom-[100px]` | dedies | OK |
+| TrainerProfileForm (Sheet) | `pb-44 md:pb-24` + `bottom-[100px]` | dedies | OK |
+| EstablishmentProfileForm (Sheet) | `pb-44 md:pb-24` + `bottom-[100px]` | dedies | OK |
+| AddFormation (overlay) | `pb-24` + `h-20` safe-area | 176px total | OK |
+| AddExperience (overlay) | `pb-32` + `h-20` safe-area | 208px total | OK |
+| ImageCropDialog | `fixed inset-0 z-[100]` + safe-area padding | dedie | OK |
+
+### Fichier
+`src/layouts/DashboardLayout.tsx`
 
 ---
 
