@@ -1,7 +1,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Upload, Phone } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,10 @@ export const RescuerProfileHeader = ({
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { toast } = useToast();
+
+  // Refs pour les inputs file — places hors du Portal Radix pour Android WebView (Despia)
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -124,6 +128,14 @@ export const RescuerProfileHeader = ({
   const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
     onFileSelected: handleAvatarUpload,
   });
+
+  const handleMobileFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      handleAvatarUpload(e);
+      setPickerOpen(false);
+    }
+    e.target.value = '';
+  }, [handleAvatarUpload]);
 
   return (
     <div className="relative overflow-hidden">
@@ -262,7 +274,7 @@ export const RescuerProfileHeader = ({
       {/* Desktop: input file cache pour usePhotoPicker */}
       <input ref={desktopInputRef} type="file" accept="image/*" onChange={handleFileSelected} disabled={uploading} className="hidden" />
 
-      {/* Mobile: PhotoPickerSheet au-dessus de la BottomTabBar */}
+      {/* Mobile: PhotoPickerSheet avec refs externes (Android WebView fix) */}
       {onAvatarUpdate && (
         <PhotoPickerSheet
           open={pickerOpen}
@@ -270,8 +282,14 @@ export const RescuerProfileHeader = ({
           onFileSelected={handleAvatarUpload}
           uploading={uploading}
           title="Photo de profil"
+          externalCameraRef={cameraRef}
+          externalGalleryRef={galleryRef}
         />
       )}
+
+      {/* Inputs file a la racine du composant (hors Portal Radix) pour Android WebView */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="user" onChange={handleMobileFileChange} disabled={uploading} className="hidden" aria-hidden="true" />
+      <input ref={galleryRef} type="file" accept="image/*" onChange={handleMobileFileChange} disabled={uploading} className="hidden" aria-hidden="true" />
     </div>
   );
 };
