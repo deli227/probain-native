@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, ChevronLeft, Upload, Loader2 } from "lucide-react";
+import { Camera, ChevronLeft, Loader2 } from "lucide-react";
 import { usePhotoPicker } from "@/hooks/usePhotoPicker";
-import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
 
 interface RescuerPhotoProps {
   avatarUrl: string;
@@ -23,7 +22,7 @@ export const RescuerPhoto = ({
   onNext,
   onBack,
 }: RescuerPhotoProps) => {
-  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+  const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
     onFileSelected: onAvatarUpload,
   });
 
@@ -128,14 +127,6 @@ export const RescuerPhoto = ({
         </Button>
       </div>
 
-      <PhotoPickerSheet
-        open={isPickerOpen}
-        onOpenChange={setPickerOpen}
-        onFileSelected={handleFileSelected}
-        uploading={uploading}
-        cameraFacing="user"
-        title="Photo de profil"
-      />
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ImagePlus, ChevronLeft, Upload } from "lucide-react";
 import { usePhotoPicker } from "@/hooks/usePhotoPicker";
-import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
 
 interface TrainerLogoProps {
   logoUrl: string;
@@ -20,7 +19,7 @@ export const TrainerLogo = ({
   onNext,
   onBack,
 }: TrainerLogoProps) => {
-  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+  const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
     onFileSelected: onLogoUpload,
   });
 
@@ -113,14 +112,6 @@ export const TrainerLogo = ({
         </Button>
       </div>
 
-      <PhotoPickerSheet
-        open={isPickerOpen}
-        onOpenChange={setPickerOpen}
-        onFileSelected={handleFileSelected}
-        uploading={uploading}
-        cameraFacing="environment"
-        title="Logo de l'organisme"
-      />
     </div>
   );
 };

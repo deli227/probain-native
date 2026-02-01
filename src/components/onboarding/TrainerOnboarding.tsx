@@ -6,7 +6,7 @@ import { Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CANTONS_SUISSES, OnboardingFormData } from "./OnboardingWizard";
 import { usePhotoPicker } from "@/hooks/usePhotoPicker";
-import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
+
 import {
   Select,
   SelectContent,
@@ -31,7 +31,7 @@ export const TrainerOnboarding = ({
 }: TrainerOnboardingProps) => {
   const [step, setStep] = useState(0);
 
-  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+  const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
     onFileSelected: handleAvatarUpload,
   });
 
@@ -111,14 +111,6 @@ export const TrainerOnboarding = ({
               <p className="text-sm text-gray-500">
                 Cliquez sur l'image pour télécharger un logo
               </p>
-              <PhotoPickerSheet
-                open={isPickerOpen}
-                onOpenChange={setPickerOpen}
-                onFileSelected={handleFileSelected}
-                uploading={uploading}
-                cameraFacing="environment"
-                title="Logo"
-              />
             </div>
           </div>
         );

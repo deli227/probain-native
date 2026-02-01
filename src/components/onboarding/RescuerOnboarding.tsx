@@ -9,7 +9,7 @@ import { CalendarIcon, Upload, ChevronLeft, ChevronRight, Check, X } from "lucid
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CANTONS_SUISSES, OnboardingFormData } from "./OnboardingWizard";
 import { usePhotoPicker } from "@/hooks/usePhotoPicker";
-import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
+
 import {
   Select,
   SelectContent,
@@ -43,7 +43,7 @@ export const RescuerOnboarding = ({
     formData.birthDate ? new Date(formData.birthDate) : new Date(1990, 0, 1)
   );
 
-  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+  const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
     onFileSelected: handleAvatarUpload,
   });
 
@@ -300,14 +300,6 @@ export const RescuerOnboarding = ({
               <p className="text-sm text-gray-500">
                 Cliquez sur l'image pour télécharger une photo
               </p>
-              <PhotoPickerSheet
-                open={isPickerOpen}
-                onOpenChange={setPickerOpen}
-                onFileSelected={handleFileSelected}
-                uploading={uploading}
-                cameraFacing="user"
-                title="Photo de profil"
-              />
             </div>
           </div>
         );

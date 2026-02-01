@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { usePhotoPicker } from "@/hooks/usePhotoPicker";
-import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
+
 
 interface ProfileHeaderProps {
   firstName: string;
@@ -124,7 +124,7 @@ export const ProfileHeader = ({
     }
   };
 
-  const { isPickerOpen, openPicker, setPickerOpen, desktopInputRef, handleFileSelected } = usePhotoPicker({
+  const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
     onFileSelected: handleAvatarUpload,
   });
 
@@ -255,16 +255,7 @@ export const ProfileHeader = ({
         </div>
       </div>
 
-      {onAvatarUpdate && (
-        <PhotoPickerSheet
-          open={isPickerOpen}
-          onOpenChange={setPickerOpen}
-          onFileSelected={handleFileSelected}
-          uploading={uploading}
-          cameraFacing="user"
-          title="Photo de profil"
-        />
-      )}
     </div>
   );
 };
+

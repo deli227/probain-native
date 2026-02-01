@@ -1,22 +1,18 @@
-import { useState, useRef, useCallback } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useRef, useCallback } from 'react';
 
 interface UsePhotoPickerOptions {
   onFileSelected: (event: React.ChangeEvent<HTMLInputElement>) => void | Promise<void>;
 }
 
 export const usePhotoPicker = ({ onFileSelected }: UsePhotoPickerOptions) => {
-  const [isPickerOpen, setPickerOpen] = useState(false);
-  const isMobile = useIsMobile();
-  const desktopInputRef = useRef<HTMLInputElement>(null);
+  // On declenche directement l'input file natif sur mobile et desktop.
+  // Sur mobile, le systeme affiche automatiquement le choix camera/galerie
+  // via le picker natif du telephone (pas besoin de PhotoPickerSheet custom).
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const openPicker = useCallback(() => {
-    if (isMobile) {
-      setPickerOpen(true);
-    } else {
-      desktopInputRef.current?.click();
-    }
-  }, [isMobile]);
+    inputRef.current?.click();
+  }, []);
 
   const handleFileSelected = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,11 +22,8 @@ export const usePhotoPicker = ({ onFileSelected }: UsePhotoPickerOptions) => {
   );
 
   return {
-    isPickerOpen,
     openPicker,
-    setPickerOpen,
-    isMobile,
-    desktopInputRef,
+    desktopInputRef: inputRef,
     handleFileSelected,
   };
 };
