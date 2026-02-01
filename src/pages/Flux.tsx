@@ -174,7 +174,12 @@ const Flux = () => {
               {/* Likes & Comments Count */}
               <div className="px-4 py-2 border-t border-gray-100 md:border-white/10 flex items-center justify-between text-sm text-gray-500 md:text-white/50">
                 <span>{post.likes_count} j'aime{post.likes_count > 1 ? 's' : ''}</span>
-                <span>{post.comments_count} commentaire{post.comments_count > 1 ? 's' : ''}</span>
+                <span
+                  className="cursor-pointer hover:underline"
+                  onClick={() => handleToggleComments(post.id)}
+                >
+                  {post.comments_count} commentaire{post.comments_count > 1 ? 's' : ''}
+                </span>
               </div>
 
               {/* Actions */}

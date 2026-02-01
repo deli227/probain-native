@@ -167,7 +167,7 @@ async function fetchCommentsViaRpc(postId: string): Promise<FluxComment[]> {
     (commentsData || []).map(async (comment) => {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('first_name, last_name')
+        .select('first_name, last_name, avatar_url')
         .eq('id', comment.user_id)
         .single();
 
@@ -177,14 +177,29 @@ async function fetchCommentsViaRpc(postId: string): Promise<FluxComment[]> {
         .eq('id', comment.user_id)
         .single();
 
+      const { data: trainerData } = await supabase
+        .from('trainer_profiles')
+        .select('organization_name, avatar_url')
+        .eq('id', comment.user_id)
+        .single();
+
+      const { data: establishmentData } = await supabase
+        .from('establishment_profiles')
+        .select('organization_name, avatar_url')
+        .eq('id', comment.user_id)
+        .single();
+
       const firstName = rescuerData?.first_name || profileData?.first_name || '';
       const lastName = rescuerData?.last_name || profileData?.last_name || '';
+      const rescuerName = `${firstName} ${lastName}`.trim();
+      const userName = rescuerName || trainerData?.organization_name || establishmentData?.organization_name || 'Utilisateur';
+      const avatarUrl = rescuerData?.avatar_url || trainerData?.avatar_url || establishmentData?.avatar_url || profileData?.avatar_url;
 
       return {
         ...comment,
         created_at: comment.created_at ?? '',
-        user_name: `${firstName} ${lastName}`.trim() || 'Utilisateur',
-        user_avatar: rescuerData?.avatar_url || undefined,
+        user_name: userName,
+        user_avatar: avatarUrl || undefined,
       };
     }),
   );
