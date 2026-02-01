@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, ChevronLeft, Loader2 } from "lucide-react";
-import { usePhotoPicker } from "@/hooks/usePhotoPicker";
+import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
 
 interface RescuerPhotoProps {
   avatarUrl: string;
@@ -22,9 +23,7 @@ export const RescuerPhoto = ({
   onNext,
   onBack,
 }: RescuerPhotoProps) => {
-  const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
-    onFileSelected: onAvatarUpload,
-  });
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
     <div className="flex-1 flex flex-col px-6 pt-4 animate-slide-up">
@@ -66,8 +65,8 @@ export const RescuerPhoto = ({
           <div
             role="button"
             tabIndex={0}
-            onClick={openPicker}
-            onKeyDown={(e) => e.key === 'Enter' && openPicker()}
+            onClick={() => setPickerOpen(true)}
+            onKeyDown={(e) => e.key === 'Enter' && setPickerOpen(true)}
             className={`
               absolute inset-0 flex flex-col items-center justify-center
               bg-black/50 rounded-full cursor-pointer
@@ -86,15 +85,6 @@ export const RescuerPhoto = ({
               </>
             )}
           </div>
-          {/* Desktop fallback input */}
-          <input
-            ref={desktopInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelected}
-            disabled={uploading}
-            className="hidden"
-          />
 
           {/* Ring animé - pointer-events-none pour ne pas bloquer les clics */}
           <div className="absolute -inset-2 border-2 border-white/20 rounded-full animate-pulse pointer-events-none" />
@@ -127,6 +117,14 @@ export const RescuerPhoto = ({
         </Button>
       </div>
 
+      {/* PhotoPickerSheet - s'affiche au-dessus de tout */}
+      <PhotoPickerSheet
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onFileSelected={onAvatarUpload}
+        uploading={uploading}
+        title="Ajouter une photo de profil"
+      />
     </div>
   );
 };

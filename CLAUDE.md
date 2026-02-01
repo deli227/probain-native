@@ -691,6 +691,23 @@ Aucun des handlers d'upload d'avatar ne validait la taille du fichier. Un fichie
 ### Bug 3 : Options de cache manquantes sur l'upload onboarding
 Les 3 handlers d'upload dans les flows d'onboarding n'utilisaient pas `cacheControl` ni `upsert`, causant des doublons dans le storage si l'utilisateur re-uploadait. **Fix** : ajout de `{ cacheControl: '3600', upsert: true }` aux 3 fichiers d'onboarding.
 
+### Bug 4 : Input file pas reset apres selection
+`usePhotoPicker.ts` ne remettait pas `event.target.value = ''` apres la selection d'un fichier. Si l'upload echouait et que l'utilisateur re-selectionnait le meme fichier, le browser ne declenchait pas `onChange` (optimisation navigateur). **Fix** : ajout de `event.target.value = ''` dans `handleFileSelected` de `usePhotoPicker.ts`. Le `PhotoPickerSheet` faisait deja ce reset correctement.
+
+### Bug 5 : Menu natif camera/galerie masque par le footer sur mobile (onboarding)
+`RescuerPhoto.tsx` utilisait `usePhotoPicker` + un `<input type="file">` cache. Sur mobile, cela declenchait le menu natif de l'OS (choix camera/galerie) qui apparaissait en bas de l'ecran et etait masque par le bouton "CONTINUER/PASSER". **Fix** : remplacement par `PhotoPickerSheet` (bottom sheet Radix, z-50, portail DOM) qui s'affiche proprement au-dessus de tout avec deux boutons explicites "Prendre une photo" / "Choisir depuis la galerie".
+
+### Pattern d'upload photo — Regle
+
+- **Onboarding (mobile)** : toujours utiliser `PhotoPickerSheet` (bottom sheet avec boutons camera/galerie). Ne PAS utiliser `usePhotoPicker` + input cache car le menu natif de l'OS est masque par les boutons de navigation.
+- **Profil (post-onboarding)** : `usePhotoPicker` est OK car le layout est different (pas de bouton plein ecran en bas).
+- **Reset input** : `usePhotoPicker.ts` reset automatiquement `event.target.value = ''` apres chaque selection.
+- **Fichiers concernes** :
+  - `src/components/onboarding/steps/RescuerPhoto.tsx` → `PhotoPickerSheet`
+  - `src/components/shared/PhotoPickerSheet.tsx` → Sheet Radix (camera + galerie + reset input)
+  - `src/hooks/usePhotoPicker.ts` → Hook simple (input file + reset)
+  - `src/components/profile/RescuerProfileHeader.tsx` → `usePhotoPicker` (profil)
+
 ---
 
 ## Swipe Navigation Mobile

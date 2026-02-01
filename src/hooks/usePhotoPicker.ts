@@ -17,6 +17,8 @@ export const usePhotoPicker = ({ onFileSelected }: UsePhotoPickerOptions) => {
   const handleFileSelected = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       onFileSelected(event);
+      // Reset input pour permettre la re-selection du meme fichier
+      event.target.value = '';
     },
     [onFileSelected]
   );
