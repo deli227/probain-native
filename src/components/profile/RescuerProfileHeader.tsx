@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { usePhotoPicker } from "@/hooks/usePhotoPicker";
+import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
 
 
 interface RescuerProfileHeaderProps {
@@ -44,6 +45,7 @@ export const RescuerProfileHeader = ({
   actionButton
 }: RescuerProfileHeaderProps) => {
   const [uploading, setUploading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const { toast } = useToast();
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,12 +147,11 @@ export const RescuerProfileHeader = ({
             <AvatarFallback className="text-lg bg-primary-light rounded-full">{`${firstName[0]}${lastName[0]}`}</AvatarFallback>
           </Avatar>
           {onAvatarUpdate && (
-            <div role="button" tabIndex={0} onClick={openPicker} onKeyDown={(e) => e.key === 'Enter' && openPicker()}
+            <div role="button" tabIndex={0} onClick={() => setPickerOpen(true)} onKeyDown={(e) => e.key === 'Enter' && setPickerOpen(true)}
               className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 rounded-full z-10">
               <Upload className="w-8 h-8 text-white" />
             </div>
           )}
-          <input ref={desktopInputRef} type="file" accept="image/*" onChange={handleFileSelected} disabled={uploading} className="hidden" />
         </div>
 
         <h1 className="text-3xl font-bold tracking-tight text-white text-center">
@@ -258,6 +259,19 @@ export const RescuerProfileHeader = ({
         </div>
       </div>
 
+      {/* Desktop: input file cache pour usePhotoPicker */}
+      <input ref={desktopInputRef} type="file" accept="image/*" onChange={handleFileSelected} disabled={uploading} className="hidden" />
+
+      {/* Mobile: PhotoPickerSheet au-dessus de la BottomTabBar */}
+      {onAvatarUpdate && (
+        <PhotoPickerSheet
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          onFileSelected={handleAvatarUpload}
+          uploading={uploading}
+          title="Photo de profil"
+        />
+      )}
     </div>
   );
 };
