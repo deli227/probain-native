@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Trash2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Conversation } from "./types";
@@ -7,6 +8,7 @@ interface ConversationListItemProps {
   conversation: Conversation;
   isSelected: boolean;
   onClick: () => void;
+  onDelete?: () => void;
 }
 
 function formatMessageDate(dateStr: string): string {
@@ -20,6 +22,7 @@ export const ConversationListItem = ({
   conversation,
   isSelected,
   onClick,
+  onDelete,
 }: ConversationListItemProps) => {
   const { contact, lastMessage, unreadCount } = conversation;
   const initials = `${(contact.first_name || "U")[0]}${(contact.last_name || "")[0] || ""}`;
@@ -30,15 +33,23 @@ export const ConversationListItem = ({
     : lastMessage.content;
 
   return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 transition-all text-left ${
+    <div
+      className={`group w-full flex items-center gap-3 px-4 py-3 transition-all text-left cursor-pointer ${
         isSelected
           ? "bg-white/15 border-l-3 border-l-cyan-500"
           : unreadCount > 0
             ? "bg-white/10 hover:bg-white/15"
             : "hover:bg-white/5"
       }`}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       {/* Avatar */}
       <div className="relative flex-shrink-0">
@@ -71,9 +82,23 @@ export const ConversationListItem = ({
           >
             {contact.first_name} {contact.last_name}
           </span>
-          <span className="text-[11px] text-white/40 flex-shrink-0">
-            {formatMessageDate(lastMessage.created_at)}
-          </span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[11px] text-white/40">
+              {formatMessageDate(lastMessage.created_at)}
+            </span>
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-1 rounded-full text-white/0 group-hover:text-white/40 hover:!text-red-400 hover:bg-red-500/10 transition-all focus:outline-none focus-visible:outline-none"
+                aria-label="Supprimer la conversation"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
         <p
           className={`text-xs mt-0.5 truncate ${
@@ -85,6 +110,6 @@ export const ConversationListItem = ({
           {preview}
         </p>
       </div>
-    </button>
+    </div>
   );
 };

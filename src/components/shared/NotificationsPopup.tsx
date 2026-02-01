@@ -111,7 +111,7 @@ export const NotificationsPopup = ({
         <button className="p-2 rounded-full hover:bg-primary-light relative text-white">
           <Bell className="h-5 w-5 text-white" />
           {isNotificationsReady && totalNotifications > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-yellow-400 text-primary text-xs font-bold rounded-full border-2 border-primary">
+            <Badge className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] px-1 flex items-center justify-center bg-yellow-400 text-primary text-[10px] font-bold rounded-full border-2 border-primary leading-none">
               {totalNotifications > 99 ? '99+' : totalNotifications}
             </Badge>
           )}

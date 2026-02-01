@@ -103,6 +103,7 @@ export const ConversationMailbox = () => {
               conversations={conversations}
               selectedContactId={null}
               onSelectConversation={handleSelectConversation}
+              onDeleteConversation={handleDeleteConversation}
               unreadTotal={unreadTotal}
             />
           )}
@@ -139,6 +140,7 @@ export const ConversationMailbox = () => {
               conversations={conversations}
               selectedContactId={selectedContactId}
               onSelectConversation={handleSelectConversation}
+              onDeleteConversation={handleDeleteConversation}
               unreadTotal={unreadTotal}
             />
           )}

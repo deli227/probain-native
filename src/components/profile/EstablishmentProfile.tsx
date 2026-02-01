@@ -241,8 +241,6 @@ const EstablishmentProfile = () => {
                 { label: "Nom organisation", completed: !!establishmentProfile.organization_name },
                 { label: "Adresse", completed: !!establishmentProfile.street || !!establishmentProfile.city_zip },
                 { label: "Canton", completed: !!establishmentProfile.canton },
-                { label: "Site web", completed: !!establishmentProfile.website },
-                { label: "Réseaux sociaux", completed: !!establishmentProfile.facebook_url || !!establishmentProfile.instagram_url || !!establishmentProfile.linkedin_url },
               ]}
               className="mt-6"
             />

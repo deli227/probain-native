@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Mail } from "lucide-react";
 import { ConversationListItem } from "./ConversationListItem";
+import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { EmptyState } from "./EmptyState";
 import type { Conversation } from "./types";
 
@@ -7,6 +9,7 @@ interface ConversationListProps {
   conversations: Conversation[];
   selectedContactId: string | null;
   onSelectConversation: (contactId: string) => void;
+  onDeleteConversation?: (messageIds: string[]) => void;
   unreadTotal: number;
 }
 
@@ -14,8 +17,19 @@ export const ConversationList = ({
   conversations,
   selectedContactId,
   onSelectConversation,
+  onDeleteConversation,
   unreadTotal,
 }: ConversationListProps) => {
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (deleteTarget && onDeleteConversation) {
+      const messageIds = deleteTarget.messages.map((m) => m.id);
+      onDeleteConversation(messageIds);
+      setDeleteTarget(null);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header de la liste */}
@@ -53,10 +67,18 @@ export const ConversationList = ({
               conversation={conversation}
               isSelected={conversation.contact.id === selectedContactId}
               onClick={() => onSelectConversation(conversation.contact.id)}
+              onDelete={onDeleteConversation ? () => setDeleteTarget(conversation) : undefined}
             />
           ))
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        type="conversation"
+      />
     </div>
   );
 };

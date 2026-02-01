@@ -1,14 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { useState, useEffect } from "react";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, MapPin, Building2, Globe, Lock, Save } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, MapPin, Building2, Globe, Lock, Save, Bell } from "lucide-react";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
 import { CANTONS_SUISSES } from "@/utils/swissCantons";
+import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
+import { supabase } from "@/integrations/supabase/client";
 
 const establishmentFormSchema = z.object({
   organization: z.object({
@@ -38,6 +42,15 @@ export const EstablishmentProfileForm = ({
   defaultValues,
   isSubmitting = false
 }: EstablishmentProfileFormProps) => {
+  // Fetch userId pour les preferences de notifications
+  const [userId, setUserId] = useState<string | undefined>();
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUserId(session.user.id);
+    });
+  }, []);
+  const { preferences, loading: prefsLoading, updatePreference } = useNotificationPreferences(userId);
+
   const form = useForm<EstablishmentFormValues>({
     resolver: zodResolver(establishmentFormSchema),
     defaultValues: defaultValues || {
@@ -237,6 +250,50 @@ export const EstablishmentProfileForm = ({
                 </FormItem>
               )}
             />
+          </div>
+
+          {/* Section Notifications */}
+          <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-5 border border-white/10 shadow-xl space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-yellow-500/30 flex items-center justify-center">
+                <Bell className="h-4 w-4 text-yellow-400" />
+              </div>
+              <span className="font-semibold text-white">Notifications</span>
+            </div>
+
+            {prefsLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 text-white/50 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Toggle messages */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white font-medium">Messages</p>
+                    <p className="text-xs text-white/40">Notifications pour les nouveaux messages</p>
+                  </div>
+                  <Switch
+                    checked={preferences?.notify_messages ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_messages', checked)}
+                  />
+                </div>
+
+                <div className="border-t border-white/10" />
+
+                {/* Toggle flux */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white font-medium">Flux</p>
+                    <p className="text-xs text-white/40">Notifications pour les nouveaux posts du flux</p>
+                  </div>
+                  <Switch
+                    checked={preferences?.notify_formations ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_formations', checked)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section Mot de passe */}

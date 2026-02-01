@@ -53,7 +53,61 @@ export function useConversations() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as unknown as Message[];
+      const msgs = data as unknown as Message[];
+
+      // Collecter les IDs des profils établissement/formateur sans nom
+      const profileIdsToResolve = new Set<string>();
+      for (const msg of msgs) {
+        for (const profile of [msg.sender, msg.recipient]) {
+          if (profile && !profile.first_name && (profile.profile_type === "etablissement" || profile.profile_type === "formateur")) {
+            profileIdsToResolve.add(profile.id);
+          }
+        }
+      }
+
+      // Résoudre les noms depuis les tables spécifiques
+      if (profileIdsToResolve.size > 0) {
+        const ids = Array.from(profileIdsToResolve);
+        const nameMap = new Map<string, { name: string; avatar: string | null }>();
+
+        const [estResult, trainerResult] = await Promise.all([
+          supabase
+            .from("establishment_profiles")
+            .select("id, organization_name, avatar_url")
+            .in("id", ids),
+          supabase
+            .from("trainer_profiles")
+            .select("id, organization_name, avatar_url")
+            .in("id", ids),
+        ]);
+
+        for (const row of estResult.data || []) {
+          if (row.organization_name) {
+            nameMap.set(row.id, { name: row.organization_name, avatar: row.avatar_url });
+          }
+        }
+        for (const row of trainerResult.data || []) {
+          if (row.organization_name) {
+            nameMap.set(row.id, { name: row.organization_name, avatar: row.avatar_url });
+          }
+        }
+
+        // Enrichir les profils avec les noms résolus
+        for (const msg of msgs) {
+          for (const profile of [msg.sender, msg.recipient]) {
+            if (profile && nameMap.has(profile.id)) {
+              const resolved = nameMap.get(profile.id)!;
+              profile.first_name = resolved.name;
+              profile.last_name = "";
+              if (resolved.avatar && !profile.avatar_url) {
+                profile.avatar_url = resolved.avatar;
+              }
+            }
+          }
+        }
+      }
+
+      return msgs;
     },
   });
 
