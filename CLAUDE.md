@@ -907,6 +907,6 @@ npx playwright test  # 39 E2E tests (~5min)
 | `project-context.md` | Regles de developpement, conventions, securite |
 | `docs/data-models.md` | Schema base de donnees Supabase complet |
 | `docs/despia.md` | Framework natif iOS/Android (Despia) |
-| `docs/development-log.md` | Historique sessions, bugs resolus, patterns |
 | `docs/workflow-guide.md` | Guide workflow BMAD quotidien |
-| `docs/config/netlify.toml` | Config Netlify (reference web app) |
+| `docs/archive/development-log.md` | Historique sessions (archive) |
+| `docs/archive/README-legacy.md` | Ancien README complet (archive) |

@@ -594,7 +594,7 @@ const Index = () => {
               scale: 1.05
             }} src="/lovable-uploads/32069037-2f3a-44ac-9105-33ae1d029573.png" alt="Probain Aquatic Network Logo" className="w-40 h-auto" />
               <p className="text-white/70">
-                La plateforme de référence pour les professionnels de la natation en Suisse.
+                La plateforme de référence pour les professionnels du sauvetage aquatique en Suisse.
               </p>
             </motion.div>
 

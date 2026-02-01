@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useProfile } from '@/contexts/ProfileContext';
 import { LazyImage } from '@/components/ui/lazy-image';
+import { RescuerProfileSheet } from '@/components/shared/RescuerProfileSheet';
 
 const Flux = () => {
   const [userId, setUserId] = useState<string | undefined>(undefined);
@@ -19,6 +20,10 @@ const Flux = () => {
   const [newComment, setNewComment] = useState<Record<string, string>>({});
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
+  const [rescuerSheetOpen, setRescuerSheetOpen] = useState(false);
+  const [selectedRescuerId, setSelectedRescuerId] = useState<string | null>(null);
+
+  const isEstablishment = profileType === 'etablissement';
 
   useEffect(() => {
     const getUser = async () => {
@@ -217,9 +222,14 @@ const Flux = () => {
                       </p>
                     ) : (
                       <div className="p-4 space-y-3">
-                        {comments[post.id]?.map((comment) => (
+                        {comments[post.id]?.map((comment) => {
+                          const canViewProfile = isEstablishment && comment.profile_type === 'maitre_nageur' && comment.user_id !== userId;
+                          return (
                           <div key={comment.id} className="flex gap-2">
-                            <Avatar className="h-8 w-8 shrink-0 bg-gray-200">
+                            <Avatar
+                              className={`h-8 w-8 shrink-0 bg-gray-200 ${canViewProfile ? 'cursor-pointer ring-2 ring-transparent hover:ring-cyan-400/50 transition-all' : ''}`}
+                              onClick={canViewProfile ? () => { setSelectedRescuerId(comment.user_id); setRescuerSheetOpen(true); } : undefined}
+                            >
                               {comment.user_avatar ? (
                                 <img src={comment.user_avatar} alt={`Avatar de ${comment.user_name}`} className="h-full w-full rounded-full object-cover" />
                               ) : (
@@ -230,7 +240,12 @@ const Flux = () => {
                             </Avatar>
                             <div className="flex-1 bg-gray-100 rounded-lg p-2">
                               <div className="flex items-center justify-between">
-                                <p className="font-medium text-sm text-gray-900">{comment.user_name}</p>
+                                <p
+                                  className={`font-medium text-sm text-gray-900 ${canViewProfile ? 'cursor-pointer hover:text-cyan-600 hover:underline transition-colors' : ''}`}
+                                  onClick={canViewProfile ? () => { setSelectedRescuerId(comment.user_id); setRescuerSheetOpen(true); } : undefined}
+                                >
+                                  {comment.user_name}
+                                </p>
                                 {comment.user_id === userId && (
                                   <Button
                                     variant="ghost"
@@ -247,7 +262,8 @@ const Flux = () => {
                               <p className="text-xs text-gray-400 mt-1">{formatDate(comment.created_at)}</p>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -287,6 +303,15 @@ const Flux = () => {
           ))
         )}
       </div>
+
+      {/* Sheet profil sauveteur (établissements uniquement) */}
+      {isEstablishment && (
+        <RescuerProfileSheet
+          rescuerUserId={selectedRescuerId}
+          open={rescuerSheetOpen}
+          onOpenChange={setRescuerSheetOpen}
+        />
+      )}
     </div>
   );
 };

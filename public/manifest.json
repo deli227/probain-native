@@ -4,10 +4,13 @@
   "short_name": "ProBain",
   "description": "Plateforme de mise en relation pour les professionnels de la natation",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1E2761",
   "theme_color": "#408CFF",
   "orientation": "portrait-primary",
+  "categories": ["productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/lovable-uploads/55d72ff9-d45a-4285-a7e0-f048150b6823.png",

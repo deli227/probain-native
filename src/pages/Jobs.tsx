@@ -296,7 +296,7 @@ const Jobs = () => {
 
       <div className="p-4 md:p-6">
 
-        <Card className="max-w-3xl mx-auto mb-8 p-6 md:p-8 bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl">
+        <Card className="max-w-3xl mx-auto mb-8 p-6 md:p-8 bg-transparent bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl">
           <div className="space-y-5">
             <Input
               placeholder="Poste recherché..."
@@ -420,7 +420,7 @@ const Jobs = () => {
                 <CarouselContent className="-ml-2">
                   {filteredJobs.map((job) => (
                     <CarouselItem key={job.id} className="pl-2 basis-[85%] sm:basis-[70%]">
-                      <Card className="group p-5 bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
+                      <Card className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                         <div className="relative flex-1">
                           <div className="flex items-start justify-between mb-4">
@@ -471,7 +471,7 @@ const Jobs = () => {
             {/* Desktop: Grille de cartes */}
             <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
               {filteredJobs.map((job) => (
-                <Card key={job.id} className="group p-5 bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
+                <Card key={job.id} className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                   <div className="relative flex-1">
                     <div className="flex items-start justify-between mb-4">

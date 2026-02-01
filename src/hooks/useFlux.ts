@@ -32,6 +32,7 @@ export interface FluxComment {
   created_at: string;
   user_name?: string;
   user_avatar?: string;
+  profile_type?: string;
 }
 
 // ------------------------------------------------------------------
@@ -151,6 +152,7 @@ async function fetchCommentsViaRpc(postId: string): Promise<FluxComment[]> {
       created_at: c.created_at ?? '',
       user_name: c.user_name || 'Utilisateur',
       user_avatar: c.user_avatar || undefined,
+      profile_type: c.profile_type || undefined,
     }));
   }
 
@@ -167,7 +169,7 @@ async function fetchCommentsViaRpc(postId: string): Promise<FluxComment[]> {
     (commentsData || []).map(async (comment) => {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('first_name, last_name, avatar_url')
+        .select('first_name, last_name, avatar_url, profile_type')
         .eq('id', comment.user_id)
         .single();
 
@@ -200,6 +202,7 @@ async function fetchCommentsViaRpc(postId: string): Promise<FluxComment[]> {
         created_at: comment.created_at ?? '',
         user_name: userName,
         user_avatar: avatarUrl || undefined,
+        profile_type: profileData?.profile_type || undefined,
       };
     }),
   );
