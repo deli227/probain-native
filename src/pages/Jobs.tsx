@@ -292,7 +292,7 @@ const Jobs = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-primary-dark md:bg-transparent">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent pb-12 md:pb-0">
       <div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark px-4 py-3 overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative max-w-4xl mx-auto">
@@ -525,7 +525,7 @@ const Jobs = () => {
                       </p>
                     </div>
                     <p className="text-white/70 text-sm line-clamp-3 mb-4 leading-relaxed">
-                      {job.description}
+                      {stripHtml(job.description)}
                     </p>
                   </div>
                   <div className="relative flex gap-2">

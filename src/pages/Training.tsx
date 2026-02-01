@@ -538,7 +538,7 @@ const Training = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background md:bg-transparent">
+    <div className="min-h-screen bg-background md:bg-transparent pb-12 md:pb-0">
       <div className="w-full bg-gradient-to-br from-probain-blue via-primary to-primary-dark px-4 py-3 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 rounded-full blur-2xl translate-x-1/3 -translate-y-1/3" />
 
