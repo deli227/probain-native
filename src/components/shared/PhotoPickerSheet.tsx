@@ -50,7 +50,7 @@ export const PhotoPickerSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="px-6 pb-28 pt-6 rounded-t-2xl">
+      <SheetContent side="bottom" className="px-6 pt-6 rounded-t-2xl" style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom, 0px))' }}>
         <SheetHeader className="mb-6">
           <SheetTitle className="text-center">{title}</SheetTitle>
           <SheetDescription className="sr-only">
