@@ -860,6 +860,25 @@ Tout `Card` utilise sur un fond sombre avec du texte `text-white` DOIT avoir `bg
 
 ---
 
+## Descriptions HTML des offres d'emploi (fix)
+
+### Probleme
+Les descriptions d'offres d'emploi sont creees avec le `RichTextEditor` (qui produit du HTML : `<p>`, `<ul>`, `<li>`, etc.). La page `Jobs.tsx` les affichait en texte brut avec `{job.description}`, ce qui montrait les balises HTML visibles aux utilisateurs.
+
+### Fix
+- **Cartes (preview)** : utilisation de `stripHtml()` (via `DOMParser`) pour extraire le texte brut depuis le HTML. Applique sur les cartes mobile ET desktop.
+- **Dialog detail** : utilisation de `DOMPurify.sanitize()` + `dangerouslySetInnerHTML` avec classes `prose prose-sm prose-invert` pour un rendu HTML propre et securise.
+- **Securite** : DOMPurify empêche les attaques XSS en nettoyant le HTML avant injection.
+
+### Regle
+Tout affichage de contenu cree via `RichTextEditor` doit :
+- En mode apercu (carte) : utiliser `stripHtml()` pour du texte brut
+- En mode complet (dialog/page) : utiliser `DOMPurify.sanitize()` + `dangerouslySetInnerHTML` + classes `prose prose-invert`
+
+**Fichier** : `src/pages/Jobs.tsx`
+
+---
+
 ## OTA Updates — Mise a jour instantanee Despia
 
 ### Probleme
@@ -1096,20 +1115,24 @@ Les sauveteurs ne pouvaient pas lire la description complete d'une offre d'emplo
 Le `DashboardLayout.tsx` utilisait `pb-20` (80px) sur le wrapper du contenu principal. La BottomTabBar fait 76px + `env(safe-area-inset-bottom)` (jusqu'a 34px sur iPhone 14 Pro). Sur les appareils avec safe-area, les 80px de padding ne couvraient pas la hauteur totale de la BottomTabBar (~110px), laissant ~30px de contenu potentiellement caches.
 
 ### Fix
-`pb-20` remplace par `pb-28` (112px) dans `DashboardLayout.tsx`. 112px couvre 76px (tab bar) + 34px (safe-area max). Les pages qui ajoutent leur propre padding (`Profile.tsx`, `Flux.tsx`, `EstablishmentRescuers.tsx` avec `pb-20 md:pb-6`) gardent du padding supplementaire au-dessus du layout.
+`pb-20` remplace par `pb-28` (112px) dans `DashboardLayout.tsx`. 112px couvre 76px (tab bar) + 34px (safe-area max). En plus, toutes les pages dashboard ont leur propre `pb-12 md:pb-0` ou `pb-20 md:pb-6` pour garantir que le contenu en bas (boutons, cartes) reste accessible par scroll sur les petits ecrans.
+
+**Regle** : toute page affichee dans le DashboardLayout DOIT avoir son propre padding-bottom mobile (`pb-12 md:pb-0` minimum). Ne pas se fier uniquement au `pb-28` du layout — sur les petits mobiles avec du contenu haut (cartes, formulaires), le contenu en bas de page peut etre masque.
 
 ### Audit complet des pages (3 profils)
 
 | Page | Padding propre | + Layout `pb-28` | Statut |
 |------|---------------|-------------------|--------|
 | Profile.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| Jobs.tsx | aucun | 112px (layout) | OK |
-| Training.tsx | aucun | 112px (layout) | OK |
+| Jobs.tsx | `pb-12 md:pb-0` | 160px total | OK |
+| Training.tsx | `pb-12 md:pb-0` | 160px total | OK |
 | Flux.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| Settings.tsx | aucun | 112px (layout) | OK |
+| Settings.tsx | `pb-12 md:pb-0` | 160px total | OK |
 | EstablishmentRescuers.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| TrainerProfile.tsx | via sous-composants | 112px+ | OK |
-| EstablishmentProfile.tsx | via sous-composants | 112px+ | OK |
+| EstablishmentAnnouncements.tsx | `pb-12 md:pb-0` | 160px total | OK |
+| TrainerProfile.tsx | `pb-20 md:pb-6` | 192px total | OK |
+| EstablishmentProfile.tsx | `pb-20 md:pb-6` | 192px total | OK |
+| TrainerStudentsPage.tsx | `pb-20 md:pb-6` | 192px total | OK |
 | Mailbox (mobile) | `h-[calc(100vh-56px-76px)]` | hauteur calculee | OK |
 | ProfileForm (Sheet) | `pb-44 md:pb-24` + `bottom-[100px]` | dedies | OK |
 | TrainerProfileForm (Sheet) | `pb-44 md:pb-24` + `bottom-[100px]` | dedies | OK |
