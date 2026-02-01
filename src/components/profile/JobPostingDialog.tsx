@@ -116,10 +116,13 @@ export const JobPostingDialog = ({
 
           <div className="mt-4 flex gap-2 justify-end">
             {navigator.share && (
-              <Button onClick={handleShare} variant="outline" size="sm" className="border-white/20 text-white/70 hover:bg-white/10 hover:text-white">
-                <ExternalLink className="h-4 w-4 mr-2" />
+              <button
+                onClick={handleShare}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-white/20 bg-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
                 Partager
-              </Button>
+              </button>
             )}
           </div>
         </div>
