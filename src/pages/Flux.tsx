@@ -219,9 +219,9 @@ const Flux = () => {
                       <div className="p-4 space-y-3">
                         {comments[post.id]?.map((comment) => (
                           <div key={comment.id} className="flex gap-2">
-                            <Avatar className="h-8 w-8 bg-gray-200">
+                            <Avatar className="h-8 w-8 shrink-0 bg-gray-200">
                               {comment.user_avatar ? (
-                                <img src={comment.user_avatar} alt={`Avatar de ${comment.user_name}`} className="rounded-full" />
+                                <img src={comment.user_avatar} alt={`Avatar de ${comment.user_name}`} className="h-full w-full rounded-full object-cover" />
                               ) : (
                                 <span className="text-xs font-medium text-gray-600">
                                   {comment.user_name?.charAt(0).toUpperCase()}

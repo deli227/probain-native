@@ -737,6 +737,51 @@ Le compteur de commentaires (`X commentaire(s)`) n'etait pas cliquable. La seule
 - `src/hooks/useFlux.ts` — fallback N+1 avec `trainer_profiles` et `establishment_profiles`
 - `src/pages/Flux.tsx` — compteur de commentaires cliquable
 
+### Bug 3 : Avatar des commentaires depasse du cercle
+L'avatar dans les commentaires du flux utilisait un `<img>` brut avec seulement `rounded-full`, sans contraindre l'image a remplir le conteneur. Les photos non-carrees depassaient du cercle.
+
+**Fix** : ajout de `h-full w-full object-cover` sur l'`<img>` et `shrink-0` sur l'`<Avatar>` pour empecher l'ecrasement dans le flex.
+
+**Fichier** : `src/pages/Flux.tsx` (ligne ~222)
+
+---
+
+## OTA Updates — Mise a jour instantanee Despia
+
+### Probleme
+Apres un deploiement Vercel, l'app Android (Despia WebView) continuait d'afficher l'ancienne version. Le service worker utilisait `CACHE_NAME = 'probain-v1'` (statique) avec une strategie cache-first aveugle : une fois les fichiers caches, ils n'etaient jamais re-telecharges.
+
+### Solution
+4 couches de correction pour des mises a jour instantanees et transparentes :
+
+1. **Service worker reecrit** (`public/service-worker.js`)
+   - `__BUILD_TIMESTAMP__` remplace par un timestamp unique a chaque build → nouveau CACHE_NAME → purge automatique
+   - Strategie **network-first** pour HTML (toujours la derniere version si reseau dispo)
+   - Strategie **cache-first** pour assets JS/CSS hashes (safe, les noms changent a chaque build)
+   - `skipWaiting()` + `clients.claim()` : activation immediate du nouveau SW
+
+2. **Script post-build** (`scripts/inject-sw-version.js`)
+   - Execute apres `vite build` via `package.json` : `"build": "vite build && node scripts/inject-sw-version.js"`
+   - Remplace `__BUILD_TIMESTAMP__` dans `dist/service-worker.js` par `Date.now()`
+
+3. **Headers Vercel** (`vercel.json`)
+   - `Cache-Control: no-cache` sur `index.html`, `service-worker.js`, `manifest.json`
+   - Force le WebView a reverifier ces fichiers avec le serveur a chaque requete
+
+4. **Detection des mises a jour** (`src/utils/registerServiceWorker.ts`)
+   - `registration.update()` toutes les 5 minutes
+   - Listener `updatefound` → quand le nouveau SW s'active → `window.location.reload()` automatique
+   - Condition `navigator.serviceWorker.controller` : ne reload que si un ancien SW etait actif (pas au premier chargement)
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `public/service-worker.js` | SW avec version dynamique, network-first HTML, cache-first assets |
+| `scripts/inject-sw-version.js` | Post-build : injecte timestamp dans dist/service-worker.js |
+| `vercel.json` | Headers no-cache pour HTML, SW, manifest |
+| `src/utils/registerServiceWorker.ts` | Detection mises a jour + reload auto |
+| `package.json` | Script build modifie (`vite build && node scripts/inject-sw-version.js`) |
+
 ---
 
 ## Swipe Navigation Mobile
