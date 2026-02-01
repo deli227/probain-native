@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Send, Loader2, Trash2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Heart, MessageCircle, Send, Loader2, Trash2, Reply } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
@@ -22,6 +22,8 @@ const Flux = () => {
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
   const [rescuerSheetOpen, setRescuerSheetOpen] = useState(false);
   const [selectedRescuerId, setSelectedRescuerId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Record<string, FluxComment | null>>({});
+  const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const isEstablishment = profileType === 'etablissement';
 
@@ -57,6 +59,7 @@ const Flux = () => {
 
     if (success) {
       setNewComment(prev => ({ ...prev, [postId]: '' }));
+      setReplyingTo(prev => ({ ...prev, [postId]: null }));
       // Refresh comments
       const postComments = await fetchComments(postId);
       setComments(prev => ({ ...prev, [postId]: postComments }));
@@ -73,6 +76,25 @@ const Flux = () => {
       }));
     }
   }, [deleteComment]);
+
+  const handleReply = useCallback((postId: string, comment: FluxComment) => {
+    setReplyingTo(prev => ({ ...prev, [postId]: comment }));
+    const mention = `@${comment.user_name} `;
+    setNewComment(prev => ({ ...prev, [postId]: mention }));
+    // Focus the input after state update
+    setTimeout(() => {
+      const input = commentInputRefs.current[postId];
+      if (input) {
+        input.focus();
+        input.setSelectionRange(mention.length, mention.length);
+      }
+    }, 50);
+  }, []);
+
+  const cancelReply = useCallback((postId: string) => {
+    setReplyingTo(prev => ({ ...prev, [postId]: null }));
+    setNewComment(prev => ({ ...prev, [postId]: '' }));
+  }, []);
 
   const formatDate = useCallback((dateString: string) => {
     return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: fr });
@@ -258,8 +280,24 @@ const Flux = () => {
                                   </Button>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-700">{comment.content}</p>
-                              <p className="text-xs text-gray-400 mt-1">{formatDate(comment.created_at)}</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                {comment.content.startsWith('@') ? (
+                                  <>
+                                    <span className="text-blue-600 font-medium">{comment.content.split(' ')[0]}</span>
+                                    {' '}{comment.content.substring(comment.content.indexOf(' ') + 1)}
+                                  </>
+                                ) : comment.content}
+                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-xs text-gray-400">{formatDate(comment.created_at)}</p>
+                                <button
+                                  onClick={() => handleReply(post.id, comment)}
+                                  className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors flex items-center gap-1"
+                                >
+                                  <Reply className="h-3 w-3" />
+                                  Répondre
+                                </button>
+                              </div>
                             </div>
                           </div>
                           );
@@ -269,33 +307,50 @@ const Flux = () => {
                   </div>
 
                   {/* Add Comment */}
-                  <div className="p-4 border-t border-gray-100 flex gap-2">
-                    <Input
-                      placeholder="Écrire un commentaire..."
-                      value={newComment[post.id] || ''}
-                      onChange={(e) => setNewComment(prev => ({ ...prev, [post.id]: e.target.value }))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleAddComment(post.id, newComment[post.id] || '');
-                        }
-                      }}
-                      className="flex-1"
-                      aria-label="Écrire un commentaire"
-                    />
-                    <Button
-                      size="icon"
-                      onClick={() => handleAddComment(post.id, newComment[post.id] || '')}
-                      disabled={submittingComment[post.id] || !newComment[post.id]?.trim()}
-                      className="bg-primary hover:bg-primary-dark"
-                      aria-label="Envoyer le commentaire"
-                    >
-                      {submittingComment[post.id] ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
+                  <div className="border-t border-gray-100">
+                    {/* Reply indicator */}
+                    {replyingTo[post.id] && (
+                      <div className="px-4 pt-2 flex items-center gap-2 text-xs text-gray-500">
+                        <Reply className="h-3 w-3" />
+                        <span>Réponse à <span className="font-medium text-gray-700">{replyingTo[post.id]?.user_name}</span></span>
+                        <button
+                          onClick={() => cancelReply(post.id)}
+                          className="ml-auto text-gray-400 hover:text-gray-600 transition-colors"
+                          aria-label="Annuler la réponse"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                    <div className="p-4 pt-2 flex gap-2">
+                      <Input
+                        ref={(el) => { commentInputRefs.current[post.id] = el; }}
+                        placeholder={replyingTo[post.id] ? `Répondre à ${replyingTo[post.id]?.user_name}...` : "Écrire un commentaire..."}
+                        value={newComment[post.id] || ''}
+                        onChange={(e) => setNewComment(prev => ({ ...prev, [post.id]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddComment(post.id, newComment[post.id] || '');
+                          }
+                        }}
+                        className="flex-1"
+                        aria-label="Écrire un commentaire"
+                      />
+                      <Button
+                        size="icon"
+                        onClick={() => handleAddComment(post.id, newComment[post.id] || '')}
+                        disabled={submittingComment[post.id] || !newComment[post.id]?.trim()}
+                        className="bg-primary hover:bg-primary-dark"
+                        aria-label="Envoyer le commentaire"
+                      >
+                        {submittingComment[post.id] ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

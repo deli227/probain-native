@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar as CalendarIcon, Search, MapPin, Briefcase, Building2, Loader2, Upload, FileText, X } from "lucide-react";
+import { Calendar as CalendarIcon, Search, MapPin, Briefcase, Building2, Loader2, Upload, FileText, X, ExternalLink, Clock } from "lucide-react";
 import { CalendarModal } from "@/components/shared/CalendarModal";
 import { useCalendarModal } from "@/hooks/use-calendar-modal";
 import { SWISS_CANTONS, isCityInCanton } from "@/utils/swissCantons";
@@ -65,6 +65,7 @@ const Jobs = () => {
   const [filteredJobs, setFilteredJobs] = useState<JobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false);
   const [applicationMessage, setApplicationMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -181,6 +182,11 @@ const Jobs = () => {
     setFilteredJobs(filtered);
   }, [jobs, searchTerm, locationSearch, startDate, endDate]);
 
+  const handleViewDetail = useCallback((job: JobPosting) => {
+    setSelectedJob(job);
+    setIsDetailDialogOpen(true);
+  }, []);
+
   const handleApply = useCallback((job: JobPosting) => {
     if (!currentUserId) {
       toast({
@@ -192,6 +198,7 @@ const Jobs = () => {
       return;
     }
     setSelectedJob(job);
+    setIsDetailDialogOpen(false);
     setApplicationMessage("");
     resetCvFile();
     if (cvInputRef.current) {
@@ -420,7 +427,7 @@ const Jobs = () => {
                 <CarouselContent className="-ml-2">
                   {filteredJobs.map((job) => (
                     <CarouselItem key={job.id} className="pl-2 basis-[85%] sm:basis-[70%]">
-                      <Card className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
+                      <Card className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative cursor-pointer" onClick={() => handleViewDetail(job)}>
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                         <div className="relative flex-1">
                           <div className="flex items-start justify-between mb-4">
@@ -455,12 +462,20 @@ const Jobs = () => {
                             {job.description}
                           </p>
                         </div>
-                        <Button
-                          className="relative w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 group-hover:-translate-y-0.5"
-                          onClick={() => handleApply(job)}
-                        >
-                          POSTULER
-                        </Button>
+                        <div className="relative flex gap-2">
+                          <Button
+                            className="flex-1 h-11 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
+                            onClick={(e) => { e.stopPropagation(); handleViewDetail(job); }}
+                          >
+                            VOIR L'OFFRE
+                          </Button>
+                          <Button
+                            className="flex-1 h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300"
+                            onClick={(e) => { e.stopPropagation(); handleApply(job); }}
+                          >
+                            POSTULER
+                          </Button>
+                        </div>
                       </Card>
                     </CarouselItem>
                   ))}
@@ -471,7 +486,7 @@ const Jobs = () => {
             {/* Desktop: Grille de cartes */}
             <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
               {filteredJobs.map((job) => (
-                <Card key={job.id} className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative">
+                <Card key={job.id} className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative cursor-pointer" onClick={() => handleViewDetail(job)}>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                   <div className="relative flex-1">
                     <div className="flex items-start justify-between mb-4">
@@ -506,12 +521,20 @@ const Jobs = () => {
                       {job.description}
                     </p>
                   </div>
-                  <Button
-                    className="relative w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 group-hover:-translate-y-0.5"
-                    onClick={() => handleApply(job)}
-                  >
-                    POSTULER
-                  </Button>
+                  <div className="relative flex gap-2">
+                    <Button
+                      className="flex-1 h-11 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all duration-300"
+                      onClick={(e) => { e.stopPropagation(); handleViewDetail(job); }}
+                    >
+                      VOIR L'OFFRE
+                    </Button>
+                    <Button
+                      className="flex-1 h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 group-hover:-translate-y-0.5"
+                      onClick={(e) => { e.stopPropagation(); handleApply(job); }}
+                    >
+                      POSTULER
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -519,16 +542,91 @@ const Jobs = () => {
         )}
       </div>
 
+      {/* Job Detail Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="sm:max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto bg-[#0a1628] border-white/10 text-white [&>button]:text-white/70 [&>button]:hover:text-white">
+          {selectedJob && (
+            <>
+              <DialogHeader className="relative pb-4 border-b border-white/10 mb-4">
+                {/* Badge type de contrat */}
+                <div className="mb-2">
+                  <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold px-3 py-1.5 rounded-lg">
+                    {formatContractType(selectedJob.contract_type)}
+                  </Badge>
+                </div>
+
+                <DialogTitle className="text-xl sm:text-2xl font-bold text-white pr-8">{selectedJob.title}</DialogTitle>
+
+                <DialogDescription asChild>
+                  <div className="flex flex-col gap-1.5 mt-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-white/70">
+                      <MapPin className="h-4 w-4 text-cyan-400" />
+                      <span>{selectedJob.location}</span>
+                    </div>
+                    {selectedJob.establishment_name && (
+                      <div className="flex items-center gap-2 text-sm font-medium text-white/70">
+                        <Building2 className="h-4 w-4 text-cyan-400" />
+                        <span>{selectedJob.establishment_name}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-xs italic text-white/40 mt-1">
+                      <Clock className="h-3 w-3" />
+                      <span>Publie le {formatDateDisplay(selectedJob.created_at)}</span>
+                    </div>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Full description */}
+              <div className="mt-2">
+                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Description du poste</h3>
+                <div className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap">
+                  {selectedJob.description}
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="mt-6 flex flex-col gap-3">
+                <Button
+                  className="w-full h-12 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300"
+                  onClick={() => handleApply(selectedJob)}
+                >
+                  POSTULER A CETTE OFFRE
+                </Button>
+                {navigator.share && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.share({
+                          title: `Offre d'emploi: ${selectedJob.title}`,
+                          text: `${selectedJob.title} - ${selectedJob.location} - ${formatContractType(selectedJob.contract_type)}`,
+                          url: window.location.href,
+                        });
+                      } catch { /* share cancelled */ }
+                    }}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-white/20 bg-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Partager cette offre
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Apply Dialog */}
       <Dialog open={isApplyDialogOpen} onOpenChange={setIsApplyDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Postuler à cette offre</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[500px] w-[95vw] bg-[#0a1628] border-white/10 text-white [&>button]:text-white/70 [&>button]:hover:text-white">
+          <DialogHeader className="pb-3 border-b border-white/10">
+            <DialogTitle className="text-lg font-bold text-white">Postuler a cette offre</DialogTitle>
+            <DialogDescription className="text-white/50">
               {selectedJob && (
                 <>
-                  <span className="font-semibold">{selectedJob.title}</span>
+                  <span className="font-semibold text-white/70">{selectedJob.title}</span>
                   {selectedJob.establishment_name && (
-                    <span> - {selectedJob.establishment_name}</span>
+                    <span className="text-white/50"> - {selectedJob.establishment_name}</span>
                   )}
                 </>
               )}
@@ -538,7 +636,7 @@ const Jobs = () => {
           <div className="py-4 space-y-4">
             {/* CV Upload */}
             <div>
-              <label className="text-sm font-medium mb-2 block">
+              <label className="text-sm font-medium mb-2 block text-white/70">
                 CV (PDF, optionnel)
               </label>
               <div className="relative">
@@ -560,27 +658,27 @@ const Jobs = () => {
                 {cvState.status === 'idle' ? (
                   <div
                     onClick={() => !isMobile && cvInputRef.current?.click()}
-                    className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-primary transition-colors cursor-pointer"
+                    className="relative border-2 border-dashed border-white/20 rounded-xl p-4 hover:border-cyan-400/50 transition-colors cursor-pointer"
                   >
-                    <div className="flex flex-col items-center gap-2 text-gray-500">
+                    <div className="flex flex-col items-center gap-2 text-white/50">
                       <Upload className="h-6 w-6" />
                       <span className="text-sm text-center">
                         {isMobile ? "Touchez pour ajouter votre CV" : "Cliquez pour ajouter votre CV"}
                       </span>
-                      <span className="text-xs text-gray-400">PDF uniquement, max 20MB</span>
+                      <span className="text-xs text-white/30">PDF uniquement, max 20MB</span>
                     </div>
                   </div>
                 ) : cvState.status === 'uploading' ? (
-                  <div className="border-2 border-yellow-400 bg-yellow-50 rounded-lg p-4">
+                  <div className="border-2 border-yellow-400/50 bg-yellow-500/10 rounded-xl p-4">
                     <div className="flex items-center gap-3">
-                      <Loader2 className="h-6 w-6 text-yellow-500 animate-spin" />
-                      <span className="text-sm text-yellow-700">Upload en cours...</span>
+                      <Loader2 className="h-6 w-6 text-yellow-400 animate-spin" />
+                      <span className="text-sm text-yellow-300">Upload en cours...</span>
                     </div>
                   </div>
                 ) : cvState.status === 'error' ? (
-                  <div className="border-2 border-red-300 bg-red-50 rounded-lg p-4">
+                  <div className="border-2 border-red-400/50 bg-red-500/10 rounded-xl p-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 text-red-700">
+                      <div className="flex items-center gap-3 text-red-400">
                         <X className="h-5 w-5" />
                         <span className="text-sm">{cvState.error || "Erreur lors de la sélection"}</span>
                       </div>
@@ -590,23 +688,23 @@ const Jobs = () => {
                           resetCvFile();
                           if (cvInputRef.current) cvInputRef.current.value = '';
                         }}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        className="text-red-400 hover:text-red-300 text-sm font-medium"
                       >
                         Réessayer
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="border-2 border-green-400 bg-green-50 rounded-lg p-4">
+                  <div className="border-2 border-green-400/50 bg-green-500/10 rounded-xl p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <FileText className="h-6 w-6 text-green-600" />
+                        <FileText className="h-6 w-6 text-green-400" />
                         <div>
-                          <p className="text-sm font-medium text-green-800">
+                          <p className="text-sm font-medium text-green-300">
                             {cvState.file?.name || "CV sélectionné"}
                           </p>
                           {cvState.file && (
-                            <p className="text-xs text-green-600">
+                            <p className="text-xs text-green-400/70">
                               {(cvState.file.size / 1024 / 1024).toFixed(2)} MB
                             </p>
                           )}
@@ -618,7 +716,7 @@ const Jobs = () => {
                           resetCvFile();
                           if (cvInputRef.current) cvInputRef.current.value = '';
                         }}
-                        className="p-1 text-gray-500 hover:text-red-600 transition-colors"
+                        className="p-1 text-white/40 hover:text-red-400 transition-colors"
                         disabled={isSubmitting}
                       >
                         <X className="h-5 w-5" />
@@ -631,7 +729,7 @@ const Jobs = () => {
 
             {/* Message */}
             <div>
-              <label className="text-sm font-medium mb-2 block">
+              <label className="text-sm font-medium mb-2 block text-white/70">
                 Message de candidature (optionnel)
               </label>
               <Textarea
@@ -639,25 +737,27 @@ const Jobs = () => {
                 value={applicationMessage}
                 onChange={(e) => setApplicationMessage(e.target.value)}
                 rows={5}
+                className="bg-white/10 border-white/20 rounded-xl text-white placeholder:text-white/40 focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/50"
               />
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Votre candidature sera envoyée directement à l'établissement via la messagerie interne.
+            <p className="text-xs text-white/40">
+              Votre candidature sera envoyee directement a l'etablissement via la messagerie interne.
             </p>
           </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
+          <DialogFooter className="gap-2">
+            <button
               onClick={() => setIsApplyDialogOpen(false)}
               disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium rounded-xl border border-white/20 bg-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors disabled:opacity-50"
             >
               Annuler
-            </Button>
+            </button>
             <Button
               onClick={submitApplication}
               disabled={isSubmitting}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20"
             >
               {isSubmitting ? (
                 <>

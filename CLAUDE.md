@@ -1028,6 +1028,55 @@ Quand un etablissement supprimait une annonce depuis l'onglet profil, la liste n
 
 ---
 
+## Flux — Reponses aux commentaires
+
+### Fonctionnement
+Les utilisateurs de tous les profils peuvent repondre a un commentaire specifique dans le flux. Le systeme utilise des mentions `@Username` (pas de `parent_id` en BDD, les commentaires restent plats).
+
+### Mecanisme
+- Bouton "Repondre" (icone `Reply`) affiche sous chaque commentaire, a cote de la date
+- Cliquer "Repondre" pre-remplit l'input avec `@NomUtilisateur ` et focus l'input
+- Un indicateur "Reponse a **NomUtilisateur**" s'affiche au-dessus de l'input avec un bouton ✕ pour annuler
+- Les mentions `@` dans les commentaires sont affichees en bleu (`text-blue-600 font-medium`)
+- L'etat de reponse est efface apres envoi du commentaire
+
+### Implementation technique
+- `replyingTo` : state `Record<string, FluxComment | null>` par post
+- `commentInputRefs` : `useRef<Record<string, HTMLInputElement | null>>` pour focus programmatique
+- `handleReply(postId, comment)` : set le replyingTo + pre-fill input + focus avec setTimeout(50ms)
+- `cancelReply(postId)` : clear replyingTo + clear input
+- Pas de modification BDD necessaire (mentions textuelles uniquement)
+
+### Fichier
+`src/pages/Flux.tsx`
+
+---
+
+## Page Jobs — Vue complete offre + dark theme
+
+### Probleme
+Les sauveteurs ne pouvaient pas lire la description complete d'une offre d'emploi. La description etait tronquee a 3 lignes (`line-clamp-3`) et cliquer directement ouvrait le dialog de candidature sans pouvoir lire l'offre.
+
+### Solution
+- Ajout d'un **dialog de detail** (`isDetailDialogOpen`) en dark theme qui affiche l'offre complete
+- Les cartes sont maintenant **cliquables** pour ouvrir la vue detail
+- Deux boutons par carte : "VOIR L'OFFRE" (detail) + "POSTULER" (candidature directe)
+- Depuis la vue detail, bouton "POSTULER A CETTE OFFRE" ouvre le dialog de candidature
+- Bouton "Partager cette offre" (native share API) dans la vue detail
+- Dialog de candidature egalement restyle en dark theme (`bg-[#0a1628]`, `border-white/10`, `text-white`)
+- Upload CV et textarea restyled : borders `white/20`, texte `white`, placeholders `white/40`
+
+### Dark theme applique
+- Dialog detail : `bg-[#0a1628] border-white/10 text-white [&>button]:text-white/70`
+- Dialog candidature : meme pattern dark
+- Upload CV : `border-dashed border-white/20`, etats colores semi-transparents (`green-400/50`, `red-400/50`)
+- Bouton annuler : `<button>` natif (evite `bg-background` blanc de Shadcn)
+
+### Fichier
+`src/pages/Jobs.tsx`
+
+---
+
 ## Deploiement
 
 | Environnement | URL | Methode | Repo GitHub |
