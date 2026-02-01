@@ -1,6 +1,6 @@
 
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Plus, Loader2 } from "lucide-react";
 import { JobPostingsForm } from "./forms/JobPostingsForm";
 import { useForm } from "react-hook-form";
@@ -13,6 +13,8 @@ import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { JobPostingCard } from "./JobPostingCard";
 import { JobPostingDialog } from "./JobPostingDialog";
+import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export const JobPostings = ({ establishmentId }: { establishmentId: string | null }) => {
@@ -35,8 +37,6 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
       contractType: "CDI",
     },
   });
-
-  // Data fetching is now handled by useQuery inside the hook
 
   const handleAdd = async (values: z.infer<typeof jobPostingsFormSchema>) => {
     if (!establishmentId) {
@@ -138,76 +138,139 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
     setIsDialogOpen(true);
   };
 
+  const handleOpenSheet = () => {
+    setEditingId(null);
+    form.reset({
+      title: "",
+      description: "",
+      location: "",
+      contractType: "CDI",
+    });
+    setIsSheetOpen(true);
+  };
+
   return (
-    <div className="py-6 md:py-8">
-      <div className="flex justify-end items-center mb-4 md:mb-6">
-        <Sheet open={isSheetOpen} onOpenChange={(open) => {
-          if (!open) {
-            setEditingId(null);
-            form.reset({
-              title: "",
-              description: "",
-              location: "",
-              contractType: "CDI",
-            });
-          }
-          setIsSheetOpen(open);
-        }}>
-          <SheetTrigger asChild>
-            <Button
-              className="bg-yellow-400 hover:bg-yellow-500 text-primary font-bold rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center gap-2 px-4 md:px-6"
-              aria-label="Ajouter une annonce"
-            >
-              <Plus className="h-4 w-4 md:h-5 md:w-5" />
-              <span className="hidden md:inline">Nouvelle annonce</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="md:max-w-xl">
-            <SheetHeader>
-              <SheetTitle>{editingId ? "Modifier l'annonce" : "Ajouter une annonce"}</SheetTitle>
-              <SheetDescription>
-                {editingId ? "Modifiez les détails de l'annonce" : "Ajoutez une nouvelle annonce à votre établissement"}
-              </SheetDescription>
-            </SheetHeader>
+    <div className="px-4 py-6 md:py-8 md:px-0 max-w-5xl md:max-w-none mx-auto">
+      {/* Header avec titre + bouton rond (identique aux carousels formation/experience) */}
+      <div className="flex justify-between items-center mb-4 md:mb-8">
+        <h2 className="text-2xl md:text-3xl font-teko font-semibold italic text-white w-full text-left uppercase">ANNONCES</h2>
+        <button
+          className="group relative flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/30 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-yellow-500/40 active:scale-95"
+          onClick={handleOpenSheet}
+          aria-label="Ajouter une annonce"
+        >
+          <Plus className="h-5 w-5 text-white transition-transform duration-300 group-hover:rotate-90" />
+          <span className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </button>
+      </div>
+
+      {/* Sheet d'ajout/edition - style dark theme */}
+      <Sheet open={isSheetOpen} onOpenChange={(open) => {
+        if (!open) {
+          setEditingId(null);
+          form.reset({
+            title: "",
+            description: "",
+            location: "",
+            contractType: "CDI",
+          });
+        }
+        setIsSheetOpen(open);
+      }}>
+        <SheetContent className="w-full sm:max-w-md md:max-w-xl overflow-y-auto bg-[#0a1628] p-0" closeButtonColor="white" onClose={() => { setEditingId(null); form.reset({ title: "", description: "", location: "", contractType: "CDI" }); setIsSheetOpen(false); }} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+          <DecorativeOrbs variant="sheet" />
+
+          {/* Header gradient */}
+          <SheetHeader className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-light px-6 py-4 shadow-lg">
+            <SheetTitle className="text-lg font-semibold text-white">
+              {editingId ? "Modifier l'annonce" : "Ajouter une annonce"}
+            </SheetTitle>
+            <p className="text-sm text-white/70">
+              {editingId ? "Modifiez les détails de l'annonce" : "Ajoutez une nouvelle annonce à votre établissement"}
+            </p>
+          </SheetHeader>
+
+          {/* Contenu */}
+          <div className="relative px-6 py-6 pb-32 md:pb-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8 mt-4">
-                <JobPostingsForm form={form} />
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+                <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-5 border border-white/10">
+                  <JobPostingsForm form={form} darkMode />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl shadow-lg hover:shadow-cyan-500/25 transition-all duration-300"
+                  disabled={isSubmitting}
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {editingId ? "Mise à jour..." : "Ajout..."}
                     </>
                   ) : (
-                    editingId ? "Mettre à jour" : "Ajouter l'annonce"
+                    editingId ? "Mettre à jour l'annonce" : "Ajouter l'annonce"
                   )}
                 </Button>
               </form>
             </Form>
-          </SheetContent>
-        </Sheet>
-      </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {jobPostings.length === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
           <p className="text-white/60">Aucune annonce ajoutée</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
-          {jobPostings.map((jobPosting) => (
-            <JobPostingCard
-              key={jobPosting.id}
-              id={jobPosting.id}
-              title={jobPosting.title}
-              location={jobPosting.location}
-              contractType={jobPosting.contract_type}
-              createdAt={jobPosting.created_at}
-              onOpenDetails={() => openPostingDetails(jobPosting)}
-              onEdit={() => openEditForm(jobPosting)}
-              onDelete={() => confirmDelete(jobPosting.id)}
-            />
-          ))}
-        </div>
+        <>
+          {/* Mobile: Carousel avec swipe (comme formations/experiences) */}
+          <div className="md:hidden">
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+                containScroll: "trimSnaps"
+              }}
+              className="w-full"
+            >
+              <CarouselContent className="-ml-2">
+                {jobPostings.map((jobPosting) => (
+                  <CarouselItem key={jobPosting.id} className="pl-2 basis-[95%]">
+                    <JobPostingCard
+                      id={jobPosting.id}
+                      title={jobPosting.title}
+                      description={jobPosting.description}
+                      location={jobPosting.location}
+                      contractType={jobPosting.contract_type}
+                      createdAt={jobPosting.created_at}
+                      onOpenDetails={() => openPostingDetails(jobPosting)}
+                      onEdit={() => openEditForm(jobPosting)}
+                      onDelete={() => confirmDelete(jobPosting.id)}
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          </div>
+
+          {/* Desktop: Grille de cartes (comme formations/experiences) */}
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+            {jobPostings.map((jobPosting) => (
+              <JobPostingCard
+                key={jobPosting.id}
+                id={jobPosting.id}
+                title={jobPosting.title}
+                description={jobPosting.description}
+                location={jobPosting.location}
+                contractType={jobPosting.contract_type}
+                createdAt={jobPosting.created_at}
+                onOpenDetails={() => openPostingDetails(jobPosting)}
+                onEdit={() => openEditForm(jobPosting)}
+                onDelete={() => confirmDelete(jobPosting.id)}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {selectedPosting && (
@@ -233,7 +296,10 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteConfirmId) handleDelete(deleteConfirmId);
+              }}
               disabled={isDeleting}
             >
               {isDeleting ? (

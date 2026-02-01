@@ -11,7 +11,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/contexts/ProfileContext";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { logger } from "@/utils/logger";
 
 interface EstablishmentFormValues {
@@ -32,6 +32,7 @@ interface EstablishmentFormValues {
 const EstablishmentProfile = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Utiliser les données du context (déjà en cache!)
   const {
@@ -43,6 +44,22 @@ const EstablishmentProfile = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Ouvrir le sheet d'édition via l'événement openProfileEdit (gear icon)
+  useEffect(() => {
+    const handleOpenEdit = () => setSheetOpen(true);
+    window.addEventListener('openProfileEdit', handleOpenEdit);
+    return () => window.removeEventListener('openProfileEdit', handleOpenEdit);
+  }, []);
+
+  // Ouvrir le sheet si navigué avec state openEdit: true
+  useEffect(() => {
+    if (location.state?.openEdit) {
+      setSheetOpen(true);
+      // Nettoyer le state pour éviter réouverture au re-render
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state?.openEdit]);
 
   // Charger les stats (jobs count, applications count)
   const { data: stats = { jobsCount: 0, applicationsCount: 0 } } = useQuery({
@@ -56,21 +73,14 @@ const EstablishmentProfile = () => {
         .select('*', { count: 'exact', head: true })
         .eq('establishment_id', establishmentProfile.id);
 
-      // Fetch applications count
-      const { data: jobIds } = await supabase
-        .from('job_postings')
-        .select('id')
-        .eq('establishment_id', establishmentProfile.id);
+      // Fetch applications count (candidatures = messages avec sujet "Candidature:")
+      const { count: applications } = await supabase
+        .from('internal_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('recipient_id', establishmentProfile.id)
+        .like('subject', 'Candidature:%');
 
-      let applicationsCount = 0;
-      if (jobIds && jobIds.length > 0) {
-        const { count: applications } = await supabase
-          .from('job_applications')
-          .select('*', { count: 'exact', head: true })
-          .in('job_posting_id', jobIds.map(j => j.id));
-
-        applicationsCount = applications || 0;
-      }
+      const applicationsCount = applications || 0;
 
       return { jobsCount: jobs || 0, applicationsCount };
     },
@@ -184,11 +194,11 @@ const EstablishmentProfile = () => {
                 MODIFIER PROFIL
               </Button>
             </SheetTrigger>
-            <SheetContent className="overflow-y-auto bg-gray-100 w-full sm:max-w-xl p-0">
+            <SheetContent className="overflow-y-auto bg-[#0a1628] w-full sm:max-w-xl p-0" closeButtonColor="white" onClose={() => setSheetOpen(false)}>
               <SheetHeader className="sticky top-0 z-10 space-y-1 bg-gradient-to-r from-primary to-primary-light p-5 text-white shadow-lg">
-                <SheetTitle className="text-xl font-bold text-white">Modifier le profil établissement</SheetTitle>
+                <SheetTitle className="text-xl font-bold text-white">Modifier le profil etablissement</SheetTitle>
               </SheetHeader>
-              <div className="p-6 space-y-6">
+              <div className="p-6">
                 <EstablishmentProfileForm
                   onSubmit={onSubmit}
                   defaultValues={{

@@ -17,9 +17,20 @@ export const jobPostingsFormSchema = z.object({
 
 interface JobPostingsFormProps {
   form: UseFormReturn<z.infer<typeof jobPostingsFormSchema>>;
+  darkMode?: boolean;
 }
 
-export const JobPostingsForm = ({ form }: JobPostingsFormProps) => {
+export const JobPostingsForm = ({ form, darkMode = false }: JobPostingsFormProps) => {
+  const labelClasses = darkMode
+    ? "text-sm text-white/70"
+    : "text-sm text-gray-600";
+  const inputClasses = darkMode
+    ? "bg-white/10 border-white/20 rounded-xl h-12 text-base text-white placeholder:text-white/40 focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/50 transition-all"
+    : "bg-white border-gray-200 rounded-xl h-12 text-base focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
+  const selectTriggerClasses = darkMode
+    ? "bg-white/10 border-white/20 rounded-xl h-12 text-base text-white focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/50 transition-all [&>span]:text-white/40 [&[data-state=open]>span]:text-white"
+    : "bg-white border-gray-200 rounded-xl h-12 text-base focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
+
   return (
     <div className="space-y-4">
       <FormField
@@ -27,9 +38,9 @@ export const JobPostingsForm = ({ form }: JobPostingsFormProps) => {
         name="title"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Titre du poste</FormLabel>
+            <FormLabel className={labelClasses}>Titre du poste</FormLabel>
             <FormControl>
-              <Input placeholder="Ex: Maître-nageur" {...field} />
+              <Input placeholder="Ex: Maître-nageur" className={inputClasses} {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -41,10 +52,10 @@ export const JobPostingsForm = ({ form }: JobPostingsFormProps) => {
         name="description"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Description</FormLabel>
+            <FormLabel className={labelClasses}>Description</FormLabel>
             <FormControl>
-              <RichTextEditor 
-                content={field.value} 
+              <RichTextEditor
+                content={field.value}
                 onChange={field.onChange}
                 placeholder="Description du poste"
               />
@@ -59,9 +70,9 @@ export const JobPostingsForm = ({ form }: JobPostingsFormProps) => {
         name="location"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Lieu</FormLabel>
+            <FormLabel className={labelClasses}>Lieu</FormLabel>
             <FormControl>
-              <Input placeholder="Ex: Genève" {...field} />
+              <Input placeholder="Ex: Genève" className={inputClasses} {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -73,16 +84,16 @@ export const JobPostingsForm = ({ form }: JobPostingsFormProps) => {
         name="contractType"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Type de contrat</FormLabel>
+            <FormLabel className={labelClasses}>Type de contrat</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger className={selectTriggerClasses}>
                   <SelectValue placeholder="Sélectionnez un type de contrat" />
                 </SelectTrigger>
               </FormControl>
-              <SelectContent>
+              <SelectContent className={darkMode ? "bg-[#0d2847] border-white/20" : ""}>
                 {ContractTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
+                  <SelectItem key={type} value={type} className={darkMode ? "text-white focus:bg-white/10 focus:text-white" : ""}>
                     {type}
                   </SelectItem>
                 ))}

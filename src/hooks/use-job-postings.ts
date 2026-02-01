@@ -89,6 +89,7 @@ export const useJobPostings = (establishmentId?: string | null) => {
       queryClient.setQueryData<JobPosting[]>(queryKey, (old) =>
         [newPosting, ...(old ?? [])],
       );
+      queryClient.invalidateQueries({ queryKey: ['establishment-stats'] });
     },
   });
 
@@ -117,6 +118,7 @@ export const useJobPostings = (establishmentId?: string | null) => {
       queryClient.setQueryData<JobPosting[]>(queryKey, (old) =>
         (old ?? []).map((p) => (p.id === updated.id ? updated : p)),
       );
+      queryClient.invalidateQueries({ queryKey: ['establishment-stats'] });
     },
   });
 
@@ -138,6 +140,7 @@ export const useJobPostings = (establishmentId?: string | null) => {
       queryClient.setQueryData<JobPosting[]>(queryKey, (old) =>
         (old ?? []).filter((p) => p.id !== deletedId),
       );
+      queryClient.invalidateQueries({ queryKey: ['establishment-stats'] });
     },
   });
 

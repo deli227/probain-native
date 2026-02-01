@@ -14,17 +14,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SendRescuerMessageDialog } from "@/components/profile/SendRescuerMessageDialog";
 import { PDFViewerDialog } from "@/components/profile/PDFViewerDialog";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Loader2, Mail, MapPin, Search, CheckCircle, XCircle, Eye, Phone, Users } from "lucide-react";
+import { FileText, Loader2, Mail, MapPin, CheckCircle, XCircle, Eye, Phone, Users, X } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CANTONS_SUISSES } from "@/utils/swissCantons";
 
 // Types pour les données rescuer
 interface RescuerFormation {
   id: string;
-  user_id: string;
+  user_id: string | null;
   title: string;
   organization: string;
   start_date: string;
@@ -34,19 +35,20 @@ interface RescuerFormation {
 
 interface RescuerExperience {
   id: string;
-  user_id: string;
+  user_id: string | null;
   title: string;
   location: string;
   start_date: string;
   end_date: string | null;
   contract_type: string | null;
+  document_url: string | null;
 }
 
 interface RescuerAvailability {
   id: string;
   user_id: string;
   date: string;
-  is_available: boolean;
+  is_available: boolean | null;
 }
 
 interface RescuerProfile {
@@ -57,13 +59,20 @@ interface RescuerProfile {
   birth_date: string | null;
   canton: string | null;
   phone: string | null;
+  phone_visible: boolean | null;
+  years_of_experience: number | null;
+  availability_status: boolean | null;
+  is_always_available: boolean | null;
   profile: {
     first_name: string | null;
     last_name: string | null;
     birth_date: string | null;
+    canton: string | null;
+    city_zip: string | null;
+    phone: string | null;
+    biography: string | null;
+    [key: string]: unknown;
   };
-  availability_status: boolean | null;
-  is_always_available: boolean | null;
   user_formations: RescuerFormation[];
   user_experiences: RescuerExperience[];
   user_availabilities: RescuerAvailability[];
@@ -90,15 +99,16 @@ const EstablishmentRescuers = () => {
   };
 
   const certificationTypes = [
-    "Brevet Plus Pool",
-    "Brevet Pro Pool",
-    "Brevet Base Pool",
-    "Module BLS-AED",
+    "Base Pool",
+    "Plus Pool",
+    "Pro Pool",
+    "BLS-AED",
     "Module Lac",
     "Module Rivière",
-    "Brevet Expert Pool",
-    "Module Pool Plus",
-    "Module Pool Pro",
+    "Expert Pool",
+    "Expert BLS-AED",
+    "Expert Lac",
+    "Expert Rivière",
   ];
 
   const calculateAge = (birthDate: string) => {
@@ -115,19 +125,12 @@ const EstablishmentRescuers = () => {
   const { data: rescuers, isLoading } = useQuery({
     queryKey: ["rescuers", filters],
     queryFn: async () => {
-      let rescuerQuery = supabase
+      const rescuerQuery = supabase
         .from("rescuer_profiles")
         .select(`
           *,
           profile:profiles!inner(*)
         `);
-
-      // On ne filtre plus par availability_status ici car on va le calculer après
-      // en fonction des dates spécifiques
-
-      if (filters.location) {
-        rescuerQuery = rescuerQuery.contains('preferred_locations', [filters.location]);
-      }
 
       const { data: rescuerProfiles, error: rescuerError } = await rescuerQuery;
       if (rescuerError) throw rescuerError;
@@ -204,6 +207,14 @@ const EstablishmentRescuers = () => {
         });
       }
 
+      // Filtre par canton (ID 2 lettres, ex: "GE", "VD")
+      if (filters.location) {
+        filteredRescuers = filteredRescuers.filter(rescuer => {
+          const canton = rescuer.profile?.canton || "";
+          return canton === filters.location;
+        });
+      }
+
       // Filtre par âge
       if (filters.age) {
         const targetAge = parseInt(filters.age, 10);
@@ -218,7 +229,8 @@ const EstablishmentRescuers = () => {
         }
       }
 
-      if (filters.certifications) {
+      // Filtre par brevet/certification
+      if (filters.certifications && filters.certifications !== "all") {
         filteredRescuers = filteredRescuers.filter(rescuer =>
           rescuer.user_formations &&
           rescuer.user_formations.some((formation: RescuerFormation) =>
@@ -228,7 +240,7 @@ const EstablishmentRescuers = () => {
       }
 
       // Filtre par disponibilité (basé sur la disponibilité calculée aujourd'hui)
-      if (filters.availability) {
+      if (filters.availability && filters.availability !== "all") {
         if (filters.availability === "available") {
           filteredRescuers = filteredRescuers.filter(rescuer => rescuer.is_available_today);
         } else if (filters.availability === "unavailable") {
@@ -304,7 +316,7 @@ const EstablishmentRescuers = () => {
 
       {/* Filtres compacts */}
       <div className="bg-white/5 p-3 rounded-2xl mb-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <Input
             placeholder="Nom / Prénom"
             value={filters.name}
@@ -313,13 +325,14 @@ const EstablishmentRescuers = () => {
           />
 
           <Select
-            value={filters.certifications}
-            onValueChange={(value) => setFilters({ ...filters, certifications: value })}
+            value={filters.certifications || "all"}
+            onValueChange={(value) => setFilters({ ...filters, certifications: value === "all" ? "" : value })}
           >
             <SelectTrigger className="h-9 text-xs rounded-full">
               <SelectValue placeholder="Brevets" />
             </SelectTrigger>
             <SelectContent className="rounded-2xl">
+              <SelectItem value="all">Tous les brevets</SelectItem>
               {certificationTypes.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
@@ -328,26 +341,48 @@ const EstablishmentRescuers = () => {
             </SelectContent>
           </Select>
 
-          <Input
-            placeholder="Domicile"
-            value={filters.location}
-            onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-            className="h-9 text-xs rounded-full"
-          />
+          <Select
+            value={filters.location || "all"}
+            onValueChange={(value) => setFilters({ ...filters, location: value === "all" ? "" : value })}
+          >
+            <SelectTrigger className="h-9 text-xs rounded-full">
+              <SelectValue placeholder="Canton" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl max-h-[300px]">
+              <SelectItem value="all">Tous les cantons</SelectItem>
+              {CANTONS_SUISSES.map((canton) => (
+                <SelectItem key={canton.value} value={canton.value}>
+                  {canton.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Select
-            value={filters.availability}
-            onValueChange={(value) => setFilters({ ...filters, availability: value })}
+            value={filters.availability || "all"}
+            onValueChange={(value) => setFilters({ ...filters, availability: value === "all" ? "" : value })}
           >
             <SelectTrigger className="h-9 text-xs rounded-full">
               <SelectValue placeholder="Disponibilité" />
             </SelectTrigger>
             <SelectContent className="rounded-2xl">
+              <SelectItem value="all">Toutes</SelectItem>
               <SelectItem value="available">Disponible</SelectItem>
               <SelectItem value="unavailable">Non disponible</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {/* Bouton effacer les filtres */}
+        {(filters.name || filters.certifications || filters.location || filters.age || filters.availability) && (
+          <button
+            onClick={() => setFilters({ name: "", certifications: "", location: "", age: "", availability: "" })}
+            className="mt-2 flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors focus:outline-none focus-visible:outline-none"
+          >
+            <X className="h-3 w-3" />
+            Effacer les filtres
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 md:gap-8">
