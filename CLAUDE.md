@@ -505,6 +505,13 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 - `Mailbox.tsx` et `EstablishmentMailbox.tsx` sont des re-exports vers `ConversationMailbox`
 - Les anciens fichiers (`RescuerMailbox.tsx`, `MessageCard.tsx`, `MessageDialog.tsx`) sont obsoletes mais encore presents
 
+### Inscription par type de profil
+- **Sauveteurs** : inscription directe (email + mot de passe) via `AuthForm.tsx` → `handleRescuerSignup()`. IDs des champs : `#rescuer-email`, `#rescuer-password`, `#rescuer-password-confirm`
+- **Formateurs** : **claim request uniquement**. L'utilisateur selectionne son organisme dans un dropdown (`#trainer-select`) et laisse son email (`#claim-email`). Un admin cree le compte manuellement. Pas de champ mot de passe.
+- **Etablissements** : **claim request uniquement**. L'utilisateur laisse son email pro (`#establishment-email`). Un admin le contacte. Pas de champ mot de passe.
+- Table BDD : `account_claim_requests` (type, email, selected_trainer_name, status)
+- **Consequence** : seuls les sauveteurs peuvent etre testes en E2E complet (inscription → onboarding → profil)
+
 ### Onboarding
 - Tous champs optionnels (bouton "Passer")
 - Envoyer `null` au lieu de `""` pour champs vides
@@ -549,7 +556,10 @@ Passer a `true` immediatement, retarder `false` de 300ms. Evite les demontages t
 Appeler `window.open()` uniquement dans un `onClick` direct (geste utilisateur). Jamais dans `useEffect` ou callback async.
 
 ### Flash blanc entre transitions de route (mobile)
-`DashboardLayout` et `App.tsx` utilisaient `bg-blue-50` sur mobile, visible brievement lors des changements de route car les pages lazy-loaded ne couvrent pas immediatement le viewport. **Solution** : remplacer `bg-blue-50` par `bg-primary-dark` dans `DashboardLayout.tsx` et `App.tsx`. Toutes les pages internes utilisent deja des fonds sombres sur mobile. De plus, `ConversationMailbox` doit rendre son wrapper `min-h-screen bg-[#0a1628]` immediatement (pas de `LoadingScreen` plein ecran qui laisserait voir le fond).
+`DashboardLayout` et `App.tsx` utilisaient `bg-blue-50` sur mobile, visible brievement lors des changements de route car les pages lazy-loaded ne couvrent pas immediatement le viewport. **Solution** : remplacer `bg-blue-50` par `bg-primary-dark` dans `DashboardLayout.tsx` et `App.tsx`. Toutes les pages internes utilisent deja des fonds sombres sur mobile.
+
+### Flash couleur sur la messagerie (mobile)
+`ConversationMailbox` utilisait `bg-[#0a1628]` (bleu-marine) alors que `DashboardLayout`, `LoadingScreen` et le Suspense fallback utilisent `bg-primary-dark` (`#0A1033`, violet-marine). Lors du lazy-loading du chunk JS, le fond `#0A1033` du Suspense etait visible, puis changement brusque vers `#0a1628` au montage du composant. **Solution** : aligner `ConversationMailbox` sur `bg-primary-dark` pour unifier la couleur avec le reste du layout. **Regle** : toute page lazy-loaded doit utiliser `bg-primary-dark` comme fond principal mobile, jamais un hex hardcode different.
 
 ---
 
@@ -665,6 +675,24 @@ pas de dates specifiques            → vert (disponible par defaut)
 
 ---
 
+## Avatar Upload — Bugs corrigés
+
+### Bug 1 : ProfileHeader hardcodait `establishment_profiles`
+`ProfileHeader.tsx` mettait a jour la table `establishment_profiles` pour TOUS les types de profil lors de l'upload d'avatar. **Fix** : le composant ne met plus a jour que la table partagee `profiles`, et delegue la mise a jour du profil specifique au parent via le callback `onAvatarUpdate`.
+
+### Bug 2 : Pas de validation taille fichier (5MB)
+Aucun des handlers d'upload d'avatar ne validait la taille du fichier. Un fichier >5MB provoquait une erreur Supabase silencieuse. **Fix** : validation 5MB ajoutee aux 5 handlers :
+- `src/components/profile/RescuerProfileHeader.tsx`
+- `src/components/profile/ProfileHeader.tsx`
+- `src/components/onboarding/RescuerOnboardingFlow.tsx`
+- `src/components/onboarding/TrainerOnboardingFlow.tsx`
+- `src/components/onboarding/OnboardingWizard.tsx`
+
+### Bug 3 : Options de cache manquantes sur l'upload onboarding
+Les 3 handlers d'upload dans les flows d'onboarding n'utilisaient pas `cacheControl` ni `upsert`, causant des doublons dans le storage si l'utilisateur re-uploadait. **Fix** : ajout de `{ cacheControl: '3600', upsert: true }` aux 3 fichiers d'onboarding.
+
+---
+
 ## Swipe Navigation Mobile
 
 Navigation par swipe horizontal entre onglets sur mobile, activee dans `DashboardLayout`.
@@ -723,7 +751,61 @@ npm run dev          # Port 8080
 npm run build
 npm run test
 npm run lint
+npx vitest run       # 137 unit tests (~5s)
+npx playwright test  # 39 E2E tests (~5min)
 ```
+
+---
+
+## Tests
+
+### Tests Unitaires (Vitest) — 137 tests, 14 fichiers
+
+| Fichier | Tests | Couverture |
+|---------|-------|------------|
+| `src/utils/__tests__/recyclingUtils.test.ts` | 24 | resolveCertName, getRecyclingInfo, alerts, labels |
+| `src/hooks/__tests__/sss-unicode.test.ts` | 23 | Decodage unicode SSS |
+| `src/utils/__tests__/sortingUtils.test.ts` | 14 | Tri certifications, emplois, priorites |
+| `src/hooks/__tests__/useSwipeNavigation.test.ts` | 13 | Routes par profil, seuils swipe, direction lock |
+| `src/components/mailbox/conversation/__tests__/types.test.ts` | 13 | Groupement conversations |
+| `src/utils/__tests__/asyncHelpers.test.ts` | 9 | withTimeout, safeQuery avec retry |
+| `src/hooks/__tests__/use-availabilities.test.ts` | 9 | Dates timezone-safe, CRUD disponibilites |
+| `src/utils/__tests__/authErrors.test.ts` | 6 | Traduction erreurs Supabase → francais |
+| `src/components/onboarding/__tests__/OnboardingWizard.test.tsx` | 6 | Routage par type profil |
+| `src/components/onboarding/__tests__/TrainerOnboardingFlow.test.tsx` | 6 | Persistence localStorage formateur |
+| `src/components/onboarding/__tests__/RescuerOnboardingFlow.test.tsx` | 5 | Persistence localStorage sauveteur |
+| `src/components/shared/__tests__/ErrorBoundary.test.tsx` | 4 | Capture erreurs, recovery |
+| `src/hooks/__tests__/use-file-upload.test.ts` | 3 | Upload fichier, validation taille |
+| `src/hooks/__tests__/use-formations.test.tsx` | 2 | Chargement formations |
+
+### Tests E2E (Playwright) — 39 tests, 7 fichiers
+
+**Config** : `playwright.config.ts` avec 4 projets :
+- `auth-setup` : login + sauvegarde session (`.auth/user.json`)
+- `public-tests` : tests sans auth (homepage, auth, onboarding, avatar upload)
+- `desktop` : tests authentifies viewport desktop (1280x720)
+- `mobile` : tests authentifies viewport mobile (390x844)
+
+| Fichier | Tests | Couverture |
+|---------|-------|------------|
+| `e2e/auth.spec.ts` | 5 | Formulaire connexion, mauvais password, login valide, liens legaux, types profil |
+| `e2e/homepage.spec.ts` | 4 | Chargement page, perf <5s, page /auth, scroll mobile |
+| `e2e/onboarding.spec.ts` | 2 | Inscription sauveteur + 6 etapes skip / champs remplis + nettoyage |
+| `e2e/avatar-upload.spec.ts` | 1 | Inscription + upload avatar + persistence apres reload + nettoyage |
+| `e2e/profile.spec.ts` | 6 | Page profil, formations, disponibilite, toggle dispo, edition desktop, console errors |
+| `e2e/navigation.spec.ts` | 10 | Tab bar, header, navigation 5 onglets, tab actif, settings, scroll, navigation complete |
+| `e2e/messagerie.spec.ts` | 4 | Page messagerie, liste conversations, console errors (+ 1 skipped: ouvrir conversation) |
+| `e2e/flux.spec.ts` | 2 | Page flux, posts ou etat vide (+ 3 skipped: like, commentaires, envoi commentaire) |
+| `e2e/settings.spec.ts` | 5 | Page settings, suppression compte, dialog confirmation, mot de passe, console errors |
+
+### Regles de test
+
+- **`.env.test`** (gitignored) contient `E2E_USER_EMAIL` et `E2E_USER_PASSWORD` pour les tests authentifies
+- Email verification est **DESACTIVEE** dans Supabase pour les comptes de test
+- Les E2E qui creent des comptes **DOIVENT les supprimer** via Settings → "Supprimer mon compte" en fin de test
+- Seuls les **sauveteurs** peuvent etre testes en E2E complet (inscription → onboarding → profil) car formateurs et etablissements utilisent un systeme de claim request (voir section Inscription)
+- Les tests skipped dependent de donnees existantes en BDD (posts, conversations)
+- `window.matchMedia` est mocke dans `src/setupTests.ts` pour les tests unitaires
 
 ---
 

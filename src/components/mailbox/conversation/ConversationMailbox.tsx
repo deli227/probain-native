@@ -62,12 +62,12 @@ export const ConversationMailbox = () => {
   const unreadTotal = conversations.reduce((acc, c) => acc + c.unreadCount, 0);
 
   // Mobile : affichage par navigation (liste OU conversation)
-  // min-h-screen + bg-[#0a1628] couvre tout le viewport pour masquer le bg-blue-50
-  // du DashboardLayout et eviter le flash blanc lors des transitions de route.
-  // Le container interne utilise une hauteur calculee pour le layout flex de messagerie.
+  // min-h-screen + bg-primary-dark couvre tout le viewport immediatement.
+  // Utilise bg-primary-dark (#0A1033) pour etre identique au DashboardLayout et
+  // au LoadingScreen Suspense, evitant tout flash de couleur lors des transitions.
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-[#0a1628]">
+      <div className="min-h-screen bg-primary-dark">
         <div className="h-[calc(100vh-56px-76px)] flex flex-col">
           {isLoading ? (
             <>
