@@ -346,28 +346,28 @@ const Jobs = () => {
           <button
             onClick={() => setActiveTab("offers")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all border",
+              "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border",
               activeTab === "offers"
                 ? "bg-white/15 text-white border-white/20"
                 : "bg-white/5 text-white/50 border-transparent hover:bg-white/10 hover:text-white/70"
             )}
           >
-            <Briefcase className="h-4 w-4" />
+            <Briefcase className="h-4 w-4 shrink-0" />
             OFFRES
           </button>
           <button
             onClick={() => setActiveTab("applications")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all border relative",
+              "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border",
               activeTab === "applications"
                 ? "bg-white/15 text-white border-white/20"
                 : "bg-white/5 text-white/50 border-transparent hover:bg-white/10 hover:text-white/70"
             )}
           >
-            <ClipboardList className="h-4 w-4" />
-            MES CANDIDATURES
+            <ClipboardList className="h-4 w-4 shrink-0" />
+            CANDIDATURES
             {applicationCount > 0 && (
-              <span className="h-[18px] min-w-[18px] px-1 text-[10px] font-bold bg-cyan-500 text-white rounded-full flex items-center justify-center">
+              <span className="h-[18px] min-w-[18px] px-1 text-[10px] font-bold bg-cyan-500 text-white rounded-full flex items-center justify-center shrink-0">
                 {applicationCount}
               </span>
             )}
