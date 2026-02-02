@@ -108,9 +108,11 @@ export function CantonCombobox({
             ? "h-9 px-3 text-xs rounded-full border"
             : "h-12 px-3 rounded-xl border text-base",
           darkMode
-            ? "bg-white/10 border-white/20 text-white focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/50"
+            ? "bg-white/10 border-white/20 focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/50"
             : "bg-white border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary",
-          !selectedLabel && (darkMode ? "text-white/40" : "text-muted-foreground"),
+          selectedLabel
+            ? (darkMode ? "text-white" : "text-gray-900")
+            : (darkMode ? "text-white/40" : "text-muted-foreground"),
           className
         )}
       >
