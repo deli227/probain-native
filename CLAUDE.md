@@ -62,6 +62,7 @@
 | `useMobile` | `use-mobile.tsx` | Détection mobile |
 | `useToast` | `use-toast.ts` | Notifications toast |
 | `useSwipeNavigation` | `useSwipeNavigation.ts` | Swipe horizontal entre onglets mobile |
+| `useJobApplications` | `use-job-applications.ts` | Candidatures emploi (fetch, apply, hasApplied) |
 
 ---
 
@@ -414,6 +415,7 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 | `useRecyclingReminders` | formations | Alertes recyclage certifications |
 | `useConversations` | internal_messages + *_profiles | Messagerie : fetch, groupement, real-time, mutations |
 | `useSwipeNavigation` | - | Swipe horizontal entre onglets mobile (touch events natifs) |
+| `useJobApplications` | job_applications + job_postings + establishment_profiles | Candidatures emploi (fetch, apply, hasApplied, optimistic update) |
 
 ---
 
@@ -472,6 +474,7 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 | `experiences` | Experiences professionnelles |
 | `availabilities` | Dates de disponibilite |
 | `job_postings` | Offres d'emploi des etablissements |
+| `job_applications` | Candidatures envoyees par les sauveteurs aux offres d'emploi |
 | `trainer_courses` | Cours publies par formateurs |
 | `course_registrations` | Inscriptions aux cours |
 | `trainer_students` | Relations formateur-eleve (JAMAIS supprimees) |
@@ -1189,6 +1192,32 @@ Le `DashboardLayout` gere automatiquement le degagement de la BottomTabBar sur m
 |---------|------|
 | `src/index.css` | Classe `.dashboard-bottom-safe` avec `calc()` + `env(safe-area-inset-bottom)` |
 | `src/layouts/DashboardLayout.tsx` | Applique `.dashboard-bottom-safe md:pb-0 md:pl-64` |
+
+---
+
+## Suivi des Candidatures (Jobs)
+
+### Architecture
+- Table `job_applications` avec `UNIQUE(user_id, job_posting_id)` — empeche la double candidature au niveau BDD
+- Hook `useJobApplications` avec TanStack Query + optimistic updates
+- Onglets "OFFRES" / "MES CANDIDATURES" dans la page Jobs (boutons pill glassmorphism)
+
+### Flow candidature
+1. Sauveteur clique POSTULER → dialog candidature (inchange)
+2. Envoi → insert `internal_messages` (avec `.select().single()` pour recuperer le `message_id`) + insert `job_applications`
+3. Bouton change en "POSTULE" (vert, check, disabled) sur la carte et dans le detail dialog
+4. Onglet MES CANDIDATURES affiche la liste des candidatures avec : avatar etablissement, titre, badge contrat, location, date, statut "Envoyee"
+
+### Migration SQL requise
+`supabase/migrations/20260202000000_create_job_applications.sql` — a appliquer manuellement sur Supabase SQL Editor. Contient la table, les indexes, et les policies RLS (sauveteurs voient/inserent les leurs, etablissements voient les candidatures a leurs offres).
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `supabase/migrations/20260202000000_create_job_applications.sql` | Migration table + RLS |
+| `src/hooks/use-job-applications.ts` | Hook TanStack Query (fetch, apply, hasApplied) |
+| `src/integrations/supabase/types.ts` | Type `job_applications` ajoute |
+| `src/pages/Jobs.tsx` | Onglets, bouton postule, ApplicationsTab, ApplicationCard |
 
 ---
 

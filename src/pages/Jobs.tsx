@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar as CalendarIcon, Search, MapPin, Briefcase, Building2, Loader2, Upload, FileText, X, ExternalLink, Clock } from "lucide-react";
+import { Calendar as CalendarIcon, Search, MapPin, Briefcase, Building2, Loader2, Upload, FileText, X, ExternalLink, Clock, Check, ClipboardList } from "lucide-react";
 import DOMPurify from "dompurify";
 import { CalendarModal } from "@/components/shared/CalendarModal";
 import { useCalendarModal } from "@/hooks/use-calendar-modal";
@@ -24,6 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useJobApplications, JobApplication } from "@/hooks/use-job-applications";
+import { cn } from "@/lib/utils";
 import {
   Carousel,
   CarouselContent,
@@ -71,6 +73,17 @@ const Jobs = () => {
   const [applicationMessage, setApplicationMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<"offers" | "applications">("offers");
+
+  // Job Applications tracking
+  const {
+    applications,
+    isLoading: applicationsLoading,
+    applyToJob,
+    hasApplied,
+    applicationCount,
+  } = useJobApplications(currentUserId);
 
   // CV Upload
   const cvInputRef = useRef<HTMLInputElement>(null);
@@ -235,7 +248,7 @@ const Jobs = () => {
         messageContent += `\n\n📎 CV joint: ${cvUrl}`;
       }
 
-      const { error } = await supabase
+      const { data: messageData, error } = await supabase
         .from("internal_messages")
         .insert({
           sender_id: currentUserId,
@@ -243,7 +256,9 @@ const Jobs = () => {
           subject: `Candidature: ${selectedJob.title}`,
           content: messageContent,
           read: false,
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         toast({
@@ -252,6 +267,15 @@ const Jobs = () => {
           variant: "destructive",
         });
         return;
+      }
+
+      // Track the application in job_applications table
+      if (messageData) {
+        await applyToJob({
+          jobPostingId: selectedJob.id,
+          messageId: messageData.id,
+          cvUrl: cvUrl,
+        });
       }
 
       toast({
@@ -308,6 +332,42 @@ const Jobs = () => {
         </div>
       </div>
 
+      {/* Tab selector */}
+      <div className="px-4 pt-3">
+        <div className="max-w-3xl mx-auto flex gap-2">
+          <button
+            onClick={() => setActiveTab("offers")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all border",
+              activeTab === "offers"
+                ? "bg-white/15 text-white border-white/20"
+                : "bg-white/5 text-white/50 border-transparent hover:bg-white/10 hover:text-white/70"
+            )}
+          >
+            <Briefcase className="h-4 w-4" />
+            OFFRES
+          </button>
+          <button
+            onClick={() => setActiveTab("applications")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all border relative",
+              activeTab === "applications"
+                ? "bg-white/15 text-white border-white/20"
+                : "bg-white/5 text-white/50 border-transparent hover:bg-white/10 hover:text-white/70"
+            )}
+          >
+            <ClipboardList className="h-4 w-4" />
+            MES CANDIDATURES
+            {applicationCount > 0 && (
+              <span className="h-[18px] min-w-[18px] px-1 text-[10px] font-bold bg-cyan-500 text-white rounded-full flex items-center justify-center">
+                {applicationCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "offers" ? (
       <div className="p-4 md:p-6">
 
         <Card className="max-w-3xl mx-auto mb-8 p-6 md:p-8 bg-transparent bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl">
@@ -476,12 +536,22 @@ const Jobs = () => {
                           >
                             VOIR L'OFFRE
                           </Button>
-                          <Button
-                            className="flex-1 h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300"
-                            onClick={(e) => { e.stopPropagation(); handleApply(job); }}
-                          >
-                            POSTULER
-                          </Button>
+                          {hasApplied(job.id) ? (
+                            <button
+                              disabled
+                              className="flex-1 h-11 flex items-center justify-center gap-2 bg-green-500/20 text-green-400 font-semibold text-sm rounded-xl border border-green-500/30 cursor-not-allowed"
+                            >
+                              <Check className="h-4 w-4" />
+                              POSTULE
+                            </button>
+                          ) : (
+                            <Button
+                              className="flex-1 h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300"
+                              onClick={(e) => { e.stopPropagation(); handleApply(job); }}
+                            >
+                              POSTULER
+                            </Button>
+                          )}
                         </div>
                       </Card>
                     </CarouselItem>
@@ -535,12 +605,22 @@ const Jobs = () => {
                     >
                       VOIR L'OFFRE
                     </Button>
-                    <Button
-                      className="flex-1 h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 group-hover:-translate-y-0.5"
-                      onClick={(e) => { e.stopPropagation(); handleApply(job); }}
-                    >
-                      POSTULER
-                    </Button>
+                    {hasApplied(job.id) ? (
+                      <button
+                        disabled
+                        className="flex-1 h-11 flex items-center justify-center gap-2 bg-green-500/20 text-green-400 font-semibold text-sm rounded-xl border border-green-500/30 cursor-not-allowed"
+                      >
+                        <Check className="h-4 w-4" />
+                        POSTULE
+                      </button>
+                    ) : (
+                      <Button
+                        className="flex-1 h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 group-hover:-translate-y-0.5"
+                        onClick={(e) => { e.stopPropagation(); handleApply(job); }}
+                      >
+                        POSTULER
+                      </Button>
+                    )}
                   </div>
                 </Card>
               ))}
@@ -548,6 +628,106 @@ const Jobs = () => {
           </div>
         )}
       </div>
+      ) : (
+      /* Applications Tab */
+      <div className="p-4 md:p-6">
+        {applicationsLoading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-400 mb-4" />
+            <p className="text-white/70">Chargement de vos candidatures...</p>
+          </div>
+        ) : applications.length === 0 ? (
+          <div className="text-center py-16 px-4">
+            <div className="p-4 bg-white/10 rounded-2xl inline-block mb-4">
+              <ClipboardList className="h-10 w-10 text-white/40" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2 text-white">Aucune candidature</h2>
+            <p className="text-white/50 max-w-sm mx-auto mb-6">
+              Vous n'avez pas encore postule a une offre. Consultez les offres disponibles pour commencer.
+            </p>
+            <button
+              onClick={() => setActiveTab("offers")}
+              className="px-6 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20 hover:from-blue-600 hover:to-indigo-700 transition-all"
+            >
+              Voir les offres
+            </button>
+          </div>
+        ) : (
+          <div className="max-w-3xl mx-auto">
+            <p className="text-sm text-white/50 mb-4">
+              {applications.length} candidature{applications.length > 1 ? "s" : ""} envoyee{applications.length > 1 ? "s" : ""}
+            </p>
+            <div className="space-y-3">
+              {applications.map((app) => {
+                const isJobDeleted = !app.job_title;
+                return (
+                  <div key={app.id} className="p-4 bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10 border border-white/20 shrink-0">
+                        <AvatarImage src={app.establishment_avatar} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-probain-blue text-white text-xs font-bold">
+                          {app.establishment_name?.charAt(0)?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white truncate">
+                          {isJobDeleted ? "Offre supprimee" : app.job_title}
+                        </h3>
+                        {app.establishment_name && (
+                          <p className="text-sm text-white/60">{app.establishment_name}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {app.job_contract_type && (
+                            <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-md">
+                              {formatContractType(app.job_contract_type)}
+                            </Badge>
+                          )}
+                          {app.job_location && (
+                            <span className="text-xs text-white/50 flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {app.job_location}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-3">
+                          <span className="text-xs text-white/40">
+                            Postule le {formatDateDisplay(app.created_at)}
+                          </span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                            Envoyee
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    {!isJobDeleted && (
+                      <button
+                        onClick={() => {
+                          const jobForDetail: JobPosting = {
+                            id: app.job_posting_id,
+                            title: app.job_title || "",
+                            description: app.job_description || "",
+                            location: app.job_location || "",
+                            contract_type: app.job_contract_type || "",
+                            establishment_id: app.establishment_id || null,
+                            created_at: app.job_created_at || app.created_at,
+                            establishment_name: app.establishment_name,
+                            establishment_avatar: app.establishment_avatar,
+                          };
+                          handleViewDetail(jobForDetail);
+                        }}
+                        className="mt-3 w-full py-2 text-sm font-medium text-white/70 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                      >
+                        VOIR L'OFFRE
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+      )}
 
       {/* Job Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
@@ -595,12 +775,19 @@ const Jobs = () => {
 
               {/* Action buttons */}
               <div className="mt-6 flex flex-col gap-3">
-                <Button
-                  className="w-full h-12 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300"
-                  onClick={() => handleApply(selectedJob)}
-                >
-                  POSTULER A CETTE OFFRE
-                </Button>
+                {hasApplied(selectedJob.id) ? (
+                  <div className="w-full h-12 flex items-center justify-center gap-2 bg-green-500/20 text-green-400 font-semibold rounded-xl border border-green-500/30">
+                    <Check className="h-5 w-5" />
+                    CANDIDATURE ENVOYEE
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300"
+                    onClick={() => handleApply(selectedJob)}
+                  >
+                    POSTULER A CETTE OFFRE
+                  </Button>
+                )}
                 {navigator.share && (
                   <button
                     onClick={async () => {
