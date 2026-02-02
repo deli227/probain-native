@@ -311,12 +311,15 @@ const Flux = () => {
                                 )}
                               </div>
                               <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                {comment.content.startsWith('@') ? (
-                                  <>
-                                    <span className="text-blue-600 font-medium">{comment.content.split(' ')[0]}</span>
-                                    {' '}{comment.content.substring(comment.content.indexOf(' ') + 1)}
-                                  </>
-                                ) : comment.content}
+                                {comment.content.startsWith('@') ? (() => {
+                                  const match = comment.content.match(/^(@[\p{L}\p{M}'\-]+(?:\s[\p{L}\p{M}'\-]+)*)\s/u);
+                                  if (match) {
+                                    const mention = match[1];
+                                    const rest = comment.content.substring(mention.length + 1);
+                                    return <><span className="text-blue-600 font-medium">{mention}</span> {rest}</>;
+                                  }
+                                  return comment.content;
+                                })() : comment.content}
                               </p>
                               <div className="flex items-center gap-3 mt-1">
                                 <p className="text-xs text-gray-400">{formatDate(comment.created_at)}</p>
