@@ -626,7 +626,7 @@ const Jobs = () => {
 
       {/* Apply Dialog */}
       <Dialog open={isApplyDialogOpen} onOpenChange={setIsApplyDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] w-[95vw] bg-[#0a1628] border-white/10 text-white [&>button]:text-white/70 [&>button]:hover:text-white">
+        <DialogContent className="sm:max-w-[500px] w-[95vw] max-h-[90vh] overflow-y-auto bg-[#0a1628] border-white/10 text-white [&>button]:text-white/70 [&>button]:hover:text-white">
           <DialogHeader className="pb-3 border-b border-white/10">
             <DialogTitle className="text-lg font-bold text-white">Postuler a cette offre</DialogTitle>
             <DialogDescription className="text-white/50">

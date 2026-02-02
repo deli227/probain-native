@@ -236,7 +236,7 @@ export const PersonalInfoForm = ({ form, darkMode = false }: PersonalInfoFormPro
 
                 {/* Modal du calendrier */}
                 {isCalendarOpen && (
-                  <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center" onClick={(e) => {
+                  <div className="fixed inset-0 z-[100] bg-black/40 flex items-end sm:items-center justify-center" onClick={(e) => {
                     if (e.target === e.currentTarget) {
                       setIsCalendarOpen(false);
                     }

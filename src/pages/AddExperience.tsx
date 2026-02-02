@@ -229,7 +229,7 @@ const AddExperience = ({ onClose: externalClose, onSuccess: externalSuccess }: A
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
       {/* Overlay sombre - PAS de onClick pour éviter fermeture accidentelle sur mobile */}
       <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"

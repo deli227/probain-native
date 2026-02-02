@@ -581,12 +581,19 @@ Appeler `window.open()` uniquement dans un `onClick` direct (geste utilisateur).
 Un `<button>` HTML brut (pas le composant `Button` de Shadcn) garde le focus ring natif du navigateur (bleu) apres interaction. Le `Button` de Shadcn a `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring` qui masque ce probleme. **Solution** : ajouter `focus:outline-none focus-visible:outline-none` sur tout `<button>` natif utilise comme trigger de Popover, Sheet, ou Dialog. Fichier exemple : `MobileHeader.tsx` (engrenage settings).
 
 ### Controles caches derriere la BottomTabBar sur mobile
-Tout overlay, modal ou dialog avec des boutons d'action en bas (`fixed bottom-0` ou en fin de `flex-col`) doit prendre en compte la BottomTabBar (76px + safe-area). **Solutions** :
-- Boutons fixes : `bottom-[100px] md:bottom-0`
-- Padding bas de conteneur : `pb-24 md:pb-4` ou `max(6rem, calc(env(safe-area-inset-bottom) + 5rem))`
-- Formulaires scrollables : `pb-44 md:pb-24` si un bouton fixed est present
-- **DashboardLayout** : la classe CSS `.dashboard-bottom-safe` dans `index.css` applique automatiquement `padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px) + 16px)` sur mobile (< 768px). Les pages n'ont plus besoin de `pb-XX` pour degager la BottomTabBar — le layout gere tout. Desktop : `md:pb-0`.
-Fichiers impactes : `DashboardLayout.tsx`, `index.css`, `TrainerProfileForm.tsx`, `ProfileForm.tsx`, `ImageCropDialog.tsx`
+**REGLE OBLIGATOIRE** : tous les boutons de l'application doivent etre visibles sur TOUS les ecrans, TOUS les profils. Aucun bouton ne doit etre masque par la BottomTabBar ou la safe-area.
+
+**Solution structurelle (z-index)** : les composants Radix UI (`Dialog`, `Sheet`, `AlertDialog`) utilisent `z-[70]`, AU-DESSUS de la BottomTabBar (`z-[60]`). Les overlays custom (`AddFormation`, `AddExperience`, `CalendarModal`, `ImageCropDialog`) utilisent `z-[70]` ou `z-[100]`. Ainsi, tout overlay se superpose correctement a la navigation.
+
+**DashboardLayout** : la classe CSS `.dashboard-bottom-safe` dans `index.css` applique automatiquement `padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px) + 16px)` sur mobile (< 768px). Les pages n'ont plus besoin de `pb-XX` pour degager la BottomTabBar — le layout gere tout.
+
+**Boutons fixes dans les Sheets** : les formulaires de profil (ProfileForm, TrainerProfileForm, EstablishmentProfileForm) sont dans des Sheets `z-[70]`. Le bouton save utilise `bottom-0` avec `paddingBottom: max(1rem, env(safe-area-inset-bottom))` via style inline. PAS de `bottom-[100px]` — le Sheet est deja au-dessus de la BottomTabBar.
+
+**Overlays custom** : tout overlay `fixed inset-0` dans le DashboardLayout DOIT utiliser `z-[70]` minimum. Les `z-50` sont reserves aux pages d'onboarding (pas de BottomTabBar).
+
+**Dialogs scrollables** : tout `DialogContent` affiche dans le DashboardLayout doit avoir `max-h-[90vh] overflow-y-auto` pour garantir que les boutons sont accessibles par scroll sur les petits ecrans.
+
+Fichiers impactes : `dialog.tsx`, `sheet.tsx`, `alert-dialog.tsx`, `DashboardLayout.tsx`, `index.css`, `ProfileForm.tsx`, `TrainerProfileForm.tsx`, `EstablishmentProfileForm.tsx`, `AddFormation.tsx`, `AddExperience.tsx`, `PersonalInfoForm.tsx`
 
 ### Card bg-card blanc invisible sur fond sombre
 Le composant `Card` de Shadcn/UI applique `bg-card` (blanc pur) par defaut. Sur un fond sombre, si le texte est `text-white`, tout devient invisible. Le gradient semi-transparent (`from-white/15 to-white/5`) ne masque pas le blanc. **Solution** : ajouter `bg-transparent` au `Card` pour neutraliser `bg-card`. Ne PAS modifier `card.tsx`.
@@ -601,14 +608,18 @@ Le composant `DialogContent` de Shadcn/UI genere automatiquement un bouton X de 
 
 ## Z-Index Hierarchy
 
-| Composant | Z-Index |
-|-----------|---------|
-| CalendarModal overlay | `z-[100]` |
-| ImageCropDialog | `z-[100]` |
-| Bottom Tab Bar | `z-[60]` |
-| FAB bouton message | `z-[55]` |
-| Sheet overlay | `z-50` |
-| Sheet header | `z-20` |
+| Composant | Z-Index | Note |
+|-----------|---------|------|
+| CalendarModal overlay | `z-[100]` | Au-dessus de tout |
+| ImageCropDialog | `z-[100]` | Au-dessus de tout |
+| PersonalInfoForm calendar | `z-[100]` | Au-dessus de tout |
+| Dialog overlay + content | `z-[70]` | Au-dessus de BottomTabBar |
+| Sheet overlay + content | `z-[70]` | Au-dessus de BottomTabBar |
+| AlertDialog overlay + content | `z-[70]` | Au-dessus de BottomTabBar |
+| AddFormation / AddExperience | `z-[70]` | Overlays custom |
+| Bottom Tab Bar | `z-[60]` | Navigation mobile |
+| FAB bouton message | `z-[55]` | Flottant |
+| Sheet header (sticky interne) | `z-20` | Interne au Sheet |
 
 ---
 
