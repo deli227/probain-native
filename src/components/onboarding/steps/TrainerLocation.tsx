@@ -1,8 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, ChevronLeft } from "lucide-react";
-import { CANTONS_SUISSES } from "../OnboardingWizard";
+import { CantonCombobox } from "@/components/shared/CantonCombobox";
 
 interface TrainerLocationProps {
   street: string;
@@ -62,18 +61,12 @@ export const TrainerLocation = ({
           <label className="text-white/80 text-sm font-medium">
             Canton <span className="text-white/40">(recommandé)</span>
           </label>
-          <Select value={canton} onValueChange={onCantonChange}>
-            <SelectTrigger className="h-14 bg-white/10 border-white/20 text-white rounded-xl">
-              <SelectValue placeholder="Sélectionnez votre canton" />
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {CANTONS_SUISSES.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CantonCombobox
+            value={canton}
+            onValueChange={onCantonChange}
+            placeholder="Sélectionnez votre canton"
+            darkMode
+          />
         </div>
 
         {/* NPA/Ville */}

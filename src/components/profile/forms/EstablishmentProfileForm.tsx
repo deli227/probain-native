@@ -5,12 +5,11 @@ import { useState, useEffect } from "react";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, MapPin, Building2, Globe, Lock, Save, Bell } from "lucide-react";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
-import { CANTONS_SUISSES } from "@/utils/swissCantons";
+import { CantonCombobox } from "@/components/shared/CantonCombobox";
 import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -76,7 +75,6 @@ export const EstablishmentProfileForm = ({
   // Classes dark theme (identiques au TrainerProfileForm)
   const labelClasses = "text-sm text-white/70";
   const inputClasses = "bg-white/10 border-white/20 rounded-xl h-12 text-base text-white placeholder:text-white/40 focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/50 transition-all";
-  const selectTriggerClasses = "bg-white/10 border-white/20 rounded-xl h-12 text-base text-white focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/50 transition-all [&>span]:text-white/40 [&[data-state=open]>span]:text-white";
 
   return (
     <div className="relative min-h-full bg-[#0a1628] -m-6 p-6">
@@ -228,24 +226,12 @@ export const EstablishmentProfileForm = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={labelClasses}>Canton</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className={selectTriggerClasses}>
-                        <SelectValue placeholder="Selectionnez un canton" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="max-h-[300px] bg-[#0d2847] border-white/20">
-                      {CANTONS_SUISSES.map((canton) => (
-                        <SelectItem
-                          key={canton.value}
-                          value={canton.value}
-                          className="py-3 text-white focus:bg-white/10 focus:text-white"
-                        >
-                          {canton.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CantonCombobox
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                    placeholder="Sélectionnez un canton"
+                    darkMode
+                  />
                   <FormMessage />
                 </FormItem>
               )}

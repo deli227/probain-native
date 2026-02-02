@@ -20,6 +20,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CANTONS_SUISSES } from "@/utils/swissCantons";
+import { CantonCombobox } from "@/components/shared/CantonCombobox";
 
 // Types pour les données rescuer
 interface RescuerFormation {
@@ -624,22 +625,13 @@ const EstablishmentRescuers = () => {
             </SelectContent>
           </Select>
 
-          <Select
+          <CantonCombobox
             value={filters.location || "all"}
             onValueChange={(value) => setFilters({ ...filters, location: value === "all" ? "" : value })}
-          >
-            <SelectTrigger className="h-9 text-xs rounded-full">
-              <SelectValue placeholder="Canton" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl max-h-[300px]">
-              <SelectItem value="all">Tous les cantons</SelectItem>
-              {CANTONS_SUISSES.map((canton) => (
-                <SelectItem key={canton.value} value={canton.value}>
-                  {canton.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Canton"
+            showAllOption
+            compact
+          />
 
           <Select
             value={filters.availability || "all"}

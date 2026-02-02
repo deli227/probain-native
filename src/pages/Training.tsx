@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSSSFormations, SSSFormation } from "@/hooks/use-sss-formations";
 import { categorizeFormation, FORMATION_CATEGORIES, SUBCATEGORIES, FormationCategory } from "@/utils/formationCategories";
 import { getUniqueCantons, isCityInCanton } from "@/utils/swissCantons";
+import { CantonCombobox } from "@/components/shared/CantonCombobox";
 
 // Clés pour le sessionStorage
 const TRAINING_SEARCH_STATE_KEY = 'training_search_state';
@@ -675,28 +676,13 @@ const Training = () => {
             </Select>
 
             {/* Canton */}
-            <Select
+            <CantonCombobox
               value={searchLocation}
               onValueChange={setSearchLocation}
-            >
-              <SelectTrigger className="w-full bg-white text-sm md:text-base text-gray-900">
-                <SelectValue placeholder="Canton" className="text-gray-900">
-                  {searchLocation === 'all' || !searchLocation
-                    ? "Canton"
-                    : availableCantons.find(c => c.id === searchLocation)?.label || searchLocation}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                <SelectItem value="all" className="text-gray-900">
-                  Tous les cantons
-                </SelectItem>
-                {availableCantons.map((canton) => (
-                  <SelectItem key={canton.id} value={canton.id} className="text-gray-900">
-                    {canton.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Canton"
+              showAllOption
+              options={availableCantons.map(c => ({ value: c.id, label: c.label }))}
+            />
 
             <div className="space-y-2">
               <p className="text-sm text-center">Dates :</p>
