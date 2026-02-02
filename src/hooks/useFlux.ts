@@ -342,14 +342,33 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
     mutationFn: async ({ postId, content, parentCommentId }: { postId: string; content: string; parentCommentId?: string | null }) => {
       if (!userId) throw new Error('NOT_AUTHENTICATED');
 
+      // Build insert payload — only include parent_comment_id if provided
+      const insertPayload: Record<string, unknown> = {
+        post_id: postId,
+        user_id: userId,
+        content: content.trim(),
+      };
+      if (parentCommentId) {
+        insertPayload.parent_comment_id = parentCommentId;
+      }
+
       const { error } = await supabase
         .from('flux_comments')
-        .insert({
-          post_id: postId,
-          user_id: userId,
-          content: content.trim(),
-          ...(parentCommentId ? { parent_comment_id: parentCommentId } : {}),
-        });
+        .insert(insertPayload);
+
+      // If the error is because parent_comment_id column doesn't exist yet,
+      // retry without it (migration not yet applied)
+      if (error && parentCommentId && error.message?.includes('parent_comment_id')) {
+        const { error: retryError } = await supabase
+          .from('flux_comments')
+          .insert({
+            post_id: postId,
+            user_id: userId,
+            content: content.trim(),
+          });
+        if (retryError) throw retryError;
+        return;
+      }
       if (error) throw error;
     },
     onSuccess: (_data, { postId }) => {

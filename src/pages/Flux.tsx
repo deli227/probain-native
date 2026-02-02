@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { Heart, MessageCircle, Send, Loader2, Trash2, Reply, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
 import { useFlux, FluxComment } from '@/hooks/useFlux';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,7 +77,7 @@ interface CommentBubbleProps {
   repliesCount?: number;
 }
 
-const CommentBubble = ({ comment, postId, onReply, onDelete, canViewProfile, isOwn, onViewProfile, formatDate, isReply, repliesCount }: CommentBubbleProps) => (
+const CommentBubble = memo(({ comment, postId, onReply, onDelete, canViewProfile, isOwn, onViewProfile, formatDate, isReply, repliesCount }: CommentBubbleProps) => (
   <div className="flex gap-2">
     <Avatar
       className={`${isReply ? 'h-6 w-6' : 'h-8 w-8'} shrink-0 bg-gray-200 ${canViewProfile ? 'cursor-pointer ring-2 ring-transparent hover:ring-cyan-400/50 transition-all' : ''}`}
@@ -101,15 +100,14 @@ const CommentBubble = ({ comment, postId, onReply, onDelete, canViewProfile, isO
           {comment.user_name}
         </p>
         {isOwn && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-gray-400 hover:text-red-500"
+          <button
+            type="button"
+            className="h-6 w-6 flex items-center justify-center text-gray-400 hover:text-red-500 rounded-md transition-colors focus:outline-none"
             onClick={() => onDelete(comment.id, postId, repliesCount)}
             aria-label="Supprimer le commentaire"
           >
             <Trash2 className="h-3 w-3" />
-          </Button>
+          </button>
         )}
       </div>
       <p className="text-sm text-gray-700 whitespace-pre-wrap">
@@ -118,6 +116,7 @@ const CommentBubble = ({ comment, postId, onReply, onDelete, canViewProfile, isO
       <div className="flex items-center gap-3 mt-1">
         <p className="text-xs text-gray-400">{formatDate(comment.created_at)}</p>
         <button
+          type="button"
           onClick={() => onReply(postId, comment)}
           className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors flex items-center gap-1"
         >
@@ -127,7 +126,9 @@ const CommentBubble = ({ comment, postId, onReply, onDelete, canViewProfile, isO
       </div>
     </div>
   </div>
-);
+));
+
+CommentBubble.displayName = 'CommentBubble';
 
 // ---- Main Flux component ----
 
@@ -146,6 +147,14 @@ const Flux = () => {
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  // Refs for stable callbacks (avoid recreating handlers on every state change)
+  const replyingToRef = useRef(replyingTo);
+  replyingToRef.current = replyingTo;
+  const commentsRef = useRef(comments);
+  commentsRef.current = comments;
+  const newCommentRef = useRef(newComment);
+  newCommentRef.current = newComment;
+
   const isEstablishment = profileType === 'etablissement';
 
   useEffect(() => {
@@ -159,18 +168,23 @@ const Flux = () => {
   }, []);
 
   const handleToggleComments = useCallback(async (postId: string) => {
-    setExpandedComments(prev => {
-      const isExpanded = prev[postId];
-      if (!isExpanded && !comments[postId]) {
-        setLoadingComments(p => ({ ...p, [postId]: true }));
-        fetchComments(postId).then(postComments => {
-          setComments(p => ({ ...p, [postId]: postComments }));
-          setLoadingComments(p => ({ ...p, [postId]: false }));
-        });
+    const isExpanded = commentsRef.current[postId] !== undefined && expandedComments[postId];
+
+    if (!isExpanded && !commentsRef.current[postId]) {
+      // First time opening: fetch comments
+      setExpandedComments(prev => ({ ...prev, [postId]: true }));
+      setLoadingComments(prev => ({ ...prev, [postId]: true }));
+      try {
+        const postComments = await fetchComments(postId);
+        setComments(prev => ({ ...prev, [postId]: postComments }));
+      } finally {
+        setLoadingComments(prev => ({ ...prev, [postId]: false }));
       }
-      return { ...prev, [postId]: !isExpanded };
-    });
-  }, [comments, fetchComments]);
+    } else {
+      // Toggle visibility
+      setExpandedComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+    }
+  }, [expandedComments, fetchComments]);
 
   // Derive current user display name for optimistic comment
   const currentUserName = rescuerProfile
@@ -178,28 +192,36 @@ const Flux = () => {
     : trainerProfile?.organization_name || establishmentProfile?.organization_name || 'Moi';
   const currentUserAvatar = rescuerProfile?.avatar_url || trainerProfile?.avatar_url || establishmentProfile?.avatar_url || undefined;
 
-  const handleAddComment = useCallback(async (postId: string, content: string) => {
-    if (!content?.trim()) return;
+  // Stable refs for user info (used in handleAddComment without triggering re-creation)
+  const userInfoRef = useRef({ currentUserName, currentUserAvatar, profileType, userId });
+  userInfoRef.current = { currentUserName, currentUserAvatar, profileType, userId };
+
+  const handleAddComment = useCallback(async (postId: string) => {
+    const content = newCommentRef.current[postId] || '';
+    if (!content.trim()) return;
 
     setSubmittingComment(prev => ({ ...prev, [postId]: true }));
 
+    const { currentUserName: uName, currentUserAvatar: uAvatar, profileType: pType, userId: uid } = userInfoRef.current;
+
     // Determine parent comment ID for threading
-    const parentComment = replyingTo[postId];
+    const parentComment = replyingToRef.current[postId];
     // 1-level nesting: if replying to a reply, flatten to the root parent
     const effectiveParentId = parentComment
       ? (parentComment.parent_comment_id || parentComment.id)
       : null;
 
     // Optimistic: add the comment locally before the server responds
+    const optimisticId = `optimistic-${Date.now()}`;
     const optimisticComment: FluxComment = {
-      id: `optimistic-${Date.now()}`,
+      id: optimisticId,
       post_id: postId,
-      user_id: userId || '',
+      user_id: uid || '',
       content: content.trim(),
       created_at: new Date().toISOString(),
-      user_name: currentUserName,
-      user_avatar: currentUserAvatar,
-      profile_type: profileType || undefined,
+      user_name: uName,
+      user_avatar: uAvatar,
+      profile_type: pType || undefined,
       parent_comment_id: effectiveParentId,
       replies_count: 0,
     };
@@ -215,22 +237,32 @@ const Flux = () => {
       setExpandedReplies(prev => ({ ...prev, [effectiveParentId]: true }));
     }
 
-    const success = await addComment(postId, content, effectiveParentId);
+    try {
+      const success = await addComment(postId, content, effectiveParentId);
 
-    if (success) {
-      // Background refresh to get the real comment with proper ID
-      fetchComments(postId).then(postComments => {
-        setComments(prev => ({ ...prev, [postId]: postComments }));
-      });
-    } else {
-      // Revert optimistic comment on failure
+      if (success) {
+        // Background refresh to get the real comment with proper ID
+        fetchComments(postId).then(postComments => {
+          setComments(prev => ({ ...prev, [postId]: postComments }));
+        }).catch(() => {
+          // Silently keep the optimistic comment if refresh fails
+        });
+      } else {
+        // Revert optimistic comment on failure
+        setComments(prev => ({
+          ...prev,
+          [postId]: (prev[postId] || []).filter(c => c.id !== optimisticId),
+        }));
+      }
+    } catch {
+      // Revert optimistic comment on unexpected error
       setComments(prev => ({
         ...prev,
-        [postId]: (prev[postId] || []).filter(c => c.id !== optimisticComment.id),
+        [postId]: (prev[postId] || []).filter(c => c.id !== optimisticId),
       }));
     }
     setSubmittingComment(prev => ({ ...prev, [postId]: false }));
-  }, [addComment, fetchComments, userId, currentUserName, currentUserAvatar, profileType, replyingTo]);
+  }, [addComment, fetchComments]);
 
   const handleDeleteComment = useCallback(async (commentId: string, postId: string, repliesCount?: number) => {
     const success = await deleteComment(commentId, postId, repliesCount);
@@ -486,6 +518,7 @@ const Flux = () => {
                         <Reply className="h-3 w-3" />
                         <span>Réponse à <span className="font-medium text-gray-700">{replyingTo[post.id]?.user_name}</span></span>
                         <button
+                          type="button"
                           onClick={() => cancelReply(post.id)}
                           className="ml-auto text-gray-400 hover:text-gray-600 transition-colors"
                           aria-label="Annuler la réponse"
@@ -494,26 +527,28 @@ const Flux = () => {
                         </button>
                       </div>
                     )}
-                    <div className="p-4 pt-2 flex gap-2">
-                      <Input
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAddComment(post.id);
+                      }}
+                      className="p-4 pt-2 flex gap-2"
+                    >
+                      <input
                         ref={(el) => { commentInputRefs.current[post.id] = el; }}
+                        type="text"
                         placeholder={replyingTo[post.id] ? `Répondre à ${replyingTo[post.id]?.user_name}...` : "Écrire un commentaire..."}
                         value={newComment[post.id] || ''}
                         onChange={(e) => setNewComment(prev => ({ ...prev, [post.id]: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAddComment(post.id, newComment[post.id] || '');
-                          }
-                        }}
-                        className="flex-1"
+                        className="flex-1 h-10 px-3 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                         aria-label="Écrire un commentaire"
+                        autoComplete="off"
                       />
-                      <Button
-                        size="icon"
-                        onClick={() => handleAddComment(post.id, newComment[post.id] || '')}
+                      <button
+                        type="submit"
                         disabled={submittingComment[post.id] || !newComment[post.id]?.trim()}
-                        className="bg-primary hover:bg-primary-dark"
+                        className="h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-md bg-primary hover:bg-primary-dark text-white disabled:opacity-50 disabled:pointer-events-none transition-colors"
                         aria-label="Envoyer le commentaire"
                       >
                         {submittingComment[post.id] ? (
@@ -521,8 +556,8 @@ const Flux = () => {
                         ) : (
                           <Send className="h-4 w-4" />
                         )}
-                      </Button>
-                    </div>
+                      </button>
+                    </form>
                   </div>
                 </div>
               )}
