@@ -27,6 +27,15 @@ interface ApplyParams {
   jobPostingId: string;
   messageId: string;
   cvUrl?: string | null;
+  // Job details for optimistic update display
+  jobTitle?: string;
+  jobLocation?: string;
+  jobContractType?: string;
+  jobDescription?: string;
+  jobCreatedAt?: string;
+  establishmentName?: string;
+  establishmentAvatar?: string;
+  establishmentId?: string | null;
 }
 
 const JOB_APPLICATIONS_KEY = ["job-applications"];
@@ -147,7 +156,7 @@ export const useJobApplications = (userId: string | null) => {
         userId,
       ]);
 
-      // Optimistic insert
+      // Optimistic insert with job details for immediate display
       const optimistic: JobApplication = {
         id: `optimistic-${Date.now()}`,
         user_id: userId!,
@@ -156,6 +165,14 @@ export const useJobApplications = (userId: string | null) => {
         cv_url: params.cvUrl || null,
         status: "sent",
         created_at: new Date().toISOString(),
+        job_title: params.jobTitle,
+        job_location: params.jobLocation,
+        job_contract_type: params.jobContractType,
+        job_description: params.jobDescription,
+        job_created_at: params.jobCreatedAt,
+        establishment_name: params.establishmentName,
+        establishment_avatar: params.establishmentAvatar,
+        establishment_id: params.establishmentId,
       };
 
       queryClient.setQueryData<JobApplication[]>(
