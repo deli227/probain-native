@@ -595,6 +595,28 @@ Un `<button>` HTML brut (pas le composant `Button` de Shadcn) garde le focus rin
 
 Fichiers impactes : `dialog.tsx`, `sheet.tsx`, `alert-dialog.tsx`, `DashboardLayout.tsx`, `index.css`, `ProfileForm.tsx`, `TrainerProfileForm.tsx`, `EstablishmentProfileForm.tsx`, `AddFormation.tsx`, `AddExperience.tsx`, `PersonalInfoForm.tsx`
 
+### Calendriers coupes en haut sur mobile
+**REGLE OBLIGATOIRE** : tous les calendriers doivent etre entierement visibles sur TOUS les ecrans, TOUS les profils (sauveteur, formateur, etablissement).
+
+**Probleme** : les calendriers modaux utilisaient `items-end` (aligne en bas) sur mobile. Sur les petits ecrans, le panneau calendrier (~530px de haut) depassait du viewport par le haut, masque par le header.
+
+**Solution** : centrage vertical (`items-center`) + padding (`p-4`) + contrainte hauteur (`max-h-[calc(100vh-2rem)] overflow-y-auto`). Le calendrier est toujours entierement visible et scrollable si necessaire.
+
+**Pattern a appliquer sur tout calendrier modal** :
+```tsx
+// Overlay conteneur :
+<div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4">
+// Panneau calendrier :
+<div className="... rounded-2xl max-w-sm w-full max-h-[calc(100vh-2rem)] overflow-y-auto">
+```
+
+**Calendriers fixes** :
+| Composant | Utilise par | Fix |
+|-----------|-----------|-----|
+| `CalendarModal.tsx` | Jobs, Training, FormationForm, ExperienceForm | `items-center p-4` + `max-h` + `overflow-y-auto` |
+| `PersonalInfoForm.tsx` (inline) | 3 profils (edition profil) | Meme pattern |
+| `RescuerBirthdate.tsx` | Onboarding sauveteur | `max-h` + `overflow-y-auto` (deja centre) |
+
 ### Card bg-card blanc invisible sur fond sombre
 Le composant `Card` de Shadcn/UI applique `bg-card` (blanc pur) par defaut. Sur un fond sombre, si le texte est `text-white`, tout devient invisible. Le gradient semi-transparent (`from-white/15 to-white/5`) ne masque pas le blanc. **Solution** : ajouter `bg-transparent` au `Card` pour neutraliser `bg-card`. Ne PAS modifier `card.tsx`.
 

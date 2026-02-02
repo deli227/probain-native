@@ -87,7 +87,7 @@ export const RescuerBirthdate = ({
           onClick={() => setShowCalendar(false)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-sm w-full animate-scale-in"
+            className="bg-white rounded-2xl shadow-2xl overflow-hidden overflow-y-auto max-w-sm w-full max-h-[calc(100vh-2rem)] animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header avec sélecteur d'année */}

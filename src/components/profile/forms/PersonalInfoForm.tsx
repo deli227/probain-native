@@ -236,12 +236,12 @@ export const PersonalInfoForm = ({ form, darkMode = false }: PersonalInfoFormPro
 
                 {/* Modal du calendrier */}
                 {isCalendarOpen && (
-                  <div className="fixed inset-0 z-[100] bg-black/40 flex items-end sm:items-center justify-center" onClick={(e) => {
+                  <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={(e) => {
                     if (e.target === e.currentTarget) {
                       setIsCalendarOpen(false);
                     }
                   }}>
-                    <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden w-full sm:max-w-sm animate-slide-up" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-2xl shadow-2xl overflow-hidden overflow-y-auto w-full max-w-sm max-h-[calc(100vh-2rem)] animate-slide-up" onClick={(e) => e.stopPropagation()}>
                       {/* Header du calendrier */}
                       <div className="bg-gradient-to-r from-primary to-primary-light p-4">
                         <h3 className="text-white font-semibold text-lg">Date de naissance</h3>

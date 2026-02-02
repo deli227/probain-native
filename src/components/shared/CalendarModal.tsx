@@ -45,13 +45,13 @@ export const CalendarModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/40 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="bg-white text-gray-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden w-full sm:max-w-sm animate-in slide-in-from-bottom duration-300"
+        className="bg-white text-gray-900 rounded-2xl shadow-2xl overflow-hidden overflow-y-auto w-full max-w-sm max-h-[calc(100vh-2rem)] animate-in slide-in-from-bottom duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header du calendrier */}
