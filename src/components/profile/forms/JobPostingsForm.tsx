@@ -5,6 +5,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { cn } from "@/lib/utils";
 
 const ContractTypes = ["CDI", "CDD", "Stage", "Alternance", "Saisonnier"] as const;
 
@@ -58,6 +59,7 @@ export const JobPostingsForm = ({ form, darkMode = false }: JobPostingsFormProps
                 content={field.value}
                 onChange={field.onChange}
                 placeholder="Description du poste"
+                darkMode={darkMode}
               />
             </FormControl>
             <FormMessage />
@@ -85,20 +87,43 @@ export const JobPostingsForm = ({ form, darkMode = false }: JobPostingsFormProps
         render={({ field }) => (
           <FormItem>
             <FormLabel className={labelClasses}>Type de contrat</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
+            {darkMode ? (
               <FormControl>
-                <SelectTrigger className={selectTriggerClasses}>
-                  <SelectValue placeholder="Sélectionnez un type de contrat" />
-                </SelectTrigger>
+                <select
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  className={cn(
+                    "w-full bg-white/10 border border-white/20 rounded-xl h-12 px-3 text-base text-white",
+                    "focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/50 focus:outline-none transition-all",
+                    "appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22rgba(255%2C255%2C255%2C0.5)%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat"
+                  )}
+                >
+                  <option value="" disabled className="bg-[#0d2847] text-white/40">
+                    Sélectionnez un type de contrat
+                  </option>
+                  {ContractTypes.map((type) => (
+                    <option key={type} value={type} className="bg-[#0d2847] text-white">
+                      {type}
+                    </option>
+                  ))}
+                </select>
               </FormControl>
-              <SelectContent className={darkMode ? "bg-[#0d2847] border-white/20" : ""}>
-                {ContractTypes.map((type) => (
-                  <SelectItem key={type} value={type} className={darkMode ? "text-white focus:bg-white/10 focus:text-white" : ""}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            ) : (
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger className={selectTriggerClasses}>
+                    <SelectValue placeholder="Sélectionnez un type de contrat" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {ContractTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <FormMessage />
           </FormItem>
         )}
