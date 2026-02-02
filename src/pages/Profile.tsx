@@ -29,11 +29,12 @@ import { useProfile } from "@/contexts/ProfileContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFormations } from "@/hooks/use-formations";
 import { useExperiences } from "@/hooks/use-experiences";
+import { parseDateLocal } from "@/utils/dateUtils";
 
 /** Calcule l'age a partir d'une date de naissance ISO */
 const calculateAge = (birthDate: string) => {
   const today = new Date();
-  const birth = new Date(birthDate);
+  const birth = parseDateLocal(birthDate) || new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
@@ -161,7 +162,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark md:bg-transparent pb-20 md:pb-6">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent md:pb-6">
       <div className="relative max-w-[1920px] mx-auto">
         {isOwnProfile && (
           <div className="absolute top-3 right-3 z-10">
@@ -239,7 +240,7 @@ const Profile = () => {
                     firstName: rescuerProfile?.first_name || baseProfile?.first_name || "",
                     lastName: rescuerProfile?.last_name || baseProfile?.last_name || "",
                     biography: baseProfile?.biography || "",
-                    birthDate: baseProfile?.birth_date ? new Date(baseProfile.birth_date) : undefined,
+                    birthDate: parseDateLocal(baseProfile?.birth_date),
                     address: {
                       street: baseProfile?.street || "",
                       cityZip: baseProfile?.city_zip || "",

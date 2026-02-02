@@ -84,7 +84,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent pb-12 md:pb-0">
+    <div className="min-h-screen bg-gradient-to-b from-primary via-primary to-primary-dark md:bg-transparent md:pb-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-probain-blue to-primary p-6 pt-8 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto text-center">

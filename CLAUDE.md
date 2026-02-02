@@ -432,6 +432,7 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 | `sortingUtils.ts` | Tri formations, emplois |
 | `authErrors.ts` | Traduction erreurs Supabase → messages FR |
 | `navigation.ts` | Helpers navigation |
+| `dateUtils.ts` | `parseDateLocal()` + `formatDateLocal()` — dates timezone-safe (voir section Timezone) |
 | `registerServiceWorker.ts` | Enregistrement service worker PWA |
 
 ---
@@ -543,6 +544,15 @@ Named exports: `.then(m => ({ default: m.ComponentName }))`
 
 ## Pieges Techniques Connus
 
+### Locale francaise obligatoire sur TOUS les calendriers et dates
+L'application est 100% en francais. Tout composant `<Calendar>` (react-day-picker) DOIT avoir `locale={fr}` (`import { fr } from "date-fns/locale"`). Sans ce prop, les noms de mois et jours s'affichent en anglais. De meme, tout appel a `format()` ou `formatDistanceToNow()` de date-fns DOIT passer `{ locale: fr }`. Les appels natifs `toLocaleDateString()` doivent utiliser `'fr-FR'` ou `'fr-CH'`.
+
+**Composants Calendar avec `locale={fr}`** :
+- `src/components/shared/CalendarModal.tsx` — calendrier modal partage (utilise par Jobs, Training, FormationForm, ExperienceForm)
+- `src/components/profile/forms/PersonalInfoForm.tsx` — calendrier date de naissance (edition profil)
+- `src/components/onboarding/steps/RescuerBirthdate.tsx` — calendrier onboarding sauveteur
+- `src/components/profile/AvailabilitySection.tsx` — calendrier disponibilites
+
 ### Radix Dialog + Toast = Sheet qui se ferme
 Le Toast cree un portail DOM en dehors du Sheet. Le Sheet detecte l'interaction exterieure via `onFocusOutside` et ferme. **Solution**: pas de toast succes dans un Sheet, le Switch qui change suffit.
 
@@ -575,8 +585,8 @@ Tout overlay, modal ou dialog avec des boutons d'action en bas (`fixed bottom-0`
 - Boutons fixes : `bottom-[100px] md:bottom-0`
 - Padding bas de conteneur : `pb-24 md:pb-4` ou `max(6rem, calc(env(safe-area-inset-bottom) + 5rem))`
 - Formulaires scrollables : `pb-44 md:pb-24` si un bouton fixed est present
-- DashboardLayout : `pb-28 md:pb-0` (112px) couvre BottomTabBar (76px) + safe-area (jusqu'a 34px sur iPhone 14 Pro)
-Fichiers impactes : `DashboardLayout.tsx`, `TrainerProfileForm.tsx`, `ProfileForm.tsx`, `ImageCropDialog.tsx`
+- **DashboardLayout** : la classe CSS `.dashboard-bottom-safe` dans `index.css` applique automatiquement `padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px) + 16px)` sur mobile (< 768px). Les pages n'ont plus besoin de `pb-XX` pour degager la BottomTabBar — le layout gere tout. Desktop : `md:pb-0`.
+Fichiers impactes : `DashboardLayout.tsx`, `index.css`, `TrainerProfileForm.tsx`, `ProfileForm.tsx`, `ImageCropDialog.tsx`
 
 ### Card bg-card blanc invisible sur fond sombre
 Le composant `Card` de Shadcn/UI applique `bg-card` (blanc pur) par defaut. Sur un fond sombre, si le texte est `text-white`, tout devient invisible. Le gradient semi-transparent (`from-white/15 to-white/5`) ne masque pas le blanc. **Solution** : ajouter `bg-transparent` au `Card` pour neutraliser `bg-card`. Ne PAS modifier `card.tsx`.
@@ -673,12 +683,20 @@ pas de dates specifiques            → vert (disponible par defaut)
 - Les boutons "Je suis disponible" / "Je ne suis pas disponible" appellent `setAvailability(true)` / `setAvailability(false)` (setters explicites, PAS un toggle `!isAvailable`)
 - Evite les race conditions et les sauts d'etat
 
-### Timezone
-- **IMPORTANT** : Les dates de disponibilite sont stockees en `YYYY-MM-DD` (date sans timezone)
-- `new Date("2026-01-31")` cree une date UTC = 30 jan 23h en CET → **BUG**
-- Utiliser `new Date(year, month - 1, day)` pour creer des dates locales
-- Utiliser `getFullYear()/getMonth()/getDate()` pour formater (PAS `toISOString()`)
-- Fichier : `src/hooks/use-availabilities.ts`
+### Timezone — Dates YYYY-MM-DD (GLOBAL)
+- **IMPORTANT** : Toutes les dates en BDD sont stockees en `YYYY-MM-DD` (date sans timezone)
+- `new Date("2026-01-31")` cree une date UTC minuit = 30 jan 23h en CET (UTC+1) → **BUG : la date recule d'un jour**
+- `date.toISOString().split('T')[0]` extrait la date UTC → meme bug en sens inverse a la sauvegarde
+- **Solution** : utiliser les fonctions de `src/utils/dateUtils.ts` :
+  - `parseDateLocal("YYYY-MM-DD")` → `new Date(year, month-1, day)` (date locale, pas UTC)
+  - `formatDateLocal(date)` → `"YYYY-MM-DD"` via `getFullYear()/getMonth()/getDate()` (pas `toISOString()`)
+- **Regle** : JAMAIS `new Date("YYYY-MM-DD")` pour parser une date BDD. JAMAIS `toISOString().split('T')[0]` pour sauvegarder.
+- **Fichiers concernes** :
+  - `src/utils/dateUtils.ts` — fonctions utilitaires timezone-safe
+  - `src/hooks/use-availabilities.ts` — CRUD dates disponibilites
+  - `src/pages/Profile.tsx` — calcul age + defaultValues birthDate
+  - `src/components/profile/ProfileForm.tsx` — sauvegarde birth_date
+  - `src/components/onboarding/RescuerOnboardingFlow.tsx` — persistence localStorage + sauvegarde Supabase
 
 ### Fichiers
 | Fichier | Role |
@@ -1109,40 +1127,35 @@ Les sauveteurs ne pouvaient pas lire la description complete d'une offre d'emplo
 
 ---
 
-## Audit BottomTabBar — padding-bottom DashboardLayout
+## BottomTabBar — Solution structurelle (DashboardLayout)
 
-### Probleme
-Le `DashboardLayout.tsx` utilisait `pb-20` (80px) sur le wrapper du contenu principal. La BottomTabBar fait 76px + `env(safe-area-inset-bottom)` (jusqu'a 34px sur iPhone 14 Pro). Sur les appareils avec safe-area, les 80px de padding ne couvraient pas la hauteur totale de la BottomTabBar (~110px), laissant ~30px de contenu potentiellement caches.
+### Architecture
+Le `DashboardLayout` gere automatiquement le degagement de la BottomTabBar sur mobile via une classe CSS `.dashboard-bottom-safe` definie dans `index.css` :
 
-### Fix
-`pb-20` remplace par `pb-28` (112px) dans `DashboardLayout.tsx`. 112px couvre 76px (tab bar) + 34px (safe-area max). En plus, toutes les pages dashboard ont leur propre `pb-12 md:pb-0` ou `pb-20 md:pb-6` pour garantir que le contenu en bas (boutons, cartes) reste accessible par scroll sur les petits ecrans.
+```css
+@media (max-width: 767px) {
+  .dashboard-bottom-safe {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+}
+```
 
-**Regle** : toute page affichee dans le DashboardLayout DOIT avoir son propre padding-bottom mobile (`pb-12 md:pb-0` minimum). Ne pas se fier uniquement au `pb-28` du layout — sur les petits mobiles avec du contenu haut (cartes, formulaires), le contenu en bas de page peut etre masque.
+- 76px = hauteur BottomTabBar
+- `env(safe-area-inset-bottom)` = safe-area de l'appareil (0 a 34px selon le modele)
+- 16px = marge de confort
+- Total : 92px a 126px selon l'appareil
 
-### Audit complet des pages (3 profils)
+**Les pages n'ont plus besoin de `pb-XX` pour degager la BottomTabBar** — le layout gere tout. Les pages gardent uniquement `md:pb-6` pour l'espacement desktop si necessaire.
 
-| Page | Padding propre | + Layout `pb-28` | Statut |
-|------|---------------|-------------------|--------|
-| Profile.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| Jobs.tsx | `pb-12 md:pb-0` | 160px total | OK |
-| Training.tsx | `pb-12 md:pb-0` | 160px total | OK |
-| Flux.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| Settings.tsx | `pb-12 md:pb-0` | 160px total | OK |
-| EstablishmentRescuers.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| EstablishmentAnnouncements.tsx | `pb-12 md:pb-0` | 160px total | OK |
-| TrainerProfile.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| EstablishmentProfile.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| TrainerStudentsPage.tsx | `pb-20 md:pb-6` | 192px total | OK |
-| Mailbox (mobile) | `h-[calc(100vh-56px-76px)]` | hauteur calculee | OK |
-| ProfileForm (Sheet) | `pb-44 md:pb-24` + `bottom-[100px]` | dedies | OK |
-| TrainerProfileForm (Sheet) | `pb-44 md:pb-24` + `bottom-[100px]` | dedies | OK |
-| EstablishmentProfileForm (Sheet) | `pb-44 md:pb-24` + `bottom-[100px]` | dedies | OK |
-| AddFormation (overlay) | `pb-24` + `h-20` safe-area | 176px total | OK |
-| AddExperience (overlay) | `pb-32` + `h-20` safe-area | 208px total | OK |
-| ImageCropDialog | `fixed inset-0 z-[100]` + safe-area padding | dedie | OK |
+### Regle
+- **Nouvelles pages** : ne PAS ajouter de `pb-XX` pour la BottomTabBar. Le `DashboardLayout` le gere automatiquement.
+- **Overlays/Sheets** : les overlays (`ProfileForm`, `TrainerProfileForm`, etc.) gardent leurs propres `pb-44 md:pb-24` + `bottom-[100px]` car ils ne sont pas dans le flux normal du layout.
 
-### Fichier
-`src/layouts/DashboardLayout.tsx`
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `src/index.css` | Classe `.dashboard-bottom-safe` avec `calc()` + `env(safe-area-inset-bottom)` |
+| `src/layouts/DashboardLayout.tsx` | Applique `.dashboard-bottom-safe md:pb-0 md:pl-64` |
 
 ---
 

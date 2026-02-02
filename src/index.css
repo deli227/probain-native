@@ -249,6 +249,13 @@ button, a, [role="button"] {
   }
 }
 
+/* Dashboard content safe zone — dégagement automatique de la BottomTabBar sur mobile */
+@media (max-width: 767px) {
+  .dashboard-bottom-safe {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+}
+
 /* Bottom tab bar gap fix - removes any visible gap */
 .bottom-tab-bar-fix {
   box-shadow: 0 -20px 0 0 hsl(222.2 47.4% 11.2%);

@@ -300,6 +300,7 @@ export const PersonalInfoForm = ({ form, darkMode = false }: PersonalInfoFormPro
                         }}
                         disabled={(date) => date > new Date()}
                         month={currentMonth}
+                        locale={fr}
                         initialFocus
                         captionLayout="buttons"
                         className="p-3"

@@ -16,6 +16,7 @@ import { safeGetUser } from "@/utils/asyncHelpers";
 import { Loader2, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
+import { formatDateLocal } from "@/utils/dateUtils";
 
 export const formSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis"),
@@ -97,7 +98,7 @@ export const ProfileForm = ({ defaultValues, onProfileUpdated, onSaveComplete }:
           first_name: values.firstName,
           last_name: values.lastName,
           biography: values.biography,
-          birth_date: values.birthDate ? values.birthDate.toISOString().split('T')[0] : null,
+          birth_date: values.birthDate ? formatDateLocal(values.birthDate) : null,
           street: values.address.street,
           city_zip: values.address.cityZip,
           canton: values.address.canton,

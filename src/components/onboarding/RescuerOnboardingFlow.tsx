@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { safeGetUser } from "@/utils/asyncHelpers";
 import { useProfile } from "@/contexts/ProfileContext";
+import { parseDateLocal, formatDateLocal } from "@/utils/dateUtils";
 
 import { OnboardingShell } from "./OnboardingShell";
 import { OnboardingProgress } from "./OnboardingProgress";
@@ -76,7 +77,7 @@ export const RescuerOnboardingFlow = () => {
   const [firstName, setFirstName] = useState(persisted?.firstName ?? "");
   const [lastName, setLastName] = useState(persisted?.lastName ?? "");
   const [birthDate, setBirthDate] = useState<Date | undefined>(
-    persisted?.birthDate ? new Date(persisted.birthDate) : undefined
+    persisted?.birthDate ? parseDateLocal(persisted.birthDate) : undefined
   );
   const [avatarUrl, setAvatarUrl] = useState(persisted?.avatarUrl ?? "");
   const [street, setStreet] = useState(persisted?.street ?? "");
@@ -89,7 +90,7 @@ export const RescuerOnboardingFlow = () => {
       step,
       firstName,
       lastName,
-      birthDate: birthDate?.toISOString() ?? null,
+      birthDate: formatDateLocal(birthDate) ?? null,
       avatarUrl,
       street,
       cityZip,
@@ -175,7 +176,7 @@ export const RescuerOnboardingFlow = () => {
         .update({
           first_name: firstName || null,
           last_name: lastName || null,
-          birth_date: birthDate?.toISOString() || null,
+          birth_date: formatDateLocal(birthDate) || null,
           avatar_url: avatarUrl || null,
           street: street || null,
           city_zip: cityZip || null,

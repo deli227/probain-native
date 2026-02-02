@@ -199,7 +199,7 @@ const TrainerProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark md:bg-transparent pb-20 md:pb-6">
+    <div className="min-h-screen bg-primary-dark md:bg-transparent md:pb-6">
       <ProfileHeader
         firstName={trainerProfile?.organization_name || ""}
         lastName=""

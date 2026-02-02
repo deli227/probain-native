@@ -118,6 +118,7 @@ export const CalendarModal = ({
               setCurrentYear(month.getFullYear());
             }}
             month={currentMonth}
+            locale={fr}
             captionLayout="buttons"
             className="p-3"
           />
