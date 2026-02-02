@@ -10,7 +10,7 @@ const TAB_ROUTES: Record<string, string[]> = {
 };
 
 /** Pages profil exclues du swipe (contiennent des carousels horizontaux) */
-const SWIPE_EXCLUDED_ROUTES = ['/profile', '/trainer-profile', '/establishment-profile', '/establishment-profile/announcements'];
+const SWIPE_EXCLUDED_ROUTES = ['/profile', '/jobs', '/trainer-profile', '/establishment-profile', '/establishment-profile/announcements'];
 
 /** Seuil minimal de deplacement horizontal en pixels */
 const SWIPE_THRESHOLD = 50;
