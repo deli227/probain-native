@@ -33,6 +33,8 @@ export interface FluxComment {
   user_name?: string;
   user_avatar?: string;
   profile_type?: string;
+  parent_comment_id?: string | null;
+  replies_count?: number;
 }
 
 // ------------------------------------------------------------------
@@ -153,13 +155,15 @@ async function fetchCommentsViaRpc(postId: string): Promise<FluxComment[]> {
       user_name: c.user_name || 'Utilisateur',
       user_avatar: c.user_avatar || undefined,
       profile_type: c.profile_type || undefined,
+      parent_comment_id: c.parent_comment_id || null,
+      replies_count: Number(c.replies_count) || 0,
     }));
   }
 
   // ---------- Fallback: legacy N+1 ----------
   const { data: commentsData, error: commentsError } = await supabase
     .from('flux_comments')
-    .select('id, post_id, user_id, content, created_at')
+    .select('id, post_id, user_id, content, created_at, parent_comment_id')
     .eq('post_id', postId)
     .order('created_at', { ascending: true });
 
@@ -203,6 +207,8 @@ async function fetchCommentsViaRpc(postId: string): Promise<FluxComment[]> {
         user_name: userName,
         user_avatar: avatarUrl || undefined,
         profile_type: profileData?.profile_type || undefined,
+        parent_comment_id: comment.parent_comment_id || null,
+        replies_count: 0,
       };
     }),
   );
@@ -333,12 +339,17 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
 
   // ---- Add comment mutation ----
   const addCommentMutation = useMutation({
-    mutationFn: async ({ postId, content }: { postId: string; content: string }) => {
+    mutationFn: async ({ postId, content, parentCommentId }: { postId: string; content: string; parentCommentId?: string | null }) => {
       if (!userId) throw new Error('NOT_AUTHENTICATED');
 
       const { error } = await supabase
         .from('flux_comments')
-        .insert({ post_id: postId, user_id: userId, content: content.trim() });
+        .insert({
+          post_id: postId,
+          user_id: userId,
+          content: content.trim(),
+          ...(parentCommentId ? { parent_comment_id: parentCommentId } : {}),
+        });
       if (error) throw error;
     },
     onSuccess: (_data, { postId }) => {
@@ -363,7 +374,7 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
   });
 
   const addComment = useCallback(
-    async (postId: string, content: string): Promise<boolean> => {
+    async (postId: string, content: string, parentCommentId?: string | null): Promise<boolean> => {
       if (!userId) {
         toastRef.current({
           title: 'Connexion requise',
@@ -382,7 +393,7 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
       }
 
       try {
-        await addCommentMutation.mutateAsync({ postId, content });
+        await addCommentMutation.mutateAsync({ postId, content, parentCommentId });
         return true;
       } catch {
         return false;
@@ -393,7 +404,7 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
 
   // ---- Delete comment mutation ----
   const deleteCommentMutation = useMutation({
-    mutationFn: async ({ commentId }: { commentId: string; postId: string }) => {
+    mutationFn: async ({ commentId }: { commentId: string; postId: string; repliesCount?: number }) => {
       if (!userId) throw new Error('NOT_AUTHENTICATED');
       const { error } = await supabase
         .from('flux_comments')
@@ -402,12 +413,13 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
         .eq('user_id', userId);
       if (error) throw error;
     },
-    onSuccess: (_data, { postId }) => {
-      // Decrement comments_count
+    onSuccess: (_data, { postId, repliesCount }) => {
+      // Decrement comments_count (parent + its replies if cascade)
+      const decrementBy = 1 + (repliesCount || 0);
       const queryKey = fluxKeys.posts(userId, userVisibility);
       queryClient.setQueryData<FluxPost[]>(queryKey, (old) =>
         (old ?? []).map((p) =>
-          p.id === postId ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p,
+          p.id === postId ? { ...p, comments_count: Math.max(0, p.comments_count - decrementBy) } : p,
         ),
       );
       // Invalidate comments cache
@@ -425,9 +437,9 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
   });
 
   const deleteComment = useCallback(
-    async (commentId: string, postId: string): Promise<boolean> => {
+    async (commentId: string, postId: string, repliesCount?: number): Promise<boolean> => {
       try {
-        await deleteCommentMutation.mutateAsync({ commentId, postId });
+        await deleteCommentMutation.mutateAsync({ commentId, postId, repliesCount });
         return true;
       } catch {
         return false;

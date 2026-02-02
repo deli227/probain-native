@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, MessageCircle, Send, Loader2, Trash2, Reply } from 'lucide-react';
+import { Heart, MessageCircle, Send, Loader2, Trash2, Reply, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
@@ -10,6 +10,126 @@ import { fr } from 'date-fns/locale';
 import { useProfile } from '@/contexts/ProfileContext';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { RescuerProfileSheet } from '@/components/shared/RescuerProfileSheet';
+
+// ---- Threading helpers ----
+
+interface ThreadedComment extends FluxComment {
+  replies: FluxComment[];
+}
+
+function groupCommentsIntoThreads(flatComments: FluxComment[]): ThreadedComment[] {
+  const rootComments: ThreadedComment[] = [];
+  const repliesByParent: Record<string, FluxComment[]> = {};
+
+  for (const comment of flatComments) {
+    if (comment.parent_comment_id) {
+      if (!repliesByParent[comment.parent_comment_id]) {
+        repliesByParent[comment.parent_comment_id] = [];
+      }
+      repliesByParent[comment.parent_comment_id].push(comment);
+    } else {
+      rootComments.push({ ...comment, replies: [] });
+    }
+  }
+
+  const rootIds = new Set(rootComments.map(r => r.id));
+  for (const root of rootComments) {
+    root.replies = repliesByParent[root.id] || [];
+  }
+
+  // Orphaned replies (parent not in current list) become root comments
+  for (const [parentId, replies] of Object.entries(repliesByParent)) {
+    if (!rootIds.has(parentId)) {
+      for (const reply of replies) {
+        rootComments.push({ ...reply, replies: [] });
+      }
+    }
+  }
+
+  return rootComments;
+}
+
+// ---- Mention rendering helper ----
+
+function renderCommentContent(content: string) {
+  if (content.startsWith('@')) {
+    const match = content.match(/^(@[\p{L}\p{M}'\-]+(?:\s[\p{L}\p{M}'\-]+)*)\s/u);
+    if (match) {
+      const mention = match[1];
+      const rest = content.substring(mention.length + 1);
+      return <><span className="text-blue-600 font-medium">{mention}</span> {rest}</>;
+    }
+  }
+  return content;
+}
+
+// ---- CommentBubble component ----
+
+interface CommentBubbleProps {
+  comment: FluxComment;
+  postId: string;
+  onReply: (postId: string, comment: FluxComment) => void;
+  onDelete: (commentId: string, postId: string, repliesCount?: number) => void;
+  canViewProfile: boolean;
+  isOwn: boolean;
+  onViewProfile: (userId: string) => void;
+  formatDate: (date: string) => string;
+  isReply?: boolean;
+  repliesCount?: number;
+}
+
+const CommentBubble = ({ comment, postId, onReply, onDelete, canViewProfile, isOwn, onViewProfile, formatDate, isReply, repliesCount }: CommentBubbleProps) => (
+  <div className="flex gap-2">
+    <Avatar
+      className={`${isReply ? 'h-6 w-6' : 'h-8 w-8'} shrink-0 bg-gray-200 ${canViewProfile ? 'cursor-pointer ring-2 ring-transparent hover:ring-cyan-400/50 transition-all' : ''}`}
+      onClick={canViewProfile ? () => onViewProfile(comment.user_id) : undefined}
+    >
+      {comment.user_avatar ? (
+        <img src={comment.user_avatar} alt={`Avatar de ${comment.user_name}`} className="h-full w-full rounded-full object-cover" />
+      ) : (
+        <span className={`${isReply ? 'text-[10px]' : 'text-xs'} font-medium text-gray-600`}>
+          {comment.user_name?.charAt(0).toUpperCase()}
+        </span>
+      )}
+    </Avatar>
+    <div className="flex-1 bg-gray-100 rounded-lg p-2">
+      <div className="flex items-center justify-between">
+        <p
+          className={`font-medium text-sm text-gray-900 ${canViewProfile ? 'cursor-pointer hover:text-cyan-600 hover:underline transition-colors' : ''}`}
+          onClick={canViewProfile ? () => onViewProfile(comment.user_id) : undefined}
+        >
+          {comment.user_name}
+        </p>
+        {isOwn && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-gray-400 hover:text-red-500"
+            onClick={() => onDelete(comment.id, postId, repliesCount)}
+            aria-label="Supprimer le commentaire"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+        {renderCommentContent(comment.content)}
+      </p>
+      <div className="flex items-center gap-3 mt-1">
+        <p className="text-xs text-gray-400">{formatDate(comment.created_at)}</p>
+        <button
+          onClick={() => onReply(postId, comment)}
+          className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors flex items-center gap-1"
+        >
+          <Reply className="h-3 w-3" />
+          Répondre
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ---- Main Flux component ----
 
 const Flux = () => {
   const [userId, setUserId] = useState<string | undefined>(undefined);
@@ -23,6 +143,7 @@ const Flux = () => {
   const [rescuerSheetOpen, setRescuerSheetOpen] = useState(false);
   const [selectedRescuerId, setSelectedRescuerId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Record<string, FluxComment | null>>({});
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const isEstablishment = profileType === 'etablissement';
@@ -62,6 +183,13 @@ const Flux = () => {
 
     setSubmittingComment(prev => ({ ...prev, [postId]: true }));
 
+    // Determine parent comment ID for threading
+    const parentComment = replyingTo[postId];
+    // 1-level nesting: if replying to a reply, flatten to the root parent
+    const effectiveParentId = parentComment
+      ? (parentComment.parent_comment_id || parentComment.id)
+      : null;
+
     // Optimistic: add the comment locally before the server responds
     const optimisticComment: FluxComment = {
       id: `optimistic-${Date.now()}`,
@@ -72,6 +200,8 @@ const Flux = () => {
       user_name: currentUserName,
       user_avatar: currentUserAvatar,
       profile_type: profileType || undefined,
+      parent_comment_id: effectiveParentId,
+      replies_count: 0,
     };
     setComments(prev => ({
       ...prev,
@@ -80,7 +210,12 @@ const Flux = () => {
     setNewComment(prev => ({ ...prev, [postId]: '' }));
     setReplyingTo(prev => ({ ...prev, [postId]: null }));
 
-    const success = await addComment(postId, content);
+    // Auto-expand replies for the parent we just replied to
+    if (effectiveParentId) {
+      setExpandedReplies(prev => ({ ...prev, [effectiveParentId]: true }));
+    }
+
+    const success = await addComment(postId, content, effectiveParentId);
 
     if (success) {
       // Background refresh to get the real comment with proper ID
@@ -95,14 +230,15 @@ const Flux = () => {
       }));
     }
     setSubmittingComment(prev => ({ ...prev, [postId]: false }));
-  }, [addComment, fetchComments, userId, currentUserName, currentUserAvatar, profileType]);
+  }, [addComment, fetchComments, userId, currentUserName, currentUserAvatar, profileType, replyingTo]);
 
-  const handleDeleteComment = useCallback(async (commentId: string, postId: string) => {
-    const success = await deleteComment(commentId, postId);
+  const handleDeleteComment = useCallback(async (commentId: string, postId: string, repliesCount?: number) => {
+    const success = await deleteComment(commentId, postId, repliesCount);
     if (success) {
       setComments(prev => ({
         ...prev,
-        [postId]: prev[postId]?.filter(c => c.id !== commentId) || [],
+        // Filter out the comment AND its replies (cascade)
+        [postId]: prev[postId]?.filter(c => c.id !== commentId && c.parent_comment_id !== commentId) || [],
       }));
     }
   }, [deleteComment]);
@@ -128,6 +264,11 @@ const Flux = () => {
 
   const formatDate = useCallback((dateString: string) => {
     return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: fr });
+  }, []);
+
+  const handleViewProfile = useCallback((uid: string) => {
+    setSelectedRescuerId(uid);
+    setRescuerSheetOpen(true);
   }, []);
 
   if (loading) {
@@ -263,7 +404,7 @@ const Flux = () => {
               {expandedComments[post.id] && (
                 <div className="border-t border-gray-100">
                   {/* Comments List */}
-                  <div className="max-h-60 overflow-y-auto">
+                  <div className="max-h-80 overflow-y-auto">
                     {loadingComments[post.id] ? (
                       <div className="p-4 flex justify-center">
                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -274,67 +415,65 @@ const Flux = () => {
                       </p>
                     ) : (
                       <div className="p-4 space-y-3">
-                        {comments[post.id]?.map((comment) => {
-                          const canViewProfile = isEstablishment && comment.profile_type === 'maitre_nageur' && comment.user_id !== userId;
-                          return (
-                          <div key={comment.id} className="flex gap-2">
-                            <Avatar
-                              className={`h-8 w-8 shrink-0 bg-gray-200 ${canViewProfile ? 'cursor-pointer ring-2 ring-transparent hover:ring-cyan-400/50 transition-all' : ''}`}
-                              onClick={canViewProfile ? () => { setSelectedRescuerId(comment.user_id); setRescuerSheetOpen(true); } : undefined}
-                            >
-                              {comment.user_avatar ? (
-                                <img src={comment.user_avatar} alt={`Avatar de ${comment.user_name}`} className="h-full w-full rounded-full object-cover" />
-                              ) : (
-                                <span className="text-xs font-medium text-gray-600">
-                                  {comment.user_name?.charAt(0).toUpperCase()}
-                                </span>
-                              )}
-                            </Avatar>
-                            <div className="flex-1 bg-gray-100 rounded-lg p-2">
-                              <div className="flex items-center justify-between">
-                                <p
-                                  className={`font-medium text-sm text-gray-900 ${canViewProfile ? 'cursor-pointer hover:text-cyan-600 hover:underline transition-colors' : ''}`}
-                                  onClick={canViewProfile ? () => { setSelectedRescuerId(comment.user_id); setRescuerSheetOpen(true); } : undefined}
+                        {groupCommentsIntoThreads(comments[post.id] || []).map((rootComment) => (
+                          <div key={rootComment.id}>
+                            {/* Root comment */}
+                            <CommentBubble
+                              comment={rootComment}
+                              postId={post.id}
+                              onReply={handleReply}
+                              onDelete={handleDeleteComment}
+                              canViewProfile={isEstablishment && rootComment.profile_type === 'maitre_nageur' && rootComment.user_id !== userId}
+                              isOwn={rootComment.user_id === userId}
+                              onViewProfile={handleViewProfile}
+                              formatDate={formatDate}
+                              repliesCount={rootComment.replies.length}
+                            />
+
+                            {/* Replies toggle + nested replies */}
+                            {rootComment.replies.length > 0 && (
+                              <div className="ml-10 mt-1">
+                                <button
+                                  onClick={() => setExpandedReplies(prev => ({ ...prev, [rootComment.id]: !prev[rootComment.id] }))}
+                                  className="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors flex items-center gap-1 py-1"
                                 >
-                                  {comment.user_name}
-                                </p>
-                                {comment.user_id === userId && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-gray-400 hover:text-red-500"
-                                    onClick={() => handleDeleteComment(comment.id, post.id)}
-                                    aria-label="Supprimer le commentaire"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
+                                  {expandedReplies[rootComment.id] ? (
+                                    <>
+                                      <ChevronUp className="h-3 w-3" />
+                                      Masquer les réponses
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="h-3 w-3" />
+                                      Voir {rootComment.replies.length === 1
+                                        ? '1 réponse'
+                                        : `les ${rootComment.replies.length} réponses`}
+                                    </>
+                                  )}
+                                </button>
+
+                                {expandedReplies[rootComment.id] && (
+                                  <div className="mt-2 space-y-2">
+                                    {rootComment.replies.map((reply) => (
+                                      <CommentBubble
+                                        key={reply.id}
+                                        comment={reply}
+                                        postId={post.id}
+                                        onReply={handleReply}
+                                        onDelete={handleDeleteComment}
+                                        canViewProfile={isEstablishment && reply.profile_type === 'maitre_nageur' && reply.user_id !== userId}
+                                        isOwn={reply.user_id === userId}
+                                        onViewProfile={handleViewProfile}
+                                        formatDate={formatDate}
+                                        isReply
+                                      />
+                                    ))}
+                                  </div>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                {comment.content.startsWith('@') ? (() => {
-                                  const match = comment.content.match(/^(@[\p{L}\p{M}'\-]+(?:\s[\p{L}\p{M}'\-]+)*)\s/u);
-                                  if (match) {
-                                    const mention = match[1];
-                                    const rest = comment.content.substring(mention.length + 1);
-                                    return <><span className="text-blue-600 font-medium">{mention}</span> {rest}</>;
-                                  }
-                                  return comment.content;
-                                })() : comment.content}
-                              </p>
-                              <div className="flex items-center gap-3 mt-1">
-                                <p className="text-xs text-gray-400">{formatDate(comment.created_at)}</p>
-                                <button
-                                  onClick={() => handleReply(post.id, comment)}
-                                  className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors flex items-center gap-1"
-                                >
-                                  <Reply className="h-3 w-3" />
-                                  Répondre
-                                </button>
-                              </div>
-                            </div>
+                            )}
                           </div>
-                          );
-                        })}
+                        ))}
                       </div>
                     )}
                   </div>
