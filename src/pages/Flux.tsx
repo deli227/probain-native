@@ -49,16 +49,20 @@ function groupCommentsIntoThreads(flatComments: FluxComment[]): ThreadedComment[
 }
 
 // ---- Mention rendering helper ----
+// We no longer use regex to guess where the @mention ends.
+// Instead, replies store parent_comment_id and we display the reply target
+// structurally (like Instagram). The @Name prefix in the text is stripped
+// when we know the parent, or kept as plain text if no parent is set.
 
-function renderCommentContent(content: string) {
-  if (content.startsWith('@')) {
-    const match = content.match(/^(@[\p{L}\p{M}'\-]+(?:\s[\p{L}\p{M}'\-]+)*)\s/u);
-    if (match) {
-      const mention = match[1];
-      const rest = content.substring(mention.length + 1);
-      return <><span className="text-blue-600 font-medium">{mention}</span> {rest}</>;
-    }
+function stripMentionPrefix(content: string, parentUserName?: string): string {
+  if (!parentUserName || !content.startsWith('@')) return content;
+  const expectedPrefix = `@${parentUserName} `;
+  if (content.startsWith(expectedPrefix)) {
+    return content.substring(expectedPrefix.length);
   }
+  // Also try without trailing space (edge case)
+  const prefixNoSpace = `@${parentUserName}`;
+  if (content === prefixNoSpace) return '';
   return content;
 }
 
@@ -75,58 +79,74 @@ interface CommentBubbleProps {
   formatDate: (date: string) => string;
   isReply?: boolean;
   repliesCount?: number;
+  /** Name of the parent comment author (for reply indicator) */
+  parentUserName?: string;
 }
 
-const CommentBubble = memo(({ comment, postId, onReply, onDelete, canViewProfile, isOwn, onViewProfile, formatDate, isReply, repliesCount }: CommentBubbleProps) => (
-  <div className="flex gap-2">
-    <Avatar
-      className={`${isReply ? 'h-6 w-6' : 'h-8 w-8'} shrink-0 bg-gray-200 ${canViewProfile ? 'cursor-pointer ring-2 ring-transparent hover:ring-cyan-400/50 transition-all' : ''}`}
-      onClick={canViewProfile ? () => onViewProfile(comment.user_id) : undefined}
-    >
-      {comment.user_avatar ? (
-        <img src={comment.user_avatar} alt={`Avatar de ${comment.user_name}`} className="h-full w-full rounded-full object-cover" />
-      ) : (
-        <span className={`${isReply ? 'text-[10px]' : 'text-xs'} font-medium text-gray-600`}>
-          {comment.user_name?.charAt(0).toUpperCase()}
-        </span>
-      )}
-    </Avatar>
-    <div className="flex-1 bg-gray-100 rounded-lg p-2">
-      <div className="flex items-center justify-between">
-        <p
-          className={`font-medium text-sm text-gray-900 ${canViewProfile ? 'cursor-pointer hover:text-cyan-600 hover:underline transition-colors' : ''}`}
-          onClick={canViewProfile ? () => onViewProfile(comment.user_id) : undefined}
-        >
-          {comment.user_name}
+const CommentBubble = memo(({ comment, postId, onReply, onDelete, canViewProfile, isOwn, onViewProfile, formatDate, isReply, repliesCount, parentUserName }: CommentBubbleProps) => {
+  // Strip the @mention prefix from the displayed content when we show a structural reply indicator
+  const displayContent = parentUserName
+    ? stripMentionPrefix(comment.content, parentUserName)
+    : comment.content;
+
+  return (
+    <div className="flex gap-2">
+      <Avatar
+        className={`${isReply ? 'h-6 w-6' : 'h-8 w-8'} shrink-0 bg-gray-200 ${canViewProfile ? 'cursor-pointer ring-2 ring-transparent hover:ring-cyan-400/50 transition-all' : ''}`}
+        onClick={canViewProfile ? () => onViewProfile(comment.user_id) : undefined}
+      >
+        {comment.user_avatar ? (
+          <img src={comment.user_avatar} alt={`Avatar de ${comment.user_name}`} className="h-full w-full rounded-full object-cover" />
+        ) : (
+          <span className={`${isReply ? 'text-[10px]' : 'text-xs'} font-medium text-gray-600`}>
+            {comment.user_name?.charAt(0).toUpperCase()}
+          </span>
+        )}
+      </Avatar>
+      <div className="flex-1 bg-gray-100 rounded-lg p-2">
+        <div className="flex items-center justify-between">
+          <p
+            className={`font-medium text-sm text-gray-900 ${canViewProfile ? 'cursor-pointer hover:text-cyan-600 hover:underline transition-colors' : ''}`}
+            onClick={canViewProfile ? () => onViewProfile(comment.user_id) : undefined}
+          >
+            {comment.user_name}
+          </p>
+          {isOwn && (
+            <button
+              type="button"
+              className="h-6 w-6 flex items-center justify-center text-gray-400 hover:text-red-500 rounded-md transition-colors focus:outline-none"
+              onClick={() => onDelete(comment.id, postId, repliesCount)}
+              aria-label="Supprimer le commentaire"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+        {/* Structural reply indicator (like Instagram) */}
+        {parentUserName && (
+          <p className="text-xs text-blue-500 mb-0.5">
+            <Reply className="h-3 w-3 inline mr-1" />
+            <span className="font-medium">@{parentUserName}</span>
+          </p>
+        )}
+        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+          {displayContent}
         </p>
-        {isOwn && (
+        <div className="flex items-center gap-3 mt-1">
+          <p className="text-xs text-gray-400">{formatDate(comment.created_at)}</p>
           <button
             type="button"
-            className="h-6 w-6 flex items-center justify-center text-gray-400 hover:text-red-500 rounded-md transition-colors focus:outline-none"
-            onClick={() => onDelete(comment.id, postId, repliesCount)}
-            aria-label="Supprimer le commentaire"
+            onClick={() => onReply(postId, comment)}
+            className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors flex items-center gap-1"
           >
-            <Trash2 className="h-3 w-3" />
+            <Reply className="h-3 w-3" />
+            Répondre
           </button>
-        )}
-      </div>
-      <p className="text-sm text-gray-700 whitespace-pre-wrap">
-        {renderCommentContent(comment.content)}
-      </p>
-      <div className="flex items-center gap-3 mt-1">
-        <p className="text-xs text-gray-400">{formatDate(comment.created_at)}</p>
-        <button
-          type="button"
-          onClick={() => onReply(postId, comment)}
-          className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors flex items-center gap-1"
-        >
-          <Reply className="h-3 w-3" />
-          Répondre
-        </button>
+        </div>
       </div>
     </div>
-  </div>
-));
+  );
+});
 
 CommentBubble.displayName = 'CommentBubble';
 
@@ -155,6 +175,10 @@ const Flux = () => {
   const newCommentRef = useRef(newComment);
   newCommentRef.current = newComment;
 
+  // Track client-side parent_comment_id assignments (for when DB migration isn't applied yet)
+  // Maps postId → { commentContent → parentCommentId }
+  const clientParentMapRef = useRef<Record<string, Record<string, string>>>({});
+
   const isEstablishment = profileType === 'etablissement';
 
   useEffect(() => {
@@ -175,8 +199,20 @@ const Flux = () => {
       setExpandedComments(prev => ({ ...prev, [postId]: true }));
       setLoadingComments(prev => ({ ...prev, [postId]: true }));
       try {
-        const postComments = await fetchComments(postId);
-        setComments(prev => ({ ...prev, [postId]: postComments }));
+        const serverComments = await fetchComments(postId);
+        // Re-apply client-side parent_comment_id for comments where the server returned null
+        const parentMap = clientParentMapRef.current[postId];
+        if (parentMap && Object.keys(parentMap).length > 0) {
+          const enriched = serverComments.map(c => {
+            if (!c.parent_comment_id && parentMap[c.content]) {
+              return { ...c, parent_comment_id: parentMap[c.content] };
+            }
+            return c;
+          });
+          setComments(prev => ({ ...prev, [postId]: enriched }));
+        } else {
+          setComments(prev => ({ ...prev, [postId]: serverComments }));
+        }
       } finally {
         setLoadingComments(prev => ({ ...prev, [postId]: false }));
       }
@@ -211,13 +247,18 @@ const Flux = () => {
       ? (parentComment.parent_comment_id || parentComment.id)
       : null;
 
+    // Prepend @Name in the stored content so we can strip it on display
+    const storedContent = effectiveParentId && parentComment?.user_name
+      ? `@${parentComment.user_name} ${content.trim()}`
+      : content.trim();
+
     // Optimistic: add the comment locally before the server responds
     const optimisticId = `optimistic-${Date.now()}`;
     const optimisticComment: FluxComment = {
       id: optimisticId,
       post_id: postId,
       user_id: uid || '',
-      content: content.trim(),
+      content: storedContent,
       created_at: new Date().toISOString(),
       user_name: uName,
       user_avatar: uAvatar,
@@ -235,15 +276,33 @@ const Flux = () => {
     // Auto-expand replies for the parent we just replied to
     if (effectiveParentId) {
       setExpandedReplies(prev => ({ ...prev, [effectiveParentId]: true }));
+
+      // Track this client-side parent assignment so we can re-apply after server refresh
+      if (!clientParentMapRef.current[postId]) clientParentMapRef.current[postId] = {};
+      // Use the content as a loose key to identify the comment after server roundtrip
+      clientParentMapRef.current[postId][storedContent] = effectiveParentId;
     }
 
     try {
-      const success = await addComment(postId, content, effectiveParentId);
+      const success = await addComment(postId, storedContent, effectiveParentId);
 
       if (success) {
         // Background refresh to get the real comment with proper ID
-        fetchComments(postId).then(postComments => {
-          setComments(prev => ({ ...prev, [postId]: postComments }));
+        fetchComments(postId).then(serverComments => {
+          // Re-apply client-side parent_comment_id for comments where the server returned null
+          // (happens when DB migration isn't applied yet)
+          const parentMap = clientParentMapRef.current[postId];
+          if (parentMap && Object.keys(parentMap).length > 0) {
+            const enriched = serverComments.map(c => {
+              if (!c.parent_comment_id && parentMap[c.content]) {
+                return { ...c, parent_comment_id: parentMap[c.content] };
+              }
+              return c;
+            });
+            setComments(prev => ({ ...prev, [postId]: enriched }));
+          } else {
+            setComments(prev => ({ ...prev, [postId]: serverComments }));
+          }
         }).catch(() => {
           // Silently keep the optimistic comment if refresh fails
         });
@@ -277,14 +336,12 @@ const Flux = () => {
 
   const handleReply = useCallback((postId: string, comment: FluxComment) => {
     setReplyingTo(prev => ({ ...prev, [postId]: comment }));
-    const mention = `@${comment.user_name} `;
-    setNewComment(prev => ({ ...prev, [postId]: mention }));
+    // Don't prepend @Name to the input — we use a structural reply indicator instead
     // Focus the input after state update
     setTimeout(() => {
       const input = commentInputRefs.current[postId];
       if (input) {
         input.focus();
-        input.setSelectionRange(mention.length, mention.length);
       }
     }, 50);
   }, []);
@@ -498,6 +555,7 @@ const Flux = () => {
                                         onViewProfile={handleViewProfile}
                                         formatDate={formatDate}
                                         isReply
+                                        parentUserName={rootComment.user_name}
                                       />
                                     ))}
                                   </div>

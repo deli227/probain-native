@@ -443,8 +443,8 @@ export const useFlux = (userId: string | undefined, profileType?: string | null)
       );
       // Invalidate comments cache
       queryClient.invalidateQueries({ queryKey: fluxKeys.comments(postId) });
-
-      toastRef.current({ title: 'Commentaire supprimé' });
+      // Pas de toast ici — la disparition du commentaire suffit comme feedback visuel
+      // (un toast creerait un portail Radix qui perturbe le focus dans la section commentaires)
     },
     onError: () => {
       toastRef.current({
