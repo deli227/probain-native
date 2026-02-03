@@ -37,6 +37,7 @@ export const Sidebar = ({ profileType }: SidebarProps) => {
   const handleLogout = useCallback(async () => {
     try {
       queryClient.clear();
+      localStorage.removeItem('PROBAIN_QUERY_CACHE');
       sessionStorage.removeItem('training_search_state');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;

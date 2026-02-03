@@ -115,9 +115,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setCurrentUserId(newUserId);
       setIsInitialized(true);
 
-      // Si déconnexion, nettoyer le cache
+      // Si déconnexion, nettoyer le cache complet
       if (_event === 'SIGNED_OUT') {
-        queryClient.removeQueries({ queryKey: PROFILE_KEYS.all });
+        queryClient.clear();
+        localStorage.removeItem('PROBAIN_QUERY_CACHE');
         localStorage.removeItem('probain_profile_type');
         localStorage.removeItem('probain_onboarding_completed');
         localStorage.removeItem('probain_profile_selected');

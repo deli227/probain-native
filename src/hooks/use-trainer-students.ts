@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { safeGetUser } from "@/utils/asyncHelpers";
@@ -6,11 +6,12 @@ import { getRecyclingInfo, getRecyclingLabel, normalizeCertName } from "@/utils/
 import type { StudentData, SelectedStudent, ExternalFormation } from "@/components/profile/trainer-students/types";
 
 // ------------------------------------------------------------------
-// Query key factory
+// Query key factory — userId inclus pour éviter pollution de cache
+// entre comptes lors d'un switch (login/logout)
 // ------------------------------------------------------------------
 const trainerStudentsKeys = {
   all: ['trainer-students'] as const,
-  students: () => ['trainer-students', 'list'] as const,
+  students: (userId: string | null) => ['trainer-students', 'list', userId] as const,
   externalFormations: (studentId: string | null) =>
     ['trainer-students', 'external-formations', studentId] as const,
 };
@@ -168,6 +169,23 @@ async function fetchExternalFormationsData(studentId: string): Promise<ExternalF
 // ------------------------------------------------------------------
 
 export function useTrainerStudents() {
+  // ---- Current user ID for query key scoping ----
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await safeGetUser(supabase);
+      setCurrentUserId(user?.id ?? null);
+    };
+    getUser();
+
+    // Écouter les changements d'auth pour mettre à jour le userId
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUserId(session?.user?.id ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   // ---- UI state (not data-fetching) ----
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudents, setSelectedStudents] = useState<SelectedStudent[]>([]);
@@ -177,15 +195,16 @@ export function useTrainerStudents() {
   const [formationSource, setFormationSource] = useState<'all' | 'own' | 'others'>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  // ---- Students query ----
+  // ---- Students query (scoped by userId) ----
   const {
     data: studentsResult,
     isLoading: loading,
     error: queryError,
     refetch: refetchStudents,
   } = useQuery<StudentsQueryResult>({
-    queryKey: trainerStudentsKeys.students(),
+    queryKey: trainerStudentsKeys.students(currentUserId),
     queryFn: fetchStudentsData,
+    enabled: !!currentUserId,
     staleTime: 3 * 60 * 1000, // 3 minutes
   });
 
