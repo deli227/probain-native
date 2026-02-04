@@ -155,7 +155,8 @@ serve(async (req) => {
 
       const onesignalPayload = {
         app_id: ONESIGNAL_APP_ID,
-        include_external_user_ids: userIds,
+        include_aliases: { external_id: userIds },
+        target_channel: 'push',
         contents: { fr: body, en: body },
         headings: { fr: config.title, en: config.title },
         small_icon: PROBAIN_ICON,
@@ -200,11 +201,12 @@ serve(async (req) => {
 
     const body = buildNotificationBody(config, data)
 
-    // Cibler directement par external_user_id (= Supabase user ID)
-    // Despia lie le device au user via setonesignalplayerid://?user_id=...
+    // Cibler via include_aliases (format OneSignal actuel)
+    // L'external_id est defini sur le device par Despia via setonesignalplayerid://
     const onesignalPayload = {
       app_id: ONESIGNAL_APP_ID,
-      include_external_user_ids: [recipient_id],
+      include_aliases: { external_id: [recipient_id] },
+      target_channel: 'push',
       contents: { fr: body, en: body },
       headings: { fr: config.title, en: config.title },
       small_icon: PROBAIN_ICON,
@@ -212,7 +214,7 @@ serve(async (req) => {
       url: `https://www.probain.ch${targetUrl}`,
     }
 
-    console.log(`[Push] Individual notification to user ${recipient_id} via external_user_id`)
+    console.log(`[Push] Individual notification to user ${recipient_id} via include_aliases`)
 
     const result = await callOneSignalAPI(onesignalPayload, ONESIGNAL_REST_API_KEY)
 
@@ -275,9 +277,9 @@ function getBroadcastTargetProfile(eventType: string): string | null {
 }
 
 /**
- * Appeler l'API OneSignal REST (legacy v1)
- * Utilise include_external_user_ids pour le ciblage par Supabase user ID
- * L'external_user_id est defini sur le device par Despia via setonesignalplayerid://
+ * Appeler l'API OneSignal REST v1
+ * Utilise include_aliases + target_channel (format actuel, remplace include_external_user_ids)
+ * L'external_id est defini sur le device par Despia via setonesignalplayerid://
  */
 async function callOneSignalAPI(
   payload: Record<string, unknown>,
