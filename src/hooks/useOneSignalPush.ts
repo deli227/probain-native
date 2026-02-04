@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import OneSignal from 'react-onesignal';
 import { ONESIGNAL_APP_ID } from '@/config/onesignal';
-import { isNativeApp, initOneSignalNative, syncOneSignalPlayerId, registerPushNative, logoutOneSignalNative } from '@/lib/native';
+import { isNativeApp, initOneSignalNative, syncOneSignalPlayerId, registerPushNative, logoutOneSignalNative, setOneSignalTagNative } from '@/lib/native';
 import { appLogger } from '@/services/appLogger';
 
 /**
@@ -23,15 +23,26 @@ export function useOneSignalPush(userId: string | null, profileType: string | nu
       try {
         if (isNativeApp()) {
           // === DESPIA NATIVE PATH ===
+          appLogger.logAction('push', 'native.detected', `appId=${ONESIGNAL_APP_ID}, userId=${userId}`);
+
           // 1. Initialiser OneSignal avec l'App ID (1 seule fois)
           if (!initializedRef.current) {
             await initOneSignalNative(ONESIGNAL_APP_ID);
+            appLogger.logAction('push', 'native.initialized', `appId=${ONESIGNAL_APP_ID}`);
             await registerPushNative();
+            appLogger.logAction('push', 'native.permissionRequested', '');
             initializedRef.current = true;
           }
 
           // 2. Associer l'utilisateur Supabase a OneSignal (CHAQUE lancement)
           await syncOneSignalPlayerId(userId);
+          appLogger.logAction('push', 'native.externalIdSet', `userId=${userId}`);
+
+          // 3. Poser le tag profile_type pour le ciblage broadcast
+          if (profileType) {
+            await setOneSignalTagNative('profile_type', profileType);
+            appLogger.logAction('push', 'native.tagSet', `profile_type=${profileType}`);
+          }
         } else {
           // === WEB PUSH PATH ===
           // react-onesignal — init() ne doit etre appele qu'UNE fois

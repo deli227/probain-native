@@ -23,8 +23,8 @@ export const isNativeApp = (): boolean => {
   return !!(window as unknown as { despia?: unknown }).despia ||
          window.location.href.startsWith('despia://') ||
          window.location.href.includes('capacitor://') ||
-         // Détection alternative via user agent ou autres indicateurs
-         navigator.userAgent.includes('Despia');
+         // Détection alternative via user agent (case-insensitive selon doc Despia)
+         navigator.userAgent.toLowerCase().includes('despia');
 };
 
 /**
@@ -221,6 +221,20 @@ export const syncOneSignalPlayerId = async (userId: string): Promise<void> => {
       await despia('push', { action: 'setExternalUserId', userId });
     } catch (error) {
       console.warn('[Native] OneSignal player ID sync failed:', error);
+    }
+  }
+};
+
+/**
+ * Poser un tag sur l'utilisateur OneSignal en mode natif
+ * Utilise pour le ciblage broadcast (ex: profile_type)
+ */
+export const setOneSignalTagNative = async (key: string, value: string): Promise<void> => {
+  if (isNativeApp()) {
+    try {
+      await despia('push', { action: 'setTag', key, value });
+    } catch (error) {
+      console.warn('[Native] OneSignal setTag failed:', error);
     }
   }
 };
