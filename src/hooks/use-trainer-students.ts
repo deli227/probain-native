@@ -70,11 +70,43 @@ async function fetchStudentsData(): Promise<StudentsQueryResult> {
     }
   }
 
+  // Fetch formations des élèves pour croiser les dates de recyclage
+  // Map: studentId -> { certNameNormalized -> latestEndDate }
+  let studentRecyclingMap: Record<string, Record<string, string>> = {};
+
+  if (studentIds.length > 0) {
+    const { data: formationsData } = await supabase
+      .from("formations")
+      .select("user_id, title, end_date")
+      .in("user_id", studentIds)
+      .not("end_date", "is", null);
+
+    if (formationsData) {
+      for (const f of formationsData) {
+        if (!f.user_id || !f.title || !f.end_date) continue;
+        const norm = normalizeCertName(f.title);
+        if (!studentRecyclingMap[f.user_id]) {
+          studentRecyclingMap[f.user_id] = {};
+        }
+        const existing = studentRecyclingMap[f.user_id][norm];
+        // Garder la date la plus récente
+        if (!existing || f.end_date > existing) {
+          studentRecyclingMap[f.user_id][norm] = f.end_date;
+        }
+      }
+    }
+  }
+
   const formattedStudents: StudentData[] = (data || []).map(item => {
+    // Croiser avec la table formations pour trouver le dernier recyclage
+    const certNorm = normalizeCertName(item.training_type);
+    const latestRecyclingDate = studentRecyclingMap[item.student_id]?.[certNorm] || null;
+
     const recyclingInfo = getRecyclingInfo({
       id: item.id,
       title: item.training_type,
       start_date: item.training_date,
+      end_date: latestRecyclingDate,
     });
     const recyclingLabel = getRecyclingLabel(recyclingInfo);
 
