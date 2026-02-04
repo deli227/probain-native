@@ -39,6 +39,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_logs: {
+        Row: {
+          id: string
+          user_id: string | null
+          profile_type: string | null
+          session_id: string
+          level: string
+          category: string
+          event: string
+          message: string | null
+          metadata: Json
+          device_info: Json
+          duration_ms: number | null
+          error_stack: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          profile_type?: string | null
+          session_id: string
+          level: string
+          category: string
+          event: string
+          message?: string | null
+          metadata?: Json
+          device_info?: Json
+          duration_ms?: number | null
+          error_stack?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          profile_type?: string | null
+          session_id?: string
+          level?: string
+          category?: string
+          event?: string
+          message?: string | null
+          metadata?: Json
+          device_info?: Json
+          duration_ms?: number | null
+          error_stack?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       account_claim_requests: {
         Row: {
           admin_notes: string | null
@@ -893,6 +941,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          player_id: string
+          platform: string
+          profile_type: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          player_id: string
+          platform?: string
+          profile_type?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          player_id?: string
+          platform?: string
+          profile_type?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rescuer_profiles: {
         Row: {

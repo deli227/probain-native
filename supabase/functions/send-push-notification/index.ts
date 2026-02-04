@@ -105,6 +105,8 @@ serve(async (req) => {
     const payload: PushPayload = await req.json()
     const { event_type, recipient_id, data } = payload
 
+    console.log(`[Push] Event: ${event_type}, recipient: ${recipient_id}, broadcast: ${data.broadcast}`)
+
     const config = NOTIFICATION_CONFIG[event_type]
     if (!config) {
       return new Response(
@@ -113,21 +115,49 @@ serve(async (req) => {
       )
     }
 
+    // Creer un client Supabase (service_role pour bypass RLS)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
     // Pour les broadcasts (flux, formations, job postings), envoyer a tout le segment
     const isBroadcast = data.broadcast === true
 
     if (isBroadcast) {
-      // Broadcast via tags/segments OneSignal
-      const filters = buildBroadcastFilters(event_type)
+      // Recuperer les player_ids depuis push_subscriptions
+      const broadcastProfileType = getBroadcastTargetProfile(event_type)
+
+      let query = supabase.from('push_subscriptions').select('player_id')
+
+      if (broadcastProfileType) {
+        query = query.eq('profile_type', broadcastProfileType)
+      }
+
+      const { data: subscriptions, error: subError } = await query
+
+      if (subError) {
+        console.error('[Push] Error fetching broadcast subscriptions:', subError)
+        throw new Error(`Failed to fetch subscriptions: ${subError.message}`)
+      }
+
+      const playerIds = subscriptions?.map(s => s.player_id).filter(Boolean) || []
+
+      console.log(`[Push] Broadcast to ${playerIds.length} players (filter: ${broadcastProfileType || 'all'})`)
+
+      if (playerIds.length === 0) {
+        return new Response(
+          JSON.stringify({ message: 'No subscribers for broadcast', event_type }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        )
+      }
 
       const body = buildNotificationBody(config, data)
 
-      const onesignalPayload: Record<string, unknown> = {
+      const onesignalPayload = {
         app_id: ONESIGNAL_APP_ID,
-        filters,
+        include_player_ids: playerIds,
         contents: { fr: body, en: body },
         headings: { fr: config.title, en: config.title },
-        chrome_web_icon: PROBAIN_ICON,
         small_icon: PROBAIN_ICON,
         large_icon: PROBAIN_ICON,
         url: `https://www.probain.ch${Object.values(config.urlByProfile)[0] || '/'}`,
@@ -136,17 +166,12 @@ serve(async (req) => {
       const result = await callOneSignalAPI(onesignalPayload, ONESIGNAL_REST_API_KEY)
 
       return new Response(
-        JSON.stringify({ success: true, broadcast: true, result }),
+        JSON.stringify({ success: true, broadcast: true, playerCount: playerIds.length, result }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
     // === Notification individuelle ===
-
-    // Creer un client Supabase pour verifier les preferences
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Verifier les preferences de notification du destinataire
     const { data: prefs } = await supabase
@@ -159,6 +184,28 @@ serve(async (req) => {
     if (prefs && prefs[config.preferenceKey] === false) {
       return new Response(
         JSON.stringify({ message: 'Notification disabled by user preference', event_type }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+
+    // Recuperer les player_ids du destinataire depuis push_subscriptions
+    const { data: subscriptions, error: subError } = await supabase
+      .from('push_subscriptions')
+      .select('player_id')
+      .eq('user_id', recipient_id)
+
+    if (subError) {
+      console.error('[Push] Error fetching user subscriptions:', subError)
+      throw new Error(`Failed to fetch subscriptions: ${subError.message}`)
+    }
+
+    const playerIds = subscriptions?.map(s => s.player_id).filter(Boolean) || []
+
+    console.log(`[Push] Individual notification to user ${recipient_id}: ${playerIds.length} player(s)`)
+
+    if (playerIds.length === 0) {
+      return new Response(
+        JSON.stringify({ message: 'No push subscriptions for user', recipient_id, event_type }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
@@ -177,11 +224,9 @@ serve(async (req) => {
 
     const onesignalPayload = {
       app_id: ONESIGNAL_APP_ID,
-      include_aliases: { external_id: [recipient_id] },
-      target_channel: 'push',
+      include_player_ids: playerIds,
       contents: { fr: body, en: body },
       headings: { fr: config.title, en: config.title },
-      chrome_web_icon: PROBAIN_ICON,
       small_icon: PROBAIN_ICON,
       large_icon: PROBAIN_ICON,
       url: `https://www.probain.ch${targetUrl}`,
@@ -190,7 +235,7 @@ serve(async (req) => {
     const result = await callOneSignalAPI(onesignalPayload, ONESIGNAL_REST_API_KEY)
 
     return new Response(
-      JSON.stringify({ success: true, result }),
+      JSON.stringify({ success: true, playerCount: playerIds.length, result }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
 
@@ -231,33 +276,34 @@ function buildNotificationBody(
 }
 
 /**
- * Construire les filtres OneSignal pour les broadcasts
+ * Determiner le profile_type cible pour les broadcasts
  */
-function buildBroadcastFilters(eventType: string): Array<Record<string, string>> {
+function getBroadcastTargetProfile(eventType: string): string | null {
   switch (eventType) {
     case 'new_formation':
     case 'new_job_posting':
       // Cibler les sauveteurs uniquement
-      return [{ field: 'tag', key: 'profile_type', value: 'maitre_nageur' }]
+      return 'maitre_nageur'
     case 'new_flux_post':
-      // Cibler tous les profils (pas de filtre specifique)
-      return []
+      // Cibler tous les profils (pas de filtre)
+      return null
     default:
-      return []
+      return null
   }
 }
 
 /**
- * Appeler l'API OneSignal REST v2
+ * Appeler l'API OneSignal REST
+ * Utilise include_player_ids (Subscription IDs) pour le ciblage
  */
 async function callOneSignalAPI(
   payload: Record<string, unknown>,
   apiKey: string
 ): Promise<unknown> {
-  const response = await fetch('https://api.onesignal.com/notifications', {
+  const response = await fetch('https://onesignal.com/api/v1/notifications', {
     method: 'POST',
     headers: {
-      'Authorization': `Key ${apiKey}`,
+      'Authorization': `Basic ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),

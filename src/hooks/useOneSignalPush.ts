@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react';
 import OneSignal from 'react-onesignal';
 import { ONESIGNAL_APP_ID } from '@/config/onesignal';
-import { isNativeApp, initOneSignalNative, syncOneSignalPlayerId, registerPushNative, logoutOneSignalNative, setOneSignalTagNative } from '@/lib/native';
+import { isNativeApp, getOneSignalPlayerIdNative } from '@/lib/native';
 import { appLogger } from '@/services/appLogger';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Hook qui gere l'initialisation OneSignal et l'identification utilisateur.
  *
- * - Native (Despia) : utilise les protocoles Despia (setonesignalplayerid, registerpush)
+ * - Native (Despia) : recupere le Player ID via Despia et l'enregistre dans push_subscriptions
  * - Web (PWA) : utilise le SDK react-onesignal
  *
  * Appele dans ProfileContext avec userId et profileType.
@@ -23,25 +24,36 @@ export function useOneSignalPush(userId: string | null, profileType: string | nu
       try {
         if (isNativeApp()) {
           // === DESPIA NATIVE PATH ===
-          appLogger.logAction('push', 'native.detected', `appId=${ONESIGNAL_APP_ID}, userId=${userId}`);
+          // Despia integre le SDK OneSignal natif — on recupere juste le Player ID
+          // et on le stocke dans push_subscriptions pour le ciblage par l'Edge Function
+          appLogger.logAction('push', 'native.detected', `userId=${userId}`);
 
-          // 1. Initialiser OneSignal avec l'App ID (1 seule fois)
-          if (!initializedRef.current) {
-            await initOneSignalNative(ONESIGNAL_APP_ID);
-            appLogger.logAction('push', 'native.initialized', `appId=${ONESIGNAL_APP_ID}`);
-            await registerPushNative();
-            appLogger.logAction('push', 'native.permissionRequested', '');
-            initializedRef.current = true;
-          }
+          const playerId = await getOneSignalPlayerIdNative();
 
-          // 2. Associer l'utilisateur Supabase a OneSignal (CHAQUE lancement)
-          await syncOneSignalPlayerId(userId);
-          appLogger.logAction('push', 'native.externalIdSet', `userId=${userId}`);
+          if (playerId) {
+            appLogger.logAction('push', 'native.playerIdObtained', `playerId=${playerId}`);
 
-          // 3. Poser le tag profile_type pour le ciblage broadcast
-          if (profileType) {
-            await setOneSignalTagNative('profile_type', profileType);
-            appLogger.logAction('push', 'native.tagSet', `profile_type=${profileType}`);
+            // Upsert dans push_subscriptions (ON CONFLICT = update)
+            const { error } = await supabase
+              .from('push_subscriptions')
+              .upsert(
+                {
+                  user_id: userId,
+                  player_id: playerId,
+                  platform: 'native',
+                  profile_type: profileType || null,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'user_id,player_id' }
+              );
+
+            if (error) {
+              appLogger.logError('push', 'native.upsert.error', error);
+            } else {
+              appLogger.logAction('push', 'native.registered', `playerId=${playerId}, profileType=${profileType}`);
+            }
+          } else {
+            appLogger.logAction('push', 'native.noPlayerId', 'Player ID not available from Despia');
           }
         } else {
           // === WEB PUSH PATH ===
@@ -83,13 +95,24 @@ export function useOneSignalPush(userId: string | null, profileType: string | nu
  * Fonction standalone a appeler explicitement au logout (SIGNED_OUT).
  * PAS dans un useEffect cleanup (car userId=null ne trigger pas le cleanup du bon effect).
  *
- * - Native (Despia) : genere un ID anonyme unique (best practice Despia)
+ * - Native (Despia) : supprime les rows de push_subscriptions pour cet appareil
  * - Web (PWA) : appelle OneSignal.logout()
  */
 export async function cleanupOneSignalOnLogout() {
   try {
     if (isNativeApp()) {
-      logoutOneSignalNative();
+      // Recuperer le player ID pour supprimer le bon row
+      const playerId = await getOneSignalPlayerIdNative();
+      if (playerId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('user_id', session.user.id)
+            .eq('player_id', playerId);
+        }
+      }
     } else {
       await OneSignal.logout();
     }

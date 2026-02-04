@@ -180,78 +180,41 @@ export const isAppInstalled = (): boolean => {
 };
 
 /**
- * Initialiser OneSignal dans l'environnement natif Despia
- * Doit etre appele UNE seule fois au demarrage
+ * Recuperer le Player ID OneSignal depuis Despia
+ * Doc Despia: https://docs.despia.com/docs/native-integrations/getting-started/onesignal
  *
- * @param appId - L'App ID OneSignal
- */
-export const initOneSignalNative = async (appId: string): Promise<void> => {
-  if (isNativeApp()) {
-    try {
-      await despia('push', { action: 'initialize', appId });
-    } catch (error) {
-      console.warn('[Native] OneSignal init failed:', error);
-    }
-  }
-};
-
-/**
- * Demander la permission push en mode natif
- * En mode web, cette fonction ne fait rien (gere par le SDK react-onesignal)
- */
-export const registerPushNative = async (): Promise<void> => {
-  if (isNativeApp()) {
-    try {
-      await despia('push', { action: 'requestPermission' });
-    } catch (error) {
-      console.warn('[Native] Push permission request failed:', error);
-    }
-  }
-};
-
-/**
- * Associer l'utilisateur Supabase a OneSignal (CHAQUE lancement)
- * En mode web, cette fonction ne fait rien (gere par le SDK react-onesignal)
+ * Despia integre le SDK OneSignal natif — pas besoin d'initialiser.
+ * On recupere juste le Player ID pour l'envoyer au backend.
  *
- * @param userId - L'ID utilisateur Supabase
+ * @returns Le Player ID OneSignal ou null si non disponible
  */
-export const syncOneSignalPlayerId = async (userId: string): Promise<void> => {
-  if (isNativeApp()) {
-    try {
-      await despia('push', { action: 'setExternalUserId', userId });
-    } catch (error) {
-      console.warn('[Native] OneSignal player ID sync failed:', error);
-    }
-  }
-};
+export const getOneSignalPlayerIdNative = async (): Promise<string | null> => {
+  if (!isNativeApp()) return null;
 
-/**
- * Poser un tag sur l'utilisateur OneSignal en mode natif
- * Utilise pour le ciblage broadcast (ex: profile_type)
- */
-export const setOneSignalTagNative = async (key: string, value: string): Promise<void> => {
-  if (isNativeApp()) {
-    try {
-      await despia('push', { action: 'setTag', key, value });
-    } catch (error) {
-      console.warn('[Native] OneSignal setTag failed:', error);
+  try {
+    // Methode 1: API async avec despia-native
+    const data = await despia('getonesignalplayerid://', ['onesignalplayerid']);
+    if (data?.onesignalplayerid) {
+      return data.onesignalplayerid;
     }
-  }
-};
 
-/**
- * Logout OneSignal natif : generer un ID anonyme unique
- * Best practice Despia : JAMAIS reutiliser l'install_id brut
- * En mode web, cette fonction ne fait rien (gere par le SDK react-onesignal)
- */
-export const logoutOneSignalNative = async (): Promise<void> => {
-  if (isNativeApp()) {
-    try {
-      const deviceId = await despia('device', { get: 'id' });
-      const anonId = `${deviceId || 'anon'}-${Date.now()}`;
-      await despia('push', { action: 'setExternalUserId', userId: anonId });
-    } catch (error) {
-      console.warn('[Native] OneSignal logout failed:', error);
+    // Methode 2: variable globale (fallback)
+    const win = window as unknown as { onesignalplayerid?: string };
+    if (win.onesignalplayerid) {
+      return win.onesignalplayerid;
     }
+
+    // Methode 3: trigger via window.despia puis lire la variable
+    (window as unknown as { despia: string }).despia = 'getonesignalplayerid://';
+    // Attendre un court instant pour que Despia remplisse la variable
+    await new Promise(resolve => setTimeout(resolve, 500));
+    if (win.onesignalplayerid) {
+      return win.onesignalplayerid;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('[Native] Failed to get OneSignal Player ID:', error);
+    return null;
   }
 };
