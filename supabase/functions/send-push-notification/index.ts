@@ -120,33 +120,33 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Pour les broadcasts (flux, formations, job postings), envoyer a tout le segment
+    // Pour les broadcasts (flux, formations, job postings), envoyer a tous les profils cibles
     const isBroadcast = data.broadcast === true
 
     if (isBroadcast) {
-      // Recuperer les player_ids depuis push_subscriptions
       const broadcastProfileType = getBroadcastTargetProfile(event_type)
 
-      let query = supabase.from('push_subscriptions').select('player_id')
+      // Recuperer les user IDs depuis la table profiles
+      let query = supabase.from('profiles').select('id').eq('is_active', true)
 
       if (broadcastProfileType) {
         query = query.eq('profile_type', broadcastProfileType)
       }
 
-      const { data: subscriptions, error: subError } = await query
+      const { data: profiles, error: profileError } = await query
 
-      if (subError) {
-        console.error('[Push] Error fetching broadcast subscriptions:', subError)
-        throw new Error(`Failed to fetch subscriptions: ${subError.message}`)
+      if (profileError) {
+        console.error('[Push] Error fetching broadcast profiles:', profileError)
+        throw new Error(`Failed to fetch profiles: ${profileError.message}`)
       }
 
-      const playerIds = subscriptions?.map(s => s.player_id).filter(Boolean) || []
+      const userIds = profiles?.map((p: { id: string }) => p.id).filter(Boolean) || []
 
-      console.log(`[Push] Broadcast to ${playerIds.length} players (filter: ${broadcastProfileType || 'all'})`)
+      console.log(`[Push] Broadcast to ${userIds.length} users (filter: ${broadcastProfileType || 'all'})`)
 
-      if (playerIds.length === 0) {
+      if (userIds.length === 0) {
         return new Response(
-          JSON.stringify({ message: 'No subscribers for broadcast', event_type }),
+          JSON.stringify({ message: 'No users for broadcast', event_type }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         )
       }
@@ -155,7 +155,7 @@ serve(async (req) => {
 
       const onesignalPayload = {
         app_id: ONESIGNAL_APP_ID,
-        include_player_ids: playerIds,
+        include_external_user_ids: userIds,
         contents: { fr: body, en: body },
         headings: { fr: config.title, en: config.title },
         small_icon: PROBAIN_ICON,
@@ -166,7 +166,7 @@ serve(async (req) => {
       const result = await callOneSignalAPI(onesignalPayload, ONESIGNAL_REST_API_KEY)
 
       return new Response(
-        JSON.stringify({ success: true, broadcast: true, playerCount: playerIds.length, result }),
+        JSON.stringify({ success: true, broadcast: true, userCount: userIds.length, result }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
@@ -188,28 +188,6 @@ serve(async (req) => {
       )
     }
 
-    // Recuperer les player_ids du destinataire depuis push_subscriptions
-    const { data: subscriptions, error: subError } = await supabase
-      .from('push_subscriptions')
-      .select('player_id')
-      .eq('user_id', recipient_id)
-
-    if (subError) {
-      console.error('[Push] Error fetching user subscriptions:', subError)
-      throw new Error(`Failed to fetch subscriptions: ${subError.message}`)
-    }
-
-    const playerIds = subscriptions?.map(s => s.player_id).filter(Boolean) || []
-
-    console.log(`[Push] Individual notification to user ${recipient_id}: ${playerIds.length} player(s)`)
-
-    if (playerIds.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No push subscriptions for user', recipient_id, event_type }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      )
-    }
-
     // Recuperer le profile_type du destinataire pour le routing URL
     const { data: profile } = await supabase
       .from('profiles')
@@ -222,9 +200,11 @@ serve(async (req) => {
 
     const body = buildNotificationBody(config, data)
 
+    // Cibler directement par external_user_id (= Supabase user ID)
+    // Despia lie le device au user via setonesignalplayerid://?user_id=...
     const onesignalPayload = {
       app_id: ONESIGNAL_APP_ID,
-      include_player_ids: playerIds,
+      include_external_user_ids: [recipient_id],
       contents: { fr: body, en: body },
       headings: { fr: config.title, en: config.title },
       small_icon: PROBAIN_ICON,
@@ -232,17 +212,19 @@ serve(async (req) => {
       url: `https://www.probain.ch${targetUrl}`,
     }
 
+    console.log(`[Push] Individual notification to user ${recipient_id} via external_user_id`)
+
     const result = await callOneSignalAPI(onesignalPayload, ONESIGNAL_REST_API_KEY)
 
     return new Response(
-      JSON.stringify({ success: true, playerCount: playerIds.length, result }),
+      JSON.stringify({ success: true, result }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
 
   } catch (error) {
     console.error('Error sending push notification:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
@@ -293,8 +275,9 @@ function getBroadcastTargetProfile(eventType: string): string | null {
 }
 
 /**
- * Appeler l'API OneSignal REST
- * Utilise include_player_ids (Subscription IDs) pour le ciblage
+ * Appeler l'API OneSignal REST (legacy v1)
+ * Utilise include_external_user_ids pour le ciblage par Supabase user ID
+ * L'external_user_id est defini sur le device par Despia via setonesignalplayerid://
  */
 async function callOneSignalAPI(
   payload: Record<string, unknown>,
@@ -309,10 +292,13 @@ async function callOneSignalAPI(
     body: JSON.stringify(payload),
   })
 
+  const responseBody = await response.json()
+
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`OneSignal API error (${response.status}): ${errorText}`)
+    console.error(`[Push] OneSignal API error (${response.status}):`, JSON.stringify(responseBody))
+    throw new Error(`OneSignal API error (${response.status}): ${JSON.stringify(responseBody)}`)
   }
 
-  return response.json()
+  console.log('[Push] OneSignal API response:', JSON.stringify(responseBody))
+  return responseBody
 }

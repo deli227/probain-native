@@ -180,41 +180,34 @@ export const isAppInstalled = (): boolean => {
 };
 
 /**
- * Recuperer le Player ID OneSignal depuis Despia
- * Doc Despia: https://docs.despia.com/docs/native-integrations/getting-started/onesignal
+ * Enregistrer l'utilisateur pour les push notifications sur Despia.
+ * Doc: https://github.com/despia-native/despia-native (README lignes 931-1007)
  *
- * Despia integre le SDK OneSignal natif — pas besoin d'initialiser.
- * On recupere juste le Player ID pour l'envoyer au backend.
+ * Appelle setonesignalplayerid (associe le user Supabase au device OneSignal)
+ * et registerpush (enregistre le device pour les push).
  *
- * @returns Le Player ID OneSignal ou null si non disponible
+ * Fire-and-forget: pas d'attente de reponse, pas de timeout.
+ * Doit etre appele a chaque chargement de l'app (recommandation Despia).
  */
-export const getOneSignalPlayerIdNative = async (): Promise<string | null> => {
-  if (!isNativeApp()) return null;
-
+export const registerPushNative = (userId: string): void => {
+  if (!isNativeApp()) return;
   try {
-    // Methode 1: API async avec despia-native
-    const data = await despia('getonesignalplayerid://', ['onesignalplayerid']);
-    if (data?.onesignalplayerid) {
-      return data.onesignalplayerid;
-    }
-
-    // Methode 2: variable globale (fallback)
-    const win = window as unknown as { onesignalplayerid?: string };
-    if (win.onesignalplayerid) {
-      return win.onesignalplayerid;
-    }
-
-    // Methode 3: trigger via window.despia puis lire la variable
-    (window as unknown as { despia: string }).despia = 'getonesignalplayerid://';
-    // Attendre un court instant pour que Despia remplisse la variable
-    await new Promise(resolve => setTimeout(resolve, 500));
-    if (win.onesignalplayerid) {
-      return win.onesignalplayerid;
-    }
-
-    return null;
+    despia(`setonesignalplayerid://?user_id=${userId}`);
+    despia('registerpush://');
   } catch (error) {
-    console.warn('[Native] Failed to get OneSignal Player ID:', error);
-    return null;
+    console.warn('[Native] Push registration failed:', error);
+  }
+};
+
+/**
+ * Dissocier l'utilisateur des push au logout.
+ * Set un user_id vide pour deconnecter le device du user.
+ */
+export const unregisterPushNative = (): void => {
+  if (!isNativeApp()) return;
+  try {
+    despia('setonesignalplayerid://?user_id=');
+  } catch (error) {
+    console.warn('[Native] Push unregister failed:', error);
   }
 };
