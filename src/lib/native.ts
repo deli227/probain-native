@@ -190,10 +190,14 @@ export const isAppInstalled = (): boolean => {
 
 /**
  * Enregistrer l'utilisateur pour les push notifications sur Despia.
- * Doc: https://github.com/despia-native/despia-native (README lignes 931-1007)
+ * Doc Despia: https://setup.despia.com/native-features/onesignal
  *
- * Appelle setonesignalplayerid (associe le user Supabase au device OneSignal)
- * et registerpush (enregistre le device pour les push).
+ * ORDRE IMPORTANT (selon doc Despia):
+ * 1. registerpush:// → enregistre le device aupres de OneSignal (genere le Player ID)
+ * 2. setonesignalplayerid://?user_id=... → associe le Supabase userId au device
+ *
+ * Si l'ordre est inverse, le device n'est pas encore enregistre quand on tente
+ * de lui associer un external_user_id → OneSignal renvoie "not subscribed".
  *
  * Fire-and-forget: pas d'attente de reponse, pas de timeout.
  * Doit etre appele a chaque chargement de l'app (recommandation Despia).
@@ -201,8 +205,10 @@ export const isAppInstalled = (): boolean => {
 export const registerPushNative = (userId: string): void => {
   if (!isNativeApp()) return;
   try {
-    despia(`setonesignalplayerid://?user_id=${userId}`);
+    // 1. Enregistrer le device pour les push (genere le Player ID OneSignal)
     despia('registerpush://');
+    // 2. Associer le userId Supabase au device OneSignal (external_user_id)
+    despia(`setonesignalplayerid://?user_id=${userId}`);
   } catch (error) {
     console.warn('[Native] Push registration failed:', error);
   }
