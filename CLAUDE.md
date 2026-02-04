@@ -638,6 +638,7 @@ Le composant `DialogContent` de Shadcn/UI genere automatiquement un bouton X de 
 | CalendarModal overlay | `z-[100]` | Au-dessus de tout |
 | ImageCropDialog | `z-[100]` | Au-dessus de tout |
 | PersonalInfoForm calendar | `z-[100]` | Au-dessus de tout |
+| SelectContent (dropdown) | `z-[80]` | Au-dessus des Sheets/Dialogs |
 | Dialog overlay + content | `z-[70]` | Au-dessus de BottomTabBar |
 | Sheet overlay + content | `z-[70]` | Au-dessus de BottomTabBar |
 | AlertDialog overlay + content | `z-[70]` | Au-dessus de BottomTabBar |
@@ -1305,3 +1306,157 @@ npx playwright test  # 39 E2E tests (~5min)
 | `docs/workflow-guide.md` | Guide workflow BMAD quotidien |
 | `docs/archive/development-log.md` | Historique sessions (archive) |
 | `docs/archive/README-legacy.md` | Ancien README complet (archive) |
+
+---
+
+## REGLES ABSOLUES — A NE JAMAIS ENFREINDRE
+
+### 1. JAMAIS de scraper / GitHub Actions workflow dans ce repo
+
+Le scraper SSS (`scrape-sss.yml` + `scrape_sss.py`) tourne sur une **branche separee dediee** du repo `deli227/probain-native`. Ce repo (`master`) ne doit **JAMAIS** contenir de workflow GitHub Actions pour le scraping. L'ancien scraper duplique ici echouait systematiquement et creait de la confusion. Si un scraper est necessaire, il est gere **exclusivement** sur la branche dediee.
+
+**Interdit :**
+- Creer des fichiers dans `.github/workflows/` ou `.github/scripts/`
+- Ajouter des workflows de scraping, cron jobs, ou GitHub Actions de quelque nature que ce soit
+- Dupliquer du code d'infrastructure CI/CD depuis d'autres branches ou repos
+
+### 2. Toute nouvelle page DOIT etre visible et accessible sur TOUS les ecrans
+
+**REGLE CRITIQUE** : chaque page, composant, bouton et contenu de l'application doit etre **entierement visible** et **jamais cache** derriere le MobileHeader (56px sticky top), la BottomTabBar (76px fixed bottom) ou la safe-area de l'appareil. Cette regle s'applique sur **tous les ecrans** (petit mobile 375px jusqu'a desktop) et **tous les profils** (sauveteur, formateur, etablissement).
+
+#### Checklist obligatoire pour toute nouvelle page dans le DashboardLayout :
+
+**Conteneur principal :**
+```tsx
+<div className="min-h-screen bg-primary-dark md:bg-transparent md:pb-6">
+  {/* Header compact */}
+  {/* Contenu */}
+</div>
+```
+
+**Header compact (obligatoire sur les pages de contenu) :**
+```tsx
+<div className="relative bg-gradient-to-br from-primary via-probain-blue to-primary-dark px-4 py-3 overflow-hidden">
+  <div className="relative max-w-4xl mx-auto">
+    <div className="flex items-center gap-3">
+      <div className="p-2 bg-gradient-to-br from-[couleur]/20 to-[couleur]/20 rounded-xl border border-white/10">
+        <Icon className="h-5 w-5 text-cyan-400" />
+      </div>
+      <div>
+        <h1 className="text-sm font-bold text-white tracking-tight">TITRE</h1>
+        <p className="text-[11px] text-white/40">Sous-titre</p>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+**Regles de layout :**
+- `bg-primary-dark` (`#0A1033`) sur mobile — JAMAIS un hex different (evite le flash de couleur au lazy-load)
+- `md:bg-transparent` sur desktop (le sidebar gere le fond)
+- PAS de `pb-XX` pour degager la BottomTabBar — le `DashboardLayout` + `.dashboard-bottom-safe` gere automatiquement
+- `md:pb-6` uniquement pour l'espacement desktop si necessaire
+- Contenu en `px-4 py-3` + `max-w-4xl mx-auto`
+- Le header dans l'etat de chargement (`loading`) DOIT etre IDENTIQUE au header final (evite le flash visuel)
+
+**Overlays et modals :**
+- Tout `Dialog`, `Sheet`, `AlertDialog` dans le dashboard : `z-[70]` minimum (au-dessus de la BottomTabBar `z-[60]`)
+- Tout overlay custom `fixed inset-0` : `z-[70]` minimum
+- Calendriers et crop image : `z-[100]`
+- Boutons d'action en bas d'un overlay : padding-bottom `max(6rem, calc(env(safe-area-inset-bottom) + 5rem))`
+
+### 3. JAMAIS de composants ou styles Shadcn/UI non adaptes au dark theme
+
+L'app utilise un dark theme complet. Les composants Shadcn/UI ont des defaults light (fond blanc, texte noir) qui sont **invisibles** sur fond sombre.
+
+**Interdit :**
+- Utiliser `Card` sans `bg-transparent` sur un fond sombre (le `bg-card` blanc rend le contenu invisible)
+- Utiliser `Button variant="outline"` sur fond sombre sans override (le `bg-background` est blanc)
+- Utiliser `DialogContent` sans `[&>button]:text-white/70` sur fond sombre (bouton X invisible)
+- Ajouter un `<DialogClose>` manuel dans un `DialogContent` (double bouton X — Shadcn en genere deja un)
+- Utiliser `text-gray-900`, `text-foreground`, `bg-background`, `bg-card` directement sur les pages sombres
+
+**Palette dark obligatoire :**
+- Fond : `bg-primary-dark` ou `bg-[#0a1628]`
+- Cartes : `bg-white/10 backdrop-blur-xl border border-white/10`
+- Texte principal : `text-white`
+- Texte secondaire : `text-white/70` ou `text-white/40`
+- Inputs : `bg-white/10 border-white/20 text-white placeholder:text-white/40`
+- Focus : `ring-cyan-400/30 border-cyan-400/50`
+- Boutons primaires : gradient `from-cyan-500 to-blue-600`
+
+### 4. JAMAIS de toast succes dans un Sheet ou Dialog
+
+Le toast Radix cree un portail DOM **en dehors** du Sheet/Dialog. Le Sheet detecte l'interaction exterieure via `onFocusOutside` et se ferme immediatement. Le changement visuel (switch, commentaire ajoute, etc.) suffit comme feedback.
+
+### 5. JAMAIS de `new Date("YYYY-MM-DD")` ou `toISOString().split('T')[0]`
+
+Les dates en BDD sont en `YYYY-MM-DD` (sans timezone). `new Date("2026-01-31")` cree minuit UTC = 30 jan 23h en CET → la date recule d'un jour.
+
+**Obligatoire :**
+- Parser : `parseDateLocal("YYYY-MM-DD")` de `src/utils/dateUtils.ts`
+- Formater : `formatDateLocal(date)` de `src/utils/dateUtils.ts`
+- `toLocaleDateString()` : utiliser `'fr-FR'` ou `'fr-CH'`
+- `format()` / `formatDistanceToNow()` de date-fns : TOUJOURS `{ locale: fr }`
+- `<Calendar>` (react-day-picker) : TOUJOURS `locale={fr}`
+
+### 6. JAMAIS de `React.lazy()` direct — utiliser `lazyRetry()`
+
+Toutes les pages lazy-loaded doivent utiliser `lazyRetry()` de `src/utils/lazyRetry.ts`. Ce wrapper gere le retry automatique + auto-reload quand un chunk est invalide apres deploiement.
+
+Pour les named exports :
+```typescript
+const Component = lazyRetry(() => import('./Component').then(m => ({ default: m.ComponentName })));
+```
+
+### 7. JAMAIS de hooks React apres un `return` conditionnel
+
+Tous les hooks (`useState`, `useEffect`, `useQuery`, `useMemo`, etc.) doivent etre appeles **AVANT** tout `return` conditionnel. Sinon erreur fatale : "Rendered more hooks than during the previous render".
+
+### 8. JAMAIS de `window.open()` en dehors d'un `onClick` direct
+
+Sur mobile (WebView Despia), `window.open()` est bloque si appele depuis un `useEffect`, un callback async ou une Promise. L'appel DOIT etre dans le handler `onClick` synchrone direct (geste utilisateur).
+
+### 9. JAMAIS d'`<input type="file">` dans un Portal Radix sur Android
+
+Sur Android WebView (Despia), les inputs file dans un Portal Radix (`Sheet`, `Dialog`) perdent silencieusement l'evenement `onChange`. L'utilisateur choisit un fichier mais rien ne se passe.
+
+**Solution :** utiliser les props `externalCameraRef` / `externalGalleryRef` de `PhotoPickerSheet` et placer les inputs a la racine du composant parent (hors du Portal).
+
+### 10. JAMAIS modifier les composants `src/components/ui/` (Shadcn/UI)
+
+Les 31 composants dans `src/components/ui/` sont des composants Shadcn/UI partages. Ne PAS les modifier sauf demande explicite de l'utilisateur. Adapter le style via les props `className` au niveau de l'utilisation.
+
+### 11. Invalidation du cache TanStack Query apres mutation
+
+Apres toute mutation (insert, update, delete) via Supabase :
+- Appeler `queryClient.invalidateQueries({ queryKey: [...] })` sur les query keys concernees
+- Pour les messages : TOUJOURS invalider `queryKey: ["messages"]`
+- Pour les stats : invalider les compteurs associes (ex: `['establishment-stats']`)
+
+### 12. Contenu HTML du RichTextEditor — securite obligatoire
+
+Tout contenu cree via `RichTextEditor` (qui produit du HTML) doit :
+- **En apercu** (carte, liste) : `stripHtml()` via DOMParser pour du texte brut
+- **En affichage complet** (dialog, page) : `DOMPurify.sanitize()` + `dangerouslySetInnerHTML` + classes `prose prose-invert`
+- **JAMAIS** `{variable}` directement dans le JSX pour du contenu HTML (affiche les balises brutes)
+
+### 13. Locale francaise obligatoire PARTOUT
+
+L'application est 100% en francais suisse. Tout composant ou fonction affichant des dates, mois, jours doit utiliser la locale francaise :
+- `<Calendar locale={fr}>` (import `{ fr } from "date-fns/locale"`)
+- `format(date, pattern, { locale: fr })`
+- `formatDistanceToNow(date, { locale: fr })`
+- `toLocaleDateString('fr-CH')` ou `toLocaleDateString('fr-FR')`
+
+### 14. Scraper SSS — donnees dans `sss_formations_cache`
+
+Le scraper SSS est gere **exclusivement** sur une branche separee du repo GitHub principal. Ce repo ne contient aucun code de scraping. Les formations SSS arrivent dans la table `sss_formations_cache` et sont affichees via `useSSSFormations`. Le filtre `formation.places && !formation.places.toLowerCase().includes('consulter')` doit etre applique dans les 4 endroits d'affichage (carte + dialog × 2 composants).
+
+### 15. Badge sizing — pas de taille fixe
+
+Les badges de notification (cloche, onglets) doivent utiliser `h-[18px] min-w-[18px] px-1 text-[10px]` (pas `h-5 w-5` fixe) pour eviter le clipping sur les nombres a 2+ chiffres (ex: "99").
+
+### 16. Boutons natifs `<button>` — supprimer le focus ring
+
+Tout `<button>` HTML natif (pas le `Button` Shadcn) utilise comme trigger de Popover, Sheet ou Dialog doit avoir `focus:outline-none focus-visible:outline-none` pour supprimer le focus ring bleu du navigateur.

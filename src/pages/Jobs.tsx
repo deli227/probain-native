@@ -76,6 +76,10 @@ const Jobs = () => {
 
   const [activeTab, setActiveTab] = useState<"offers" | "applications">("offers");
 
+  // Success popup after application
+  const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
+  const [appliedJobInfo, setAppliedJobInfo] = useState<{ title: string; establishment: string } | null>(null);
+
   // Job Applications tracking
   const {
     applications,
@@ -286,15 +290,15 @@ const Jobs = () => {
         });
       }
 
-      toast({
-        title: "Candidature envoyée",
-        description: cvUrl
-          ? "Votre candidature et votre CV ont été envoyés à l'établissement"
-          : "Votre candidature a été envoyée à l'établissement",
+      // Store info for success popup before clearing selectedJob
+      setAppliedJobInfo({
+        title: selectedJob.title,
+        establishment: selectedJob.establishment_name || "l'établissement",
       });
       setIsApplyDialogOpen(false);
       setSelectedJob(null);
       resetCvFile();
+      setIsSuccessPopupOpen(true);
     } catch {
       toast({
         title: "Erreur",
@@ -972,6 +976,51 @@ const Jobs = () => {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Popup after application */}
+      <Dialog open={isSuccessPopupOpen} onOpenChange={setIsSuccessPopupOpen}>
+        <DialogContent className="sm:max-w-[440px] w-[92vw] bg-[#0a1628] border-white/10 text-white [&>button]:text-white/70 [&>button]:hover:text-white">
+          <div className="flex flex-col items-center text-center py-4 space-y-5">
+            {/* Success icon */}
+            <div className="p-4 rounded-full bg-gradient-to-br from-green-400/20 to-emerald-500/20 border border-green-400/20">
+              <Check className="h-8 w-8 text-green-400" />
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-white">Candidature envoyée !</h2>
+              {appliedJobInfo && (
+                <p className="text-sm text-white/70 leading-relaxed px-2">
+                  Tu viens de postuler pour l'offre <span className="font-semibold text-cyan-400">{appliedJobInfo.title}</span> auprès de <span className="font-semibold text-cyan-400">{appliedJobInfo.establishment}</span>.
+                </p>
+              )}
+              <p className="text-sm text-white/70 leading-relaxed px-2">
+                N'oublie pas de mettre à jour ton profil, c'est ta carte de visite auprès des établissements.
+              </p>
+              <p className="text-sm text-white/50 italic px-2">
+                Nous te souhaitons le meilleur pour ta carrière professionnelle.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 w-full pt-2">
+              <Button
+                onClick={() => {
+                  setIsSuccessPopupOpen(false);
+                  navigate("/profile");
+                }}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20"
+              >
+                Voir mon profil
+              </Button>
+              <button
+                onClick={() => setIsSuccessPopupOpen(false)}
+                className="w-full px-4 py-2 text-sm font-medium rounded-xl border border-white/20 bg-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors"
+              >
+                Continuer à chercher
+              </button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
