@@ -1231,6 +1231,80 @@ Le `DashboardLayout` gere automatiquement le degagement de la BottomTabBar sur m
 
 ---
 
+## Contrat partage — Dashboard Admin
+
+**IMPORTANT** : un dashboard admin (repo separe) est connecte a la **meme base Supabase** que cette application. Toute modification de structure BDD ici impacte potentiellement l'admin.
+
+### Regle obligatoire
+
+A chaque modification de table, colonne, RPC, enum, policy RLS ou bucket storage, Claude **DOIT** :
+1. Lister explicitement ce qui a change
+2. Avertir l'utilisateur avec : *"Ce changement impacte le dashboard admin — voici ce qu'il faut mettre a jour cote admin : [details]"*
+3. Ne PAS appliquer le changement sans que l'utilisateur ait confirme
+
+### Tables partagees (lues par l'admin)
+
+| Table | Usage admin |
+|-------|-------------|
+| `profiles` | Gestion utilisateurs, activation/desactivation |
+| `rescuer_profiles` | Annuaire sauveteurs, stats |
+| `trainer_profiles` | Annuaire formateurs |
+| `establishment_profiles` | Annuaire etablissements |
+| `formations` | Suivi certifications |
+| `experiences` | Suivi experiences pro |
+| `availabilities` | Disponibilites sauveteurs |
+| `job_postings` | Offres d'emploi, stats |
+| `job_applications` | Suivi candidatures |
+| `trainer_courses` | Cours formateurs |
+| `course_registrations` | Inscriptions aux cours |
+| `trainer_students` | Relations formateur-eleve |
+| `internal_messages` | Support, moderation |
+| `flux_posts` | Moderation contenu |
+| `flux_comments` | Moderation commentaires |
+| `flux_likes` | Stats engagement |
+| `notifications` | Suivi notifications |
+| `notification_preferences` | Preferences utilisateurs |
+| `user_notification_status` | Derniere consultation |
+| `sss_formations_cache` | Formations SSS (scraper) |
+| `account_claim_requests` | Demandes inscription formateurs/etablissements |
+
+### Tables exclusives a l'admin (ecriture)
+
+| Table | Usage |
+|-------|-------|
+| `admins` | Comptes admin (login, roles) |
+| `admin_audit_logs` | Historique actions admin |
+| `account_claim_requests` | Approbation/rejet des demandes (status, processed_by) |
+| `profiles.is_active` | Activation/desactivation de comptes |
+
+### RPC functions partagees
+
+| Fonction | Signature de retour | Note |
+|----------|-------------------|------|
+| `get_flux_posts(p_user_id, p_user_visibility)` | id, title, content, image_url, author_name, author_avatar_url, visibility, created_at, likes_count, comments_count, user_has_liked | Ne PAS modifier la signature |
+| `get_flux_comments(p_post_id)` | id, post_id, user_id, content, created_at, user_name, user_avatar, profile_type | Ne PAS modifier la signature |
+
+### Enums partages
+
+| Enum | Valeurs | Note |
+|------|---------|------|
+| `profile_type` | `maitre_nageur`, `formateur`, `etablissement` | Ne PAS ajouter/renommer sans avertir |
+| `training_region` | `nyon_la_cote`, `geneve`, `lausanne`, `morges`, `vaud` | Ne PAS ajouter/renommer sans avertir |
+
+### Storage buckets partages
+
+| Bucket | Acces | Usage |
+|--------|-------|-------|
+| `avatars` | Public | Photos profil, logos |
+| `documents` | Prive | PDF certifications, CV |
+| `flux-images` | Public | Images posts flux |
+
+### Future table `app_logs`
+
+Une table `app_logs` sera ajoutee pour le logging interne de l'application (actions utilisateur, erreurs, performances). Elle sera lue par le dashboard admin pour le monitoring. La migration sera documentee ici quand elle sera creee.
+
+---
+
 ## Commandes
 
 ```bash
@@ -1460,3 +1534,15 @@ Les badges de notification (cloche, onglets) doivent utiliser `h-[18px] min-w-[1
 ### 16. Boutons natifs `<button>` — supprimer le focus ring
 
 Tout `<button>` HTML natif (pas le `Button` Shadcn) utilise comme trigger de Popover, Sheet ou Dialog doit avoir `focus:outline-none focus-visible:outline-none` pour supprimer le focus ring bleu du navigateur.
+
+### 17. JAMAIS modifier la structure Supabase sans avertir l'utilisateur
+
+Un **dashboard admin** (repo separe) est connecte a la meme base Supabase. Toute modification de structure BDD impacte potentiellement l'admin :
+- Renommer/supprimer une colonne ou table
+- Changer le type d'une colonne
+- Modifier la signature de retour d'une RPC function (`get_flux_posts`, `get_flux_comments`)
+- Ajouter/renommer des valeurs d'enum (`profile_type`, `training_region`)
+- Modifier les policies RLS
+- Modifier la structure des buckets storage
+
+**A chaque changement**, Claude DOIT lister ce qui a change et dire : *"Ce changement impacte le dashboard admin — voici ce qu'il faut mettre a jour cote admin : [details]"*. L'utilisateur repercutera les changements dans l'autre repo.

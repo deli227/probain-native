@@ -2,6 +2,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { Bell, Mail, Newspaper, GraduationCap, Briefcase, X, CheckCheck, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { appLogger } from "@/services/appLogger";
 
 type ProfileType = 'maitre_nageur' | 'formateur' | 'etablissement';
 
@@ -65,17 +66,20 @@ export const NotificationsPopup = ({
     : unreadMessages + newFluxPosts;
 
   const handleMailClick = () => {
+    appLogger.logAction('notifications', 'popup.mail.click', `Navigation vers messagerie (${profileType})`, { profileType });
     onOpenChange(false);
     navigate(MAIL_ROUTES[profileType]);
   };
 
   const handleFluxClick = () => {
+    appLogger.logAction('notifications', 'popup.flux.click', `Navigation vers flux (${profileType})`, { profileType });
     onMarkFluxAsSeen();
     onOpenChange(false);
     navigate("/flux");
   };
 
   const handleFormationsClick = async () => {
+    appLogger.logAction('notifications', 'popup.formations.click', 'Navigation vers formations');
     if (onMarkFormationsAsSeen) {
       await onMarkFormationsAsSeen();
     }
@@ -84,6 +88,7 @@ export const NotificationsPopup = ({
   };
 
   const handleJobsClick = async () => {
+    appLogger.logAction('notifications', 'popup.jobs.click', 'Navigation vers emplois');
     if (onMarkJobsAsSeen) {
       await onMarkJobsAsSeen();
     }
@@ -92,6 +97,7 @@ export const NotificationsPopup = ({
   };
 
   const handleMarkAllAsSeen = async () => {
+    appLogger.logAction('notifications', 'popup.markAll.click', `Tout marquer comme vu (${profileType})`, { profileType });
     onMarkFluxAsSeen();
     if (isRescuer && onMarkAllAsSeen) {
       await onMarkAllAsSeen();

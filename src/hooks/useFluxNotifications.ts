@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { safeGetUser } from '@/utils/asyncHelpers';
+import { appLogger } from '@/services/appLogger';
 
 const LAST_SEEN_FLUX_KEY = 'probain_last_seen_flux';
 
@@ -59,7 +60,11 @@ export function useFluxNotifications(): UseFluxNotificationsReturn {
         return;
       }
 
-      setNewPostsCount(count || 0);
+      const newCount = count || 0;
+      setNewPostsCount(newCount);
+      if (newCount > 0) {
+        appLogger.logInfo('notifications', 'flux.newPosts.count', `${newCount} nouveaux posts détectés`, { count: newCount });
+      }
     } catch {
       // Erreur silencieuse - le compteur restera à 0
     } finally {
@@ -71,6 +76,7 @@ export function useFluxNotifications(): UseFluxNotificationsReturn {
     try {
       localStorage.setItem(LAST_SEEN_FLUX_KEY, new Date().toISOString());
       setNewPostsCount(0);
+      appLogger.logAction('notifications', 'flux.markAsSeen', 'Flux marqué comme vu');
     } catch {
       // localStorage non disponible
     }
@@ -95,6 +101,7 @@ export function useFluxNotifications(): UseFluxNotificationsReturn {
         (payload) => {
           const newPost = payload.new as { is_published: boolean };
           if (newPost.is_published) {
+            appLogger.logInfo('notifications', 'flux.realtime.insert', 'Nouveau post publié détecté en temps réel');
             setNewPostsCount(prev => prev + 1);
           }
         }
@@ -112,6 +119,7 @@ export function useFluxNotifications(): UseFluxNotificationsReturn {
 
           // Post qui passe de non publié à publié
           if (!oldPost.is_published && newPost.is_published) {
+            appLogger.logInfo('notifications', 'flux.realtime.published', 'Post passé à publié en temps réel');
             setNewPostsCount(prev => prev + 1);
           }
         }

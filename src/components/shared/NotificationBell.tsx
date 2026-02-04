@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { safeGetUser } from "@/utils/asyncHelpers";
+import { appLogger } from "@/services/appLogger";
 
 interface Notification {
   id: string;
@@ -66,6 +67,7 @@ export const NotificationBell = memo(() => {
           const newNotification = payload.new as Notification;
           setNotifications((prev) => [newNotification, ...prev]);
           setUnreadCount((prev) => prev + 1);
+          appLogger.logInfo('notifications', 'bell.realtime.new', `Nouvelle notification: ${newNotification.title}`, { type: newNotification.type });
 
           toast({
             title: newNotification.title,
@@ -93,12 +95,14 @@ export const NotificationBell = memo(() => {
         prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
+      appLogger.logAction('notifications', 'bell.markAsRead', 'Notification marquée comme lue', { notificationId });
     } catch {
       // Erreur silencieuse
     }
   }, []);
 
   const handleNotificationClick = useCallback((notification: Notification) => {
+    appLogger.logAction('notifications', 'bell.click', `Clic notification: ${notification.title}`, { notificationId: notification.id, type: notification.type, link: notification.link });
     markAsRead(notification.id);
     if (notification.link) {
       navigate(notification.link);
@@ -121,6 +125,7 @@ export const NotificationBell = memo(() => {
 
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
+      appLogger.logAction('notifications', 'bell.markAllAsRead', 'Toutes les notifications marquées comme lues');
     } catch {
       // Erreur silencieuse
     }

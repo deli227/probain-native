@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { appLogger } from '@/services/appLogger';
 
 export interface NotificationPreferences {
   id: string;
@@ -72,11 +73,14 @@ export const useNotificationPreferences = (userId: string | undefined) => {
     if (error) {
       // Revert on error
       setPreferences(prev => prev ? { ...prev, [key]: !value } : null);
+      appLogger.logError('notifications', 'preferences.update.error', error, { key, value });
       toast({
         title: 'Erreur',
         description: 'Impossible de sauvegarder les préférences',
         variant: 'destructive',
       });
+    } else {
+      appLogger.logAction('notifications', 'preferences.updated', `${key} = ${value}`, { key, value });
     }
   };
 

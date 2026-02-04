@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
 import { safeGetUser } from '@/utils/asyncHelpers';
+import { appLogger } from '@/services/appLogger';
 
 interface NotificationCounts {
   formations: number;
@@ -111,6 +112,7 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         total: formationsNew + jobsNew,
       });
 
+      appLogger.logAction('notifications', 'rescuer.counts.fetched', `formations=${formationsNew}, jobs=${jobsNew}`, { formations: formationsNew, jobs: jobsNew });
       logger.log(`📬 Notifications: ${formationsNew} formations, ${jobsNew} emplois`);
     } catch (error) {
       logger.error('Erreur fetch notifications:', error);
@@ -140,6 +142,7 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         total: prev.jobs,
       }));
 
+      appLogger.logAction('notifications', 'rescuer.formations.seen', 'Formations marquées comme vues');
       logger.log('✅ Formations marquées comme vues');
     } catch (error) {
       logger.error('Erreur markFormationsAsSeen:', error);
@@ -167,6 +170,7 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         total: prev.formations,
       }));
 
+      appLogger.logAction('notifications', 'rescuer.jobs.seen', 'Emplois marqués comme vus');
       logger.log('✅ Emplois marqués comme vus');
     } catch (error) {
       logger.error('Erreur markJobsAsSeen:', error);
@@ -198,6 +202,7 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         total: 0,
       });
 
+      appLogger.logAction('notifications', 'rescuer.all.seen', 'Tout marqué comme vu');
       logger.log('✅ Tout marqué comme vu');
     } catch (error) {
       logger.error('Erreur markAllAsSeen:', error);
@@ -222,6 +227,7 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         },
         (payload) => {
           logger.log('🔔 Nouvelle formation détectée:', payload);
+          appLogger.logInfo('notifications', 'rescuer.realtime.formation', 'Nouvelle formation détectée en temps réel');
           // Incrémenter le compteur
           setCounts(prev => ({
             ...prev,
@@ -250,6 +256,7 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         },
         (payload) => {
           logger.log('🔔 Nouvelle offre d\'emploi détectée:', payload);
+          appLogger.logInfo('notifications', 'rescuer.realtime.job', 'Nouvelle offre d\'emploi détectée en temps réel');
           // Incrémenter le compteur
           setCounts(prev => ({
             ...prev,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { safeGetUser } from '@/utils/asyncHelpers';
+import { appLogger } from '@/services/appLogger';
 
 interface UseUnreadMessagesReturn {
   unreadCount: number;
@@ -67,6 +68,7 @@ export function useUnreadMessages(): UseUnreadMessagesReturn {
         },
         () => {
           // Nouveau message reçu
+          appLogger.logInfo('notifications', 'messages.realtime.insert', 'Nouveau message reçu en temps réel');
           setUnreadCount(prev => prev + 1);
         }
       )
@@ -84,6 +86,7 @@ export function useUnreadMessages(): UseUnreadMessagesReturn {
           const oldMessage = payload.old as { read: boolean };
 
           if (oldMessage.read === false && newMessage.read === true) {
+            appLogger.logAction('notifications', 'messages.realtime.read', 'Message marqué comme lu en temps réel');
             setUnreadCount(prev => Math.max(0, prev - 1));
           }
         }
