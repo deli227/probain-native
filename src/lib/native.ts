@@ -178,3 +178,66 @@ export const isAppInstalled = (): boolean => {
 
   return false;
 };
+
+/**
+ * Initialiser OneSignal dans l'environnement natif Despia
+ * Doit etre appele UNE seule fois au demarrage
+ *
+ * @param appId - L'App ID OneSignal
+ */
+export const initOneSignalNative = async (appId: string): Promise<void> => {
+  if (isNativeApp()) {
+    try {
+      await despia('push', { action: 'initialize', appId });
+    } catch (error) {
+      console.warn('[Native] OneSignal init failed:', error);
+    }
+  }
+};
+
+/**
+ * Demander la permission push en mode natif
+ * En mode web, cette fonction ne fait rien (gere par le SDK react-onesignal)
+ */
+export const registerPushNative = async (): Promise<void> => {
+  if (isNativeApp()) {
+    try {
+      await despia('push', { action: 'requestPermission' });
+    } catch (error) {
+      console.warn('[Native] Push permission request failed:', error);
+    }
+  }
+};
+
+/**
+ * Associer l'utilisateur Supabase a OneSignal (CHAQUE lancement)
+ * En mode web, cette fonction ne fait rien (gere par le SDK react-onesignal)
+ *
+ * @param userId - L'ID utilisateur Supabase
+ */
+export const syncOneSignalPlayerId = async (userId: string): Promise<void> => {
+  if (isNativeApp()) {
+    try {
+      await despia('push', { action: 'setExternalUserId', userId });
+    } catch (error) {
+      console.warn('[Native] OneSignal player ID sync failed:', error);
+    }
+  }
+};
+
+/**
+ * Logout OneSignal natif : generer un ID anonyme unique
+ * Best practice Despia : JAMAIS reutiliser l'install_id brut
+ * En mode web, cette fonction ne fait rien (gere par le SDK react-onesignal)
+ */
+export const logoutOneSignalNative = async (): Promise<void> => {
+  if (isNativeApp()) {
+    try {
+      const deviceId = await despia('device', { get: 'id' });
+      const anonId = `${deviceId || 'anon'}-${Date.now()}`;
+      await despia('push', { action: 'setExternalUserId', userId: anonId });
+    } catch (error) {
+      console.warn('[Native] OneSignal logout failed:', error);
+    }
+  }
+};
