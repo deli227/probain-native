@@ -99,6 +99,35 @@ Le hook custom `src/hooks/use-trainer-students.ts` contient toute la logique (st
 
 ---
 
+## Statut recyclage — Croisement trainer_students × formations
+
+### Probleme initial
+Le statut recyclage des eleves chez le formateur etait calcule uniquement a partir de `training_date` dans `trainer_students`, sans croiser avec la table `formations`. Un eleve ayant obtenu Pro Pool en 2018 et fait un recyclage en 2025 apparaissait comme "expire" car seule la date 2018 etait prise en compte.
+
+### Fix
+`use-trainer-students.ts` fetch maintenant les `end_date` de la table `formations` pour chaque eleve. Une map `studentRecyclingMap` stocke par eleve et par brevet normalise la derniere `end_date` (date de recyclage). Cette date est passee a `getRecyclingInfo()` comme `end_date`, ce qui permet au calcul de recyclage de prendre en compte la date de recyclage reelle.
+
+### Badge Diplome / Recyclage sur StudentFormationCard
+
+Le formateur peut voir pour chaque formation dans "Formations chez vous" si l'eleve a fait un **diplome initial** ou un **recyclage** chez lui. Cela aide a la strategie de fidelisation.
+
+**Logique de deduction** : la map `studentRecyclingMap` stocke aussi un `Set<string>` de toutes les `endDates` par brevet. Pour un record `trainer_students`, si `training_date` correspond a une `end_date` dans `formations` (meme brevet), c'est un recyclage. Sinon, c'est un diplome initial.
+
+**Affichage** : badge colore sur `StudentFormationCard` :
+- Vert (`bg-emerald-500/20 text-emerald-400`) : "Diplome"
+- Bleu (`bg-sky-500/20 text-sky-400`) : "Recyclage"
+
+**Type** : `trainingCategory: 'diplome' | 'recyclage'` dans `StudentData` (`types.ts`)
+
+### Fichiers
+| Fichier | Role |
+|---------|------|
+| `src/hooks/use-trainer-students.ts` | Fetch `formations.end_date`, build `studentRecyclingMap` avec `CertDates`, deduit `trainingCategory` |
+| `src/components/profile/trainer-students/types.ts` | Champ `trainingCategory` dans `StudentData` |
+| `src/components/profile/trainer-students/StudentFormationCard.tsx` | Badge colore Diplome/Recyclage |
+
+---
+
 ## Onboarding Sauveteur "Wahoo"
 
 Flow 6 étapes avec animations (tous champs optionnels):
