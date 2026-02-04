@@ -17,6 +17,13 @@ export const StudentFormationCard = ({ formation }: { formation: StudentData }) 
         <div className="flex items-center gap-2 min-w-0">
           <GraduationCap className="h-4 w-4 text-cyan-400 flex-shrink-0" />
           <p className="text-sm font-semibold text-white truncate">{formation.training_type || 'Non spécifiée'}</p>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap flex-shrink-0 ${
+            formation.trainingCategory === 'recyclage'
+              ? 'bg-sky-500/20 text-sky-400'
+              : 'bg-emerald-500/20 text-emerald-400'
+          }`}>
+            {formation.trainingCategory === 'recyclage' ? 'Recyclage' : 'Diplôme'}
+          </span>
         </div>
         <RecyclingStatusBadge status={formation.recyclingStatus} />
       </div>

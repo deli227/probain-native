@@ -14,6 +14,7 @@ export interface StudentData {
   training_date: string;
   recyclingStatus: RecyclingStatus;
   recyclingLabel: string | null;
+  trainingCategory: 'diplome' | 'recyclage';
 }
 
 export interface SelectedStudent {

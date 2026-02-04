@@ -71,8 +71,12 @@ async function fetchStudentsData(): Promise<StudentsQueryResult> {
   }
 
   // Fetch formations des élèves pour croiser les dates de recyclage
-  // Map: studentId -> { certNameNormalized -> latestEndDate }
-  let studentRecyclingMap: Record<string, Record<string, string>> = {};
+  // et déduire si un record trainer_students est un diplôme ou un recyclage
+  interface CertDates {
+    latestEndDate: string | null;
+    endDates: Set<string>;
+  }
+  let studentRecyclingMap: Record<string, Record<string, CertDates>> = {};
 
   if (studentIds.length > 0) {
     const { data: formationsData } = await supabase
@@ -88,10 +92,13 @@ async function fetchStudentsData(): Promise<StudentsQueryResult> {
         if (!studentRecyclingMap[f.user_id]) {
           studentRecyclingMap[f.user_id] = {};
         }
-        const existing = studentRecyclingMap[f.user_id][norm];
-        // Garder la date la plus récente
-        if (!existing || f.end_date > existing) {
-          studentRecyclingMap[f.user_id][norm] = f.end_date;
+        if (!studentRecyclingMap[f.user_id][norm]) {
+          studentRecyclingMap[f.user_id][norm] = { latestEndDate: null, endDates: new Set() };
+        }
+        const entry = studentRecyclingMap[f.user_id][norm];
+        entry.endDates.add(f.end_date);
+        if (!entry.latestEndDate || f.end_date > entry.latestEndDate) {
+          entry.latestEndDate = f.end_date;
         }
       }
     }
@@ -100,7 +107,12 @@ async function fetchStudentsData(): Promise<StudentsQueryResult> {
   const formattedStudents: StudentData[] = (data || []).map(item => {
     // Croiser avec la table formations pour trouver le dernier recyclage
     const certNorm = normalizeCertName(item.training_type);
-    const latestRecyclingDate = studentRecyclingMap[item.student_id]?.[certNorm] || null;
+    const certDates = studentRecyclingMap[item.student_id]?.[certNorm];
+    const latestRecyclingDate = certDates?.latestEndDate || null;
+
+    // Déduire si ce record est un diplôme initial ou un recyclage :
+    // Si training_date correspond à un end_date (date de recyclage) dans formations → recyclage
+    const isRecycling = certDates?.endDates.has(item.training_date) ?? false;
 
     const recyclingInfo = getRecyclingInfo({
       id: item.id,
@@ -124,6 +136,7 @@ async function fetchStudentsData(): Promise<StudentsQueryResult> {
       training_date: item.training_date,
       recyclingStatus: recyclingInfo.status,
       recyclingLabel,
+      trainingCategory: isRecycling ? 'recyclage' as const : 'diplome' as const,
     };
   });
 
