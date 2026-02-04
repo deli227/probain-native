@@ -5,10 +5,15 @@ import { useToast } from "@/hooks/use-toast";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { SignupSteps } from "@/components/auth/SignupSteps";
 import { getErrorMessage } from "@/utils/authErrors";
-import { LoadingScreen } from "@/components/shared/LoadingScreen";
 import { ProfileRouter } from "@/components/shared/ProfileRouter";
 import { logger } from "@/utils/logger";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// Detecter si on a un token_hash dans l'URL (confirmation email PKCE)
+const hasTokenInUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  return !!(params.get('token_hash') && params.get('type') === 'signup');
+};
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -18,22 +23,21 @@ const Auth = () => {
   // Lire le mode depuis le state de navigation (signup ou login)
   const initialMode = (location.state as { mode?: string })?.mode === "signup" ? "sign_up" : "sign_in";
   const [activeTab, setActiveTab] = useState<"sign_in" | "sign_up">(initialMode);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [isVerifyingToken, setIsVerifyingToken] = useState(hasTokenInUrl);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
 
+  // Verification OTP uniquement si token_hash present dans l'URL
   useEffect(() => {
-    const checkAuthState = async () => {
+    if (!isVerifyingToken) return;
+
+    const verifyToken = async () => {
       try {
-        // Vérifier si on a un token_hash dans l'URL (confirmation email PKCE)
         const params = new URLSearchParams(window.location.search);
         const tokenHash = params.get('token_hash');
         const type = params.get('type');
 
         if (tokenHash && type === 'signup') {
-          // Vérifier le token pour confirmer l'email (PKCE flow)
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: 'signup'
@@ -52,17 +56,10 @@ const Auth = () => {
             });
             setIsAuthenticated(true);
             window.history.replaceState(null, '', '/auth');
-            return;
           }
         }
-
-        // Vérification normale de la session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setIsAuthenticated(true);
-        }
       } catch (error: unknown) {
-        logger.error("Erreur lors de la vérification de la session:", error);
+        logger.error("Erreur lors de la vérification du token:", error);
         const message = getErrorMessage(error);
         setErrorMessage(message);
         toast({
@@ -71,13 +68,12 @@ const Auth = () => {
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
-        setSessionChecked(true);
+        setIsVerifyingToken(false);
       }
     };
 
-    checkAuthState();
-  }, [toast]);
+    verifyToken();
+  }, [isVerifyingToken, toast]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -85,8 +81,7 @@ const Auth = () => {
 
       if (event === "SIGNED_IN" && session) {
         setIsAuthenticated(true);
-        setIsProcessing(true);
-        setErrorMessage(""); // Clear any previous errors
+        setErrorMessage("");
 
         // Si c'est une confirmation d'email (nouveau compte), rediriger directement vers onboarding
         // Vérifier si l'utilisateur vient de confirmer son email (pas d'onboarding complété)
@@ -120,7 +115,7 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [toast, navigate]);
 
-  if (!sessionChecked || isLoading) {
+  if (isVerifyingToken) {
     return (
       <div className="min-h-screen bg-[#0a1628] flex flex-col items-center justify-center p-4 safe-top safe-bottom relative overflow-hidden">
         {/* Fond avec dégradé */}

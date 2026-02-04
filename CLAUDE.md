@@ -63,6 +63,8 @@
 | `useToast` | `use-toast.ts` | Notifications toast |
 | `useSwipeNavigation` | `useSwipeNavigation.ts` | Swipe horizontal entre onglets mobile |
 | `useJobApplications` | `use-job-applications.ts` | Candidatures emploi (fetch, apply, hasApplied) |
+| `useOneSignalPush` | `useOneSignalPush.ts` | Push natif Despia/OneSignal (enregistrement + cleanup) |
+| `useRescuerAvailability` | `useRescuerAvailability.ts` | Logique complete disponibilite sauveteur (toggle, dates, pastille) |
 
 ---
 
@@ -283,6 +285,13 @@ interface ExtendedProfileContextType {
 
 ## Composants par Dossier
 
+### `components/navbar/`
+| Fichier | Role |
+|---------|------|
+| `RescuerNavbar.tsx` | Navbar specifique sauveteur (utilisee dans App.tsx) |
+| `TrainerNavbar.tsx` | Navbar specifique formateur (utilisee dans App.tsx) |
+| `EstablishmentNavbar.tsx` | Navbar specifique etablissement (utilisee dans App.tsx) |
+
 ### `components/navigation/`
 | Fichier | Role |
 |---------|------|
@@ -362,9 +371,6 @@ interface ExtendedProfileContextType {
 | Fichier | Role |
 |---------|------|
 | `EstablishmentMailbox.tsx` | Re-export vers `conversation/ConversationMailbox` |
-| `RescuerMailbox.tsx` | Ancien composant (obsolete, garde pour reference) |
-| `MessageCard.tsx` | Ancien composant (obsolete) |
-| `MessageDialog.tsx` | Ancien composant (obsolete) |
 
 ### `components/mailbox/conversation/` (Nouveau systeme messagerie)
 
@@ -445,6 +451,7 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 | `useConversations` | internal_messages + *_profiles | Messagerie : fetch, groupement, real-time, mutations |
 | `useSwipeNavigation` | - | Swipe horizontal entre onglets mobile (touch events natifs) |
 | `useJobApplications` | job_applications + job_postings + establishment_profiles | Candidatures emploi (fetch, apply, hasApplied, optimistic update) |
+| `useOneSignalPush` | - (appelle Despia natif) | Push natif : `registerPushNative(userId)` au mount, `cleanupOneSignalOnLogout()` au logout |
 
 ---
 
@@ -538,7 +545,6 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 - Apres envoi d'un message, TOUJOURS invalider le cache: `queryClient.invalidateQueries({ queryKey: ["messages"] })`
 - Le groupement par conversation est fait cote client (pas de `thread_id` en BDD)
 - `Mailbox.tsx` et `EstablishmentMailbox.tsx` sont des re-exports vers `ConversationMailbox`
-- Les anciens fichiers (`RescuerMailbox.tsx`, `MessageCard.tsx`, `MessageDialog.tsx`) sont obsoletes mais encore presents
 - **Resolution des noms** : les etablissements et formateurs n'ont pas de `first_name` dans `profiles`. `useConversations.ts` fait un post-fetch pour resoudre `organization_name` depuis `establishment_profiles` et `trainer_profiles` (evite d'afficher "Utilisateur")
 - **Suppression depuis la liste** : `ConversationListItem` affiche une icone poubelle au hover, `ConversationList` gere la confirmation et l'appel a `onDeleteConversation`
 
@@ -960,6 +966,158 @@ Tout affichage de contenu cree via `RichTextEditor` doit :
 - En mode complet (dialog/page) : utiliser `DOMPurify.sanitize()` + `dangerouslySetInnerHTML` + classes `prose prose-invert`
 
 **Fichier** : `src/pages/Jobs.tsx`
+
+---
+
+## Push Notifications — Architecture OneSignal via Despia
+
+### Vue d'ensemble
+
+Les push notifications utilisent **OneSignal** integre via le bridge **Despia natif**. Il n'y a **PAS de SDK OneSignal web** — tout passe par les protocoles natifs Despia (`registerpush://`, `setonesignalplayerid://`). Le backend utilise des **triggers PostgreSQL** qui appellent une **Edge Function Supabase** via `pg_net`, laquelle appelle l'**API REST OneSignal**.
+
+### Flow complet
+
+```
+1. ENREGISTREMENT (frontend natif)
+   App Despia charge → useOneSignalPush(userId)
+     → registerPushNative(userId)
+       → despia('registerpush://')              ← enregistre le device aupres de OneSignal
+       → despia('setonesignalplayerid://?user_id=XXX')  ← lie userId Supabase au device
+
+2. DECLENCHEMENT (backend PostgreSQL)
+   INSERT dans une table (ex: internal_messages)
+     → Trigger PostgreSQL (ex: on_new_message_push)
+       → send_push_notification(event_type, recipient_id, data)
+         → net.http_post() vers Edge Function avec headers Authorization
+
+3. ENVOI (Edge Function → OneSignal)
+   Edge Function send-push-notification
+     → Verifie preferences notification (notification_preferences)
+     → Construit payload OneSignal avec include_aliases + target_channel
+     → POST https://onesignal.com/api/v1/notifications
+       → OneSignal envoie le push au device
+```
+
+### Prerequis externes (dashboard)
+
+| Service | Configuration requise |
+|---------|----------------------|
+| **OneSignal** (onesignal.com) | App creee, API REST Key configuree |
+| **OneSignal > Platforms** | Cle FCM (Android) et/ou certificat APNs .p8 (iOS) |
+| **OneSignal > Settings > Messaging > Android** | **Default Notification Icon** : PNG monochrome blanc sur fond transparent (96x96px). Sans ca, Android affiche une cloche generique dans la barre de statut. Les URLs web ne fonctionnent PAS pour `small_icon` sur Android (drawable local requis). |
+| **Despia** (setup.despia.com) | OneSignal App ID renseigne dans les settings du projet |
+| **Supabase** | Variables d'env: `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY` |
+
+### ORDRE D'APPEL CRITIQUE (frontend)
+
+```typescript
+// Dans registerPushNative() — src/lib/native.ts
+// 1. D'ABORD enregistrer le device (genere le Player ID OneSignal)
+despia('registerpush://');
+// 2. ENSUITE associer le userId Supabase au device
+despia(`setonesignalplayerid://?user_id=${userId}`);
+```
+
+**Si l'ordre est inverse**, le device n'est pas encore enregistre quand on tente de lui associer un `external_id` → OneSignal renvoie "not subscribed". Cet appel doit etre fait **a chaque chargement de l'app** (recommandation Despia).
+
+### API OneSignal — format actuel
+
+L'Edge Function utilise le format `include_aliases` (actuel) et **PAS** le deprecated `include_external_user_ids` :
+
+```typescript
+// Format CORRECT (actuel)
+{
+  app_id: ONESIGNAL_APP_ID,
+  include_aliases: { external_id: [userId] },
+  target_channel: 'push',
+  contents: { fr: "...", en: "..." },
+  headings: { fr: "...", en: "..." },
+}
+
+// Format DEPRECATED (ne plus utiliser)
+// include_external_user_ids: [userId]  ← provoque "All included players are not subscribed"
+```
+
+### Types d'evenements et triggers
+
+| Evenement | Table trigger | Ciblage | Preferences |
+|-----------|---------------|---------|-------------|
+| `new_message` | `internal_messages` | Individuel (`recipient_id`) | `notify_messages` |
+| `new_flux_post` | `flux_posts` | Broadcast (tous profils) | `notify_formations` |
+| `new_formation` | `sss_formations_cache` | Broadcast (sauveteurs) | `notify_formations` |
+| `new_job_posting` | `job_postings` | Broadcast (sauveteurs) | `notify_formations` |
+| `new_job_application` | `job_applications` | Individuel (etablissement via JOIN) | `notify_messages` |
+| `new_student` | `trainer_students` | Individuel (`trainer_id`) | `notify_messages` |
+| `new_course_registration` | `course_registrations` | Individuel (formateur via JOIN) | `notify_formations` |
+
+### URL de redirection par profil
+
+Chaque type de notification redirige vers la page appropriee selon le `profile_type` du destinataire. La config est dans `NOTIFICATION_CONFIG` de l'Edge Function. Exemples :
+- `new_message` → `/rescuer/mail`, `/trainer-profile/mail`, `/establishment-profile/mail`
+- `new_job_posting` → `/jobs`
+- `new_flux_post` → `/flux`
+
+### pg_net — Headers obligatoires
+
+La fonction SQL `send_push_notification()` appelle l'Edge Function via `pg_net`. Le **4eme argument** (headers) est **OBLIGATOIRE** — meme avec `--no-verify-jwt`, le gateway Supabase exige un Bearer token valide :
+
+```sql
+PERFORM net.http_post(
+  edge_function_url,
+  payload,
+  '{}'::jsonb,                          -- params (vide)
+  jsonb_build_object(                   -- headers (OBLIGATOIRE)
+    'Content-Type', 'application/json',
+    'Authorization', 'Bearer ' || v_anon_key
+  )
+);
+```
+
+L'anon key est stockee directement dans la fonction (migration `20260204400000`). C'est une cle publique (deja dans le frontend), pas de risque securite.
+
+### Logout — dissociation device
+
+Au logout (`SIGNED_OUT`), `cleanupOneSignalOnLogout()` appelle `unregisterPushNative()` qui envoie `setonesignalplayerid://?user_id=` (user_id vide) pour dissocier le device du user.
+
+### Fichiers
+
+| Fichier | Role |
+|---------|------|
+| `src/hooks/useOneSignalPush.ts` | Hook React : appelle `registerPushNative(userId)` si natif, cleanup au logout |
+| `src/lib/native.ts` | `registerPushNative()`, `unregisterPushNative()`, `requestPushPermission()` |
+| `src/contexts/ProfileContext.tsx` | Appelle `useOneSignalPush(userId, profileType)` |
+| `supabase/functions/send-push-notification/index.ts` | Edge Function : preferences, routing, appel API OneSignal |
+| `supabase/migrations/20260204000000_create_push_notification_triggers.sql` | 7 triggers PostgreSQL + fonction helper `send_push_notification()` |
+| `supabase/migrations/20260204400000_fix_push_anon_key_direct.sql` | Fix : anon key directe dans la fonction (vault indisponible via CLI) |
+
+### Migrations appliquees
+
+| Migration | Statut | Contenu |
+|-----------|--------|---------|
+| `20260204000000` | Appliquee | 7 triggers + fonction `send_push_notification` (version initiale sans headers) |
+| `20260204200000` | Appliquee | Table `push_subscriptions` (creee puis supprimee par `20260204500000`) |
+| `20260204300000` | Appliquee | Tentative vault (echouee, permissions insuffisantes) |
+| `20260204400000` | Appliquee | **Version finale** : anon key directe + headers `pg_net` corrects |
+| `20260204500000` | A appliquer | DROP TABLE `push_subscriptions` (inutilisee — l'approche utilise `include_aliases` sans stocker les player IDs) |
+
+### Debugging — Erreurs courantes
+
+| Erreur | Cause | Solution |
+|--------|-------|----------|
+| `All included players are not subscribed` | Device pas enregistre aupres de OneSignal, ou API deprecated | Verifier que `registerpush://` est appele AVANT `setonesignalplayerid://`. Utiliser `include_aliases` (pas `include_external_user_ids`). Reinstaller l'app si le cache OneSignal est corrompu |
+| `401 Unauthorized` sur Edge Function | Headers manquants dans `pg_net.http_post` | Le 4eme argument (headers avec Bearer token) est obligatoire |
+| Push fonctionne depuis OneSignal dashboard mais pas depuis l'app | Trigger SQL ou Edge Function en erreur | Verifier les logs Edge Function dans Supabase Dashboard > Functions |
+| Push ne fonctionne pas du tout (meme depuis OneSignal) | Config plateforme manquante | Verifier cles FCM (Android) / APNs (iOS) dans OneSignal > Settings > Platforms |
+| Device n'apparait pas dans OneSignal Audience | OneSignal App ID pas configure dans Despia | Ajouter l'App ID dans setup.despia.com > Settings |
+| Cache OneSignal corrompu sur le device | Ancien enregistrement invalide | Desinstaller et reinstaller l'app Despia |
+
+### Regles
+
+- **Natif uniquement** : pas de SDK OneSignal web (`react-onesignal`). Tout passe par Despia natif
+- **Pas de `include_external_user_ids`** : utiliser `include_aliases: { external_id: [...] }` + `target_channel: 'push'`
+- **Ordre d'appel** : `registerpush://` PUIS `setonesignalplayerid://` (jamais l'inverse)
+- **Appel a chaque chargement** : `registerPushNative(userId)` est appele dans `useOneSignalPush` a chaque mount avec un `userId` valide
+- **Deploiement Edge Function** : `npx supabase functions deploy send-push-notification --no-verify-jwt` (le `--no-verify-jwt` est important car l'auth est geree par le Bearer token dans les headers)
 
 ---
 
@@ -1575,3 +1733,20 @@ Un **dashboard admin** (repo separe) est connecte a la meme base Supabase. Toute
 - Modifier la structure des buckets storage
 
 **A chaque changement**, Claude DOIT lister ce qui a change et dire : *"Ce changement impacte le dashboard admin — voici ce qu'il faut mettre a jour cote admin : [details]"*. L'utilisateur repercutera les changements dans l'autre repo.
+
+### 18. JAMAIS de SDK OneSignal web — push natif Despia uniquement
+
+Les push notifications passent **exclusivement** par le bridge natif Despia (`despia-native`). Il ne doit **JAMAIS** y avoir de SDK OneSignal web (`react-onesignal`, `OneSignalSDKWorker.js`) dans le projet.
+
+**Interdit :**
+- Installer `react-onesignal` ou tout SDK OneSignal web
+- Creer des fichiers `OneSignalSDKWorker.js` dans `public/`
+- Utiliser `OneSignal.init()`, `OneSignal.login()`, `OneSignal.Slidedown` ou toute API web OneSignal
+- Utiliser `include_external_user_ids` dans l'API OneSignal (deprecated, provoque "not subscribed")
+
+**Obligatoire :**
+- Utiliser `registerPushNative(userId)` de `src/lib/native.ts` (appelle `registerpush://` puis `setonesignalplayerid://`)
+- Ordre d'appel : `registerpush://` **AVANT** `setonesignalplayerid://`
+- API OneSignal : `include_aliases: { external_id: [...] }` + `target_channel: 'push'`
+- Deployer l'Edge Function avec `--no-verify-jwt`
+- Voir section "Push Notifications — Architecture OneSignal via Despia" pour la doc complete

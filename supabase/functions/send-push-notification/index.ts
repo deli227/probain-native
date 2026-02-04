@@ -6,10 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// URL de l'icone ProBain pour les notifications
-const PROBAIN_ICON = 'https://www.probain.ch/lovable-uploads/20286da1-b072-432d-b68e-3b0e839dd1b9.png';
-
 // Configuration des notifications par type d'evenement
+// Note: L'icone de notification (small_icon) se configure dans le dashboard OneSignal
+// (Settings > Messaging > Android > Default Notification Icon).
+// Les URLs web ne fonctionnent pas pour small_icon sur Android (necessite un drawable local).
 const NOTIFICATION_CONFIG: Record<string, {
   preferenceKey: string;
   title: string;
@@ -159,8 +159,6 @@ serve(async (req) => {
         target_channel: 'push',
         contents: { fr: body, en: body },
         headings: { fr: config.title, en: config.title },
-        small_icon: PROBAIN_ICON,
-        large_icon: PROBAIN_ICON,
         url: `https://www.probain.ch${Object.values(config.urlByProfile)[0] || '/'}`,
       }
 
@@ -209,8 +207,6 @@ serve(async (req) => {
       target_channel: 'push',
       contents: { fr: body, en: body },
       headings: { fr: config.title, en: config.title },
-      small_icon: PROBAIN_ICON,
-      large_icon: PROBAIN_ICON,
       url: `https://www.probain.ch${targetUrl}`,
     }
 
