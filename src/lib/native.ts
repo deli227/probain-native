@@ -124,13 +124,22 @@ export const getDeviceUUID = (): string | null => {
 
 /**
  * Demander la permission pour les notifications push
+ * En mode natif, utilise registerpush:// + checkNativePushPermissions://
  * En mode web, utilise l'API Notification standard
+ *
+ * Doc Despia:
+ * - registerpush:// declenche le prompt natif si necessaire
+ * - checkNativePushPermissions:// verifie si les permissions sont accordees
  */
 export const requestPushPermission = async (): Promise<boolean> => {
   if (isNativeApp()) {
     try {
-      despia('push-permission://');
-      return true;
+      // Enregistrer pour les push (declenche le prompt natif si pas encore fait)
+      despia('registerpush://');
+      // Verifier si les permissions sont accordees
+      const data = despia('checkNativePushPermissions://', ['nativePushEnabled']) as
+        { nativePushEnabled?: boolean } | undefined;
+      return !!data?.nativePushEnabled;
     } catch (error) {
       console.warn('[Native] Push permission request failed:', error);
       return false;

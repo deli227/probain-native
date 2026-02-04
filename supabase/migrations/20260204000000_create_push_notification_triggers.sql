@@ -17,8 +17,17 @@ CREATE OR REPLACE FUNCTION send_push_notification(
 DECLARE
   edge_function_url TEXT;
   payload JSONB;
+  v_service_key TEXT;
 BEGIN
   edge_function_url := 'https://rqjnzyeijjdxivjnmiyy.supabase.co/functions/v1/send-push-notification';
+
+  -- Recuperer la cle de service depuis le vault Supabase
+  -- Prerequis: INSERT INTO vault.secrets (name, secret)
+  --   VALUES ('service_role_key', 'eyJ...');
+  SELECT decrypted_secret INTO v_service_key
+    FROM vault.decrypted_secrets
+    WHERE name = 'service_role_key'
+    LIMIT 1;
 
   payload := jsonb_build_object(
     'event_type', p_event_type,
@@ -26,14 +35,17 @@ BEGIN
     'data', p_data
   );
 
-  -- pg_net signature: net.http_post(url text, body jsonb, params jsonb)
-  -- params = URL query params (PAS headers)
-  -- Le Content-Type application/json est inclus par defaut
-  -- L'Edge Function a --no-verify-jwt donc pas besoin d'auth header
+  -- pg_net signature: net.http_post(url, body, params, headers, timeout_ms)
+  -- Le 4eme argument (headers) est OBLIGATOIRE pour l'auth gateway Supabase
+  -- Meme avec --no-verify-jwt, le gateway exige un Bearer token valide
   PERFORM net.http_post(
     edge_function_url,
     payload,
-    '{}'::jsonb
+    '{}'::jsonb,
+    jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || coalesce(v_service_key, '')
+    )
   );
 EXCEPTION
   WHEN OTHERS THEN

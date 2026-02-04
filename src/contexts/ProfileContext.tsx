@@ -6,6 +6,8 @@ import { logger } from "@/utils/logger";
 import { useFullProfile, FullProfileData } from "@/hooks/useFullProfile";
 import { useQueryClient } from "@tanstack/react-query";
 import { PROFILE_KEYS } from "@/hooks/useFullProfile";
+import { useOneSignalPush, cleanupOneSignalOnLogout } from "@/hooks/useOneSignalPush";
+import { appLogger } from "@/services/appLogger";
 
 // Étendre le type pour inclure les nouvelles données
 interface ExtendedProfileContextType extends ProfileContextType {
@@ -47,6 +49,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     refetchProfile,
     updateProfileOptimistic,
   } = useFullProfile(currentUserId);
+
+  // Initialisation OneSignal Push (native Despia uniquement)
+  useOneSignalPush(currentUserId, profileType);
 
   // Calculer loading intelligemment:
   // - true seulement si on n'a PAS de données ET qu'on est en train de charger
@@ -115,8 +120,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setCurrentUserId(newUserId);
       setIsInitialized(true);
 
-      // Si déconnexion, nettoyer le cache complet
+      // Si déconnexion, nettoyer le cache complet + OneSignal + appLogger
       if (_event === 'SIGNED_OUT') {
+        appLogger.clearUser();
+        cleanupOneSignalOnLogout();
         queryClient.clear();
         localStorage.removeItem('PROBAIN_QUERY_CACHE');
         localStorage.removeItem('probain_profile_type');
@@ -130,6 +137,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, [queryClient]);
+
+  // Synchroniser appLogger avec l'utilisateur courant
+  useEffect(() => {
+    if (currentUserId && profileType) {
+      appLogger.setUser(currentUserId, profileType);
+    } else if (!currentUserId) {
+      appLogger.clearUser();
+    }
+  }, [currentUserId, profileType]);
 
   // Sauvegarder dans localStorage pour le fallback offline
   useEffect(() => {
