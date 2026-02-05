@@ -30,7 +30,6 @@
 | `/auth` | Auth | Public |
 | `/terms` | TermsOfUse | Public |
 | `/privacy` | PrivacyPolicy | Public |
-| `/select-profile-type` | ProfileTypeSelection | Authentifié |
 | `/onboarding` | OnboardingWizard | Authentifié |
 | `/profile` | Profile | Sauveteur |
 | `/trainer-profile` | TrainerProfile | Formateur |
@@ -302,10 +301,12 @@ interface ExtendedProfileContextType {
 ### `components/auth/`
 | Fichier | Role |
 |---------|------|
-| `AuthForm.tsx` | Login/signup, PKCE flow, verification email, social login |
+| `AuthForm.tsx` | Login/signup, PKCE flow, verification email, social login, **selection type de profil** |
 | `PasswordStrengthIndicator.tsx` | Validation visuelle mot de passe |
 | `SignupSteps.tsx` | Wizard inscription multi-etapes |
 | `SocialLoginButtons.tsx` | OAuth Google/GitHub |
+
+**Note** : La sélection du type de profil (sauveteur/formateur/établissement) est intégrée directement dans `AuthForm.tsx`. Il n'y a pas de page `/select-profile-type` séparée.
 
 ### `components/profile/`
 | Fichier | Role |
@@ -441,7 +442,6 @@ Ne PAS modifier sauf demande explicite. Inclut: alert, avatar, badge, button, ca
 | `usePullToRefresh` | - | Pull-to-refresh mobile |
 | `usePhotoPicker` | - | Picker photo natif/web |
 | `useCalendarModal` | - | Etat calendrier modal |
-| `useTabReset` | - | Scroll top sur re-clic onglet |
 | `useMobile` | - | Detection mobile (< 768px) |
 | `useToast` | - | Systeme toast en memoire |
 | `useOrganizations` | trainer_profiles | Liste organismes formateurs |
