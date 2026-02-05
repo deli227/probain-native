@@ -64,6 +64,7 @@ export const ImageCropDialog = ({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const onCropChange = useCallback((location: { x: number; y: number }) => {
     setCrop(location);
@@ -95,6 +96,7 @@ export const ImageCropDialog = ({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedAreaPixels(null);
+    setImageLoaded(false);
     onClose();
   }, [onClose]);
 
@@ -117,6 +119,14 @@ export const ImageCropDialog = ({
 
       {/* Crop area */}
       <div className="relative flex-1">
+        {!imageLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 text-white animate-spin mx-auto mb-2" />
+              <p className="text-white/60 text-sm">Chargement de l'image...</p>
+            </div>
+          </div>
+        )}
         <Cropper
           image={imageSrc}
           crop={crop}
@@ -127,6 +137,7 @@ export const ImageCropDialog = ({
           onCropChange={onCropChange}
           onZoomChange={onZoomChange}
           onCropComplete={handleCropComplete}
+          onMediaLoaded={() => setImageLoaded(true)}
         />
       </div>
 

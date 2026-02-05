@@ -68,9 +68,9 @@ export const ConversationMailbox = () => {
   if (isMobile) {
     return (
       <div className="min-h-screen bg-primary-dark">
-        <div className="h-[calc(100vh-56px-76px)] flex flex-col">
+        <div className="h-[calc(100vh-56px-76px)] flex flex-col relative overflow-hidden">
           {isLoading ? (
-            <>
+            <div key="loading-state" className="absolute inset-0 z-30 bg-primary-dark flex flex-col">
               {/* Header identique au header final pour eviter le flash */}
               <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-br from-primary via-probain-blue to-primary-dark flex-shrink-0">
                 <div className="flex items-center gap-3">
@@ -86,26 +86,30 @@ export const ConversationMailbox = () => {
               <div className="flex-1 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 text-white animate-spin" />
               </div>
-            </>
+            </div>
           ) : selectedContactId && selectedConversation && userId ? (
-            <ConversationView
-              conversation={selectedConversation}
-              currentUserId={userId}
-              onBack={handleBack}
-              onSendReply={handleSendReply}
-              onDeleteMessage={handleDeleteMessage}
-              onDeleteConversation={handleDeleteConversation}
-              isSending={isSending}
-              showBackButton={true}
-            />
+            <div key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark">
+              <ConversationView
+                conversation={selectedConversation}
+                currentUserId={userId}
+                onBack={handleBack}
+                onSendReply={handleSendReply}
+                onDeleteMessage={handleDeleteMessage}
+                onDeleteConversation={handleDeleteConversation}
+                isSending={isSending}
+                showBackButton={true}
+              />
+            </div>
           ) : (
-            <ConversationList
-              conversations={conversations}
-              selectedContactId={null}
-              onSelectConversation={handleSelectConversation}
-              onDeleteConversation={handleDeleteConversation}
-              unreadTotal={unreadTotal}
-            />
+            <div key="list-state" className="absolute inset-0 z-10 bg-primary-dark">
+              <ConversationList
+                conversations={conversations}
+                selectedContactId={null}
+                onSelectConversation={handleSelectConversation}
+                onDeleteConversation={handleDeleteConversation}
+                unreadTotal={unreadTotal}
+              />
+            </div>
           )}
         </div>
       </div>

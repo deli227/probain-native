@@ -684,11 +684,11 @@ const EstablishmentRescuers = () => {
                   </div>
                 </div>
                 <div className="text-center">
-                  <h3 className="font-medium text-sm sm:text-base truncate max-w-[120px]">
+                  <h3 className="font-medium text-sm sm:text-base text-white truncate max-w-[120px]">
                     {rescuer.first_name} {rescuer.last_name}
                   </h3>
                   {rescuer.profile.city_zip && (
-                    <p className="text-xs text-gray-500 truncate max-w-[120px]">
+                    <p className="text-xs text-white/70 truncate max-w-[120px]">
                       {rescuer.profile.city_zip}
                     </p>
                   )}

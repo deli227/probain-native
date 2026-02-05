@@ -98,7 +98,7 @@ const CommentBubble = memo(({ comment, postId, onReply, onDelete, canViewProfile
         {comment.user_avatar ? (
           <img src={comment.user_avatar} alt={`Avatar de ${comment.user_name}`} className="h-full w-full rounded-full object-cover" />
         ) : (
-          <span className={`${isReply ? 'text-[10px]' : 'text-xs'} font-medium text-gray-600`}>
+          <span className={`${isReply ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700`}>
             {comment.user_name?.charAt(0).toUpperCase()}
           </span>
         )}
@@ -114,7 +114,7 @@ const CommentBubble = memo(({ comment, postId, onReply, onDelete, canViewProfile
           {isOwn && (
             <button
               type="button"
-              className="h-6 w-6 flex items-center justify-center text-gray-400 hover:text-red-500 rounded-md transition-colors focus:outline-none"
+              className="h-6 w-6 flex items-center justify-center text-gray-600 hover:text-red-500 rounded-md transition-colors focus:outline-none"
               onClick={() => onDelete(comment.id, postId, repliesCount)}
               aria-label="Supprimer le commentaire"
             >
@@ -124,7 +124,7 @@ const CommentBubble = memo(({ comment, postId, onReply, onDelete, canViewProfile
         </div>
         {/* Structural reply indicator (like Instagram) */}
         {parentUserName && (
-          <p className="text-xs text-blue-500 mb-0.5">
+          <p className="text-xs text-blue-600 mb-0.5">
             <Reply className="h-3 w-3 inline mr-1" />
             <span className="font-medium">@{parentUserName}</span>
           </p>
@@ -133,11 +133,11 @@ const CommentBubble = memo(({ comment, postId, onReply, onDelete, canViewProfile
           {displayContent}
         </p>
         <div className="flex items-center gap-3 mt-1">
-          <p className="text-xs text-gray-400">{formatDate(comment.created_at)}</p>
+          <p className="text-xs text-gray-600">{formatDate(comment.created_at)}</p>
           <button
             type="button"
             onClick={() => onReply(postId, comment)}
-            className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors flex items-center gap-1"
+            className="text-xs text-gray-600 hover:text-blue-600 font-medium transition-colors flex items-center gap-1"
           >
             <Reply className="h-3 w-3" />
             Répondre

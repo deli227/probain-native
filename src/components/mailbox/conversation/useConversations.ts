@@ -33,6 +33,8 @@ export function useConversations() {
   const { data: messages, isLoading } = useQuery({
     queryKey: ["messages", userId],
     enabled: !!userId,
+    staleTime: 5000, // Données fraîches pendant 5 secondes (évite refetch sur clics rapides)
+    refetchOnMount: false, // Ne pas refetch si déjà chargé
     queryFn: async () => {
       if (!userId) throw new Error("Non authentifié");
 
