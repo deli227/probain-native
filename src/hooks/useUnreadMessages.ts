@@ -9,14 +9,17 @@ interface UseUnreadMessagesReturn {
   refetch: () => Promise<void>;
 }
 
+// Cache module-level : survit aux remontages de composants, evite le flash des badges a 0
+let cachedUnreadCount: number | null = null;
+
 /**
  * Hook pour compter les messages non lus de l'utilisateur connecté
  * - Écoute en temps réel les nouveaux messages
  * - Met à jour le compteur automatiquement
  */
 export function useUnreadMessages(): UseUnreadMessagesReturn {
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(cachedUnreadCount ?? 0);
+  const [isLoading, setIsLoading] = useState(cachedUnreadCount === null);
   const [userId, setUserId] = useState<string | null>(null);
 
   const fetchUnreadCount = useCallback(async () => {
@@ -39,7 +42,9 @@ export function useUnreadMessages(): UseUnreadMessagesReturn {
         return;
       }
 
-      setUnreadCount(count || 0);
+      const newCount = count || 0;
+      cachedUnreadCount = newCount;
+      setUnreadCount(newCount);
     } catch {
       // Erreur silencieuse - le compteur restera à 0
     } finally {

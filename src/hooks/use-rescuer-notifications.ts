@@ -19,6 +19,9 @@ interface UseRescuerNotificationsReturn {
   refetch: () => Promise<void>;
 }
 
+// Cache module-level : survit aux remontages de composants, evite le flash des badges a 0
+let cachedCounts: NotificationCounts | null = null;
+
 /**
  * Hook pour gérer les notifications des sauveteurs
  * - Compte les nouvelles formations depuis la dernière visite
@@ -27,12 +30,10 @@ interface UseRescuerNotificationsReturn {
  * - Permet de marquer comme vu (persiste en base)
  */
 export function useRescuerNotifications(): UseRescuerNotificationsReturn {
-  const [counts, setCounts] = useState<NotificationCounts>({
-    formations: 0,
-    jobs: 0,
-    total: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [counts, setCounts] = useState<NotificationCounts>(
+    cachedCounts ?? { formations: 0, jobs: 0, total: 0 }
+  );
+  const [isLoading, setIsLoading] = useState(cachedCounts === null);
   const [userId, setUserId] = useState<string | null>(null);
 
   // Récupérer les counts de notifications
@@ -106,11 +107,13 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
       const formationsNew = formationsCount || 0;
       const jobsNew = jobsCount || 0;
 
-      setCounts({
+      const newCounts = {
         formations: formationsNew,
         jobs: jobsNew,
         total: formationsNew + jobsNew,
-      });
+      };
+      cachedCounts = newCounts;
+      setCounts(newCounts);
 
       appLogger.logAction('notifications', 'rescuer.counts.fetched', `formations=${formationsNew}, jobs=${jobsNew}`, { formations: formationsNew, jobs: jobsNew });
       logger.log(`📬 Notifications: ${formationsNew} formations, ${jobsNew} emplois`);
@@ -136,11 +139,11 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         return;
       }
 
-      setCounts(prev => ({
-        ...prev,
-        formations: 0,
-        total: prev.jobs,
-      }));
+      setCounts(prev => {
+        const updated = { ...prev, formations: 0, total: prev.jobs };
+        cachedCounts = updated;
+        return updated;
+      });
 
       appLogger.logAction('notifications', 'rescuer.formations.seen', 'Formations marquées comme vues');
       logger.log('✅ Formations marquées comme vues');
@@ -164,11 +167,11 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         return;
       }
 
-      setCounts(prev => ({
-        ...prev,
-        jobs: 0,
-        total: prev.formations,
-      }));
+      setCounts(prev => {
+        const updated = { ...prev, jobs: 0, total: prev.formations };
+        cachedCounts = updated;
+        return updated;
+      });
 
       appLogger.logAction('notifications', 'rescuer.jobs.seen', 'Emplois marqués comme vus');
       logger.log('✅ Emplois marqués comme vus');
@@ -196,11 +199,9 @@ export function useRescuerNotifications(): UseRescuerNotificationsReturn {
         return;
       }
 
-      setCounts({
-        formations: 0,
-        jobs: 0,
-        total: 0,
-      });
+      const resetCounts = { formations: 0, jobs: 0, total: 0 };
+      cachedCounts = resetCounts;
+      setCounts(resetCounts);
 
       appLogger.logAction('notifications', 'rescuer.all.seen', 'Tout marqué comme vu');
       logger.log('✅ Tout marqué comme vu');

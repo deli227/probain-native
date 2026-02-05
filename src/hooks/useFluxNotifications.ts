@@ -12,14 +12,17 @@ interface UseFluxNotificationsReturn {
   refetch: () => Promise<void>;
 }
 
+// Cache module-level : survit aux remontages de composants, evite le flash des badges a 0
+let cachedNewPostsCount: number | null = null;
+
 /**
  * Hook pour compter les nouveaux posts du flux depuis la dernière visite
  * - Stocke la dernière visite en localStorage
  * - Écoute en temps réel les nouveaux posts
  */
 export function useFluxNotifications(): UseFluxNotificationsReturn {
-  const [newPostsCount, setNewPostsCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [newPostsCount, setNewPostsCount] = useState(cachedNewPostsCount ?? 0);
+  const [isLoading, setIsLoading] = useState(cachedNewPostsCount === null);
   const [userId, setUserId] = useState<string | null>(null);
 
   const getLastSeenFlux = useCallback((): string => {
@@ -61,6 +64,7 @@ export function useFluxNotifications(): UseFluxNotificationsReturn {
       }
 
       const newCount = count || 0;
+      cachedNewPostsCount = newCount;
       setNewPostsCount(newCount);
       if (newCount > 0) {
         appLogger.logInfo('notifications', 'flux.newPosts.count', `${newCount} nouveaux posts détectés`, { count: newCount });
@@ -75,6 +79,7 @@ export function useFluxNotifications(): UseFluxNotificationsReturn {
   const markAsSeen = useCallback(() => {
     try {
       localStorage.setItem(LAST_SEEN_FLUX_KEY, new Date().toISOString());
+      cachedNewPostsCount = 0;
       setNewPostsCount(0);
       appLogger.logAction('notifications', 'flux.markAsSeen', 'Flux marqué comme vu');
     } catch {

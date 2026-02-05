@@ -206,96 +206,91 @@ function AppRoutes() {
     return children;
   };
 
-  // Wrapper pour le contenu avec ou sans DashboardLayout
-  const ContentWrapper = ({ children }: { children: React.ReactNode }) => {
-    if (shouldUseDashboardLayout && profileType) {
-      return (
-        <DashboardLayout profileType={profileType as 'formateur' | 'etablissement' | 'maitre_nageur'}>
-          {renderNavbar()}
-          {children}
-        </DashboardLayout>
-      );
-    }
-    return (
-      <>
-        {renderNavbar()}
-        {children}
-      </>
-    );
-  };
+  // Contenu des routes (variable JSX, pas un composant — evite le remontage a chaque changement de route)
+  const routesContent = (
+    <ErrorBoundary resetKey={location.pathname}>
+      <Suspense fallback={<LoadingScreen message="Chargement..." />}>
+        <Routes>
+          <Route path="/" element={navigator.userAgent.toLowerCase().includes('despia') ? <Navigate to="/auth" replace /> : <Index />} />
+          <Route path="/terms" element={<TermsOfUse />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/auth/set-password" element={<SetPassword />} />
+          <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute>
+                {profileTypeSelected ? (
+                  !onboardingCompleted ? (
+                    <OnboardingWizard />
+                  ) : (
+                    <ProfileRouter />
+                  )
+                ) : loading ? (
+                  <LoadingScreen message="Chargement du profil..." />
+                ) : (
+                  <Navigate to="/auth" replace />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                {profileType === 'maitre_nageur' ? <Profile /> : <ProfileRouter />}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trainer-profile"
+            element={
+              <ProtectedRoute>
+                {profileType === 'formateur' ? <TrainerProfile /> : <ProfileRouter />}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/establishment-profile"
+            element={
+              <ProtectedRoute>
+                {profileType === 'etablissement' ? <EstablishmentProfile /> : <ProfileRouter />}
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/establishment-profile/announcements" element={<ProtectedRoute><EstablishmentAnnouncements /></ProtectedRoute>} />
+          <Route path="/establishment-profile/rescuers" element={<ProtectedRoute><EstablishmentRescuers /></ProtectedRoute>} />
+          <Route path="/establishment-profile/mail" element={<ProtectedRoute><EstablishmentMailbox /></ProtectedRoute>} />
+          <Route path="/trainer-profile/students" element={<ProtectedRoute><TrainerStudents /></ProtectedRoute>} />
+          <Route path="/trainer-profile/mail" element={<ProtectedRoute><Mailbox /></ProtectedRoute>} />
+          <Route path="/rescuer/mail" element={<ProtectedRoute><Mailbox /></ProtectedRoute>} />
+          <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
+          <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/flux" element={<ProtectedRoute><Flux /></ProtectedRoute>} />
+          <Route path="/add-formation" element={<ProtectedRoute><AddFormation /></ProtectedRoute>} />
+          <Route path="/add-experience" element={<ProtectedRoute><AddExperience /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
+  );
 
   return (
     <div className="min-h-screen bg-primary-dark md:bg-[#0a1628]">
       <OfflineIndicator />
       <InstallPWAPrompt />
-      <ContentWrapper>
-      <ErrorBoundary resetKey={location.pathname}>
-      <Suspense fallback={<LoadingScreen message="Chargement..." />}>
-      <Routes>
-        <Route path="/" element={navigator.userAgent.toLowerCase().includes('despia') ? <Navigate to="/auth" replace /> : <Index />} />
-        <Route path="/terms" element={<TermsOfUse />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/auth/set-password" element={<SetPassword />} />
-        <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-        <Route
-          path="/onboarding"
-          element={
-            <ProtectedRoute>
-              {profileTypeSelected ? (
-                !onboardingCompleted ? (
-                  <OnboardingWizard />
-                ) : (
-                  <ProfileRouter />
-                )
-              ) : loading ? (
-                <LoadingScreen message="Chargement du profil..." />
-              ) : (
-                <Navigate to="/auth" replace />
-              )}
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              {profileType === 'maitre_nageur' ? <Profile /> : <ProfileRouter />}
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trainer-profile"
-          element={
-            <ProtectedRoute>
-              {profileType === 'formateur' ? <TrainerProfile /> : <ProfileRouter />}
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/establishment-profile"
-          element={
-            <ProtectedRoute>
-              {profileType === 'etablissement' ? <EstablishmentProfile /> : <ProfileRouter />}
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/establishment-profile/announcements" element={<ProtectedRoute><EstablishmentAnnouncements /></ProtectedRoute>} />
-        <Route path="/establishment-profile/rescuers" element={<ProtectedRoute><EstablishmentRescuers /></ProtectedRoute>} />
-        <Route path="/establishment-profile/mail" element={<ProtectedRoute><EstablishmentMailbox /></ProtectedRoute>} />
-        <Route path="/trainer-profile/students" element={<ProtectedRoute><TrainerStudents /></ProtectedRoute>} />
-        <Route path="/trainer-profile/mail" element={<ProtectedRoute><Mailbox /></ProtectedRoute>} />
-        <Route path="/rescuer/mail" element={<ProtectedRoute><Mailbox /></ProtectedRoute>} />
-        <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
-        <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-        <Route path="/flux" element={<ProtectedRoute><Flux /></ProtectedRoute>} />
-        <Route path="/add-formation" element={<ProtectedRoute><AddFormation /></ProtectedRoute>} />
-        <Route path="/add-experience" element={<ProtectedRoute><AddExperience /></ProtectedRoute>} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      </Suspense>
-      </ErrorBoundary>
-      </ContentWrapper>
+      {shouldUseDashboardLayout && profileType ? (
+        <DashboardLayout profileType={profileType as 'formateur' | 'etablissement' | 'maitre_nageur'}>
+          {renderNavbar()}
+          {routesContent}
+        </DashboardLayout>
+      ) : (
+        <>
+          {renderNavbar()}
+          {routesContent}
+        </>
+      )}
     </div>
   );
 }
