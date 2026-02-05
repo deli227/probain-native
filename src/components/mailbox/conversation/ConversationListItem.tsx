@@ -34,7 +34,7 @@ export const ConversationListItem = ({
 
   return (
     <div
-      className={`group w-full flex items-center gap-3 px-4 py-3 transition-all text-left cursor-pointer ${
+      className={`group w-full flex items-center gap-3 px-4 py-3 transition-all text-left cursor-pointer card-pressable ${
         isSelected
           ? "bg-white/15 border-l-3 border-l-cyan-500"
           : unreadCount > 0

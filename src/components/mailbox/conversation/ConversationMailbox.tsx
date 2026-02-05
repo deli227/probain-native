@@ -4,7 +4,8 @@ import { useConversations } from "./useConversations";
 import { ConversationList } from "./ConversationList";
 import { ConversationView } from "./ConversationView";
 import { EmptyState } from "./EmptyState";
-import { Loader2, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
+import { ConversationSkeleton } from "@/components/skeletons/ConversationSkeleton";
 
 export const ConversationMailbox = () => {
   const isMobile = useIsMobile();
@@ -83,9 +84,7 @@ export const ConversationMailbox = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="h-8 w-8 text-white animate-spin" />
-              </div>
+              <ConversationSkeleton count={6} />
             </div>
           ) : selectedContactId && selectedConversation && userId ? (
             <div key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark conversation-enter">
@@ -135,9 +134,7 @@ export const ConversationMailbox = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="h-6 w-6 text-white/50 animate-spin" />
-              </div>
+              <ConversationSkeleton count={5} />
             </div>
           ) : (
             <ConversationList

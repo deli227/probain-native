@@ -146,16 +146,6 @@ button, a, [role="button"] {
   }
 }
 
-/* Active/pressed state for buttons (haptic feedback visual) */
-.btn-native {
-  transition: transform 0.1s ease, opacity 0.1s ease;
-}
-
-.btn-native:active {
-  transform: scale(0.97);
-  opacity: 0.9;
-}
-
 /* Card press effect */
 .card-pressable {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -164,27 +154,6 @@ button, a, [role="button"] {
 .card-pressable:active {
   transform: scale(0.98);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* List item press effect */
-.list-item-pressable {
-  transition: background-color 0.1s ease;
-}
-
-.list-item-pressable:active {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-/* Smooth page transitions */
-.page-transition-enter {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.page-transition-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 /* Pull to refresh indicator style */
@@ -368,35 +337,6 @@ img[loading="lazy"].loaded {
 .stagger-children > *:nth-child(6) { animation-delay: 250ms; }
 .stagger-children > *:nth-child(7) { animation-delay: 300ms; }
 .stagger-children > *:nth-child(8) { animation-delay: 350ms; }
-
-/* Touch ripple effect for interactive elements */
-.touch-ripple {
-  position: relative;
-  overflow: hidden;
-}
-
-.touch-ripple::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.3) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-}
-
-.touch-ripple:active::after {
-  opacity: 1;
-}
-
-/* Smooth spring-like bounce for cards */
-.bounce-on-tap {
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.bounce-on-tap:active {
-  transform: scale(0.96);
-}
 
 /* Progress bar animation */
 @keyframes progressGrow {

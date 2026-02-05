@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar as CalendarIcon, Search, MapPin, Briefcase, Building2, Loader2, Upload, FileText, X, ExternalLink, Clock, Check, ClipboardList } from "lucide-react";
 import DOMPurify from "dompurify";
+import { JobSkeleton } from "@/components/skeletons/JobSkeleton";
 import { CalendarModal } from "@/components/shared/CalendarModal";
 import { useCalendarModal } from "@/hooks/use-calendar-modal";
 import { SWISS_CANTONS, isCityInCanton } from "@/utils/swissCantons";
@@ -476,10 +477,7 @@ const Jobs = () => {
         </Card>
 
         {isLoading && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-400 mb-4" />
-            <p className="text-white/70">Chargement des offres...</p>
-          </div>
+          <JobSkeleton count={3} />
         )}
 
         {!isLoading && filteredJobs.length === 0 && (
@@ -506,7 +504,7 @@ const Jobs = () => {
                 <CarouselContent className="-ml-2">
                   {filteredJobs.map((job) => (
                     <CarouselItem key={job.id} className="pl-2 basis-[85%] sm:basis-[70%]">
-                      <Card className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative cursor-pointer" onClick={() => handleViewDetail(job)}>
+                      <Card className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative cursor-pointer card-pressable" onClick={() => handleViewDetail(job)}>
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                         <div className="relative flex-1">
                           <div className="flex items-start justify-between mb-4">

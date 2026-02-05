@@ -10,6 +10,7 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { RescuerProfileSheet } from '@/components/shared/RescuerProfileSheet';
 import { PostSkeleton } from '@/components/skeletons/PostSkeleton';
+import { hapticFeedback } from '@/lib/native';
 
 // ---- Threading helpers ----
 
@@ -480,6 +481,9 @@ const Flux = () => {
                     if (!post.user_has_liked) {
                       setAnimatingLike(prev => ({ ...prev, [post.id]: true }));
                       setTimeout(() => setAnimatingLike(prev => ({ ...prev, [post.id]: false })), 400);
+                      hapticFeedback('medium');
+                    } else {
+                      hapticFeedback('light');
                     }
                     toggleLike(post.id);
                   }}

@@ -1,6 +1,7 @@
 import { Send } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { hapticFeedback } from "@/lib/native";
 
 interface ConversationInputProps {
   onSend: (content: string, subject: string) => void;
@@ -21,6 +22,7 @@ export const ConversationInput = ({ onSend, isSending, lastSubject }: Conversati
 
     onSend(content.trim(), subject);
     setContent("");
+    hapticFeedback('light');
 
     // Reset la hauteur du textarea
     if (textareaRef.current) {
