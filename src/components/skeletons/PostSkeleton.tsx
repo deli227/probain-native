@@ -10,10 +10,10 @@ export const PostSkeleton = ({ count = 1 }: PostSkeletonProps) => {
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={index}
-          className="bg-white rounded-xl overflow-hidden shadow-lg"
+          className="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-lg"
         >
           {/* Header skeleton */}
-          <div className="p-4 flex items-center gap-3 border-b border-gray-100">
+          <div className="p-4 flex items-center gap-3 border-b border-white/10">
             <Skeleton variant="wave" className="w-10 h-10 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton variant="wave" className="h-4 w-32" />
@@ -37,13 +37,13 @@ export const PostSkeleton = ({ count = 1 }: PostSkeletonProps) => {
           )}
 
           {/* Stats skeleton */}
-          <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
+          <div className="px-4 py-2 border-t border-white/10 flex items-center justify-between">
             <Skeleton variant="wave" className="h-4 w-16" />
             <Skeleton variant="wave" className="h-4 w-24" />
           </div>
 
           {/* Actions skeleton */}
-          <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
+          <div className="px-4 py-3 border-t border-white/10 flex gap-2">
             <Skeleton variant="wave" className="flex-1 h-10 rounded-md" />
             <Skeleton variant="wave" className="flex-1 h-10 rounded-md" />
           </div>

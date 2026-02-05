@@ -9,6 +9,7 @@ import { fr } from 'date-fns/locale';
 import { useProfile } from '@/contexts/ProfileContext';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { RescuerProfileSheet } from '@/components/shared/RescuerProfileSheet';
+import { PostSkeleton } from '@/components/skeletons/PostSkeleton';
 
 // ---- Threading helpers ----
 
@@ -164,6 +165,7 @@ const Flux = () => {
   const [rescuerSheetOpen, setRescuerSheetOpen] = useState(false);
   const [selectedRescuerId, setSelectedRescuerId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Record<string, FluxComment | null>>({});
+  const [animatingLike, setAnimatingLike] = useState<Record<string, boolean>>({});
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -379,9 +381,9 @@ const Flux = () => {
           </div>
         </div>
 
-        {/* Loader simple au lieu du skeleton */}
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-white/60" />
+        {/* Skeleton posts fidèles au layout */}
+        <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 stagger-children">
+          <PostSkeleton count={3} />
         </div>
       </div>
     );
@@ -474,9 +476,15 @@ const Flux = () => {
                 <Button
                   variant="ghost"
                   className={`flex-1 ${post.user_has_liked ? 'text-red-500' : 'text-gray-600'}`}
-                  onClick={() => toggleLike(post.id)}
+                  onClick={() => {
+                    if (!post.user_has_liked) {
+                      setAnimatingLike(prev => ({ ...prev, [post.id]: true }));
+                      setTimeout(() => setAnimatingLike(prev => ({ ...prev, [post.id]: false })), 400);
+                    }
+                    toggleLike(post.id);
+                  }}
                 >
-                  <Heart className={`h-5 w-5 mr-2 ${post.user_has_liked ? 'fill-current' : ''}`} />
+                  <Heart className={`h-5 w-5 mr-2 transition-all duration-200 ${post.user_has_liked ? 'fill-current' : ''} ${animatingLike[post.id] ? 'like-bounce' : ''}`} />
                   J'aime
                 </Button>
                 <Button

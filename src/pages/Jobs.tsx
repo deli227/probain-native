@@ -573,7 +573,7 @@ const Jobs = () => {
             </div>
 
             {/* Desktop: Grille de cartes */}
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 stagger-children">
               {filteredJobs.map((job) => (
                 <Card key={job.id} className="group p-5 bg-transparent bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full flex flex-col overflow-hidden relative cursor-pointer" onClick={() => handleViewDetail(job)}>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />

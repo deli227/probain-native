@@ -16,7 +16,7 @@ export const LoadingScreen = ({
 }: LoadingScreenProps) => {
   return (
     <div className={`min-h-screen bg-primary-dark flex items-center justify-center ${className}`}>
-      <div className="flex flex-col items-center gap-4 animate-fadeIn">
+      <div className="flex flex-col items-center gap-4 animate-fade-in">
         <Loader2 className={`h-8 w-8 text-white ${isProcessing ? 'animate-spin' : 'animate-pulse'}`} />
         <div className="text-white text-xl font-medium">{message}</div>
         <div className="text-white/70 text-sm text-center px-6 max-w-xs">

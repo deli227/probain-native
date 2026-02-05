@@ -88,7 +88,7 @@ export const ConversationMailbox = () => {
               </div>
             </div>
           ) : selectedContactId && selectedConversation && userId ? (
-            <div key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark">
+            <div key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark conversation-enter">
               <ConversationView
                 conversation={selectedConversation}
                 currentUserId={userId}

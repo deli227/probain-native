@@ -411,3 +411,64 @@ img[loading="lazy"].loaded {
 .animate-progress {
   animation: progressGrow 0.5s ease-out forwards;
 }
+
+/* ===== UX FLUIDITY ANIMATIONS ===== */
+
+/* Like button heart bounce */
+@keyframes likeBounceFill {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.3); }
+  50% { transform: scale(0.9); }
+  75% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.like-bounce {
+  animation: likeBounceFill 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Badge scale-in entrance */
+@keyframes badgeScaleIn {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.badge-scale-in {
+  animation: badgeScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Page route transition — fade + subtle slide */
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: pageFadeIn 0.2s ease-out forwards;
+}
+
+/* Conversation slide transitions (mobile) */
+@keyframes slideInFromRightFull {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideOutToRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+.conversation-enter {
+  animation: slideInFromRightFull 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.conversation-exit {
+  animation: slideOutToRight 0.2s ease-in forwards;
+}

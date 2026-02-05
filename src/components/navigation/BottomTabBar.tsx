@@ -125,9 +125,9 @@ export const BottomTabBar = memo(({ profileType }: BottomTabBarProps) => {
                   strokeWidth={active ? 2.2 : 1.8}
                 />
 
-                {/* Badge notification */}
+                {/* Badge notification avec animation d'entrée */}
                 {hasBadge && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white bg-probain-red rounded-full px-1 shadow-md border-2 border-primary">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white bg-probain-red rounded-full px-1 shadow-md border-2 border-primary badge-scale-in">
                     {tab.badgeCount! > 99 ? '99+' : tab.badgeCount}
                   </span>
                 )}
