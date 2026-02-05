@@ -281,8 +281,10 @@ function AppRoutes() {
       <OfflineIndicator />
       <InstallPWAPrompt />
       {shouldUseDashboardLayout && profileType ? (
-        <DashboardLayout profileType={profileType as 'formateur' | 'etablissement' | 'maitre_nageur'}>
-          {renderNavbar()}
+        <DashboardLayout
+          profileType={profileType as 'formateur' | 'etablissement' | 'maitre_nageur'}
+          navbar={renderNavbar()}
+        >
           {routesContent}
         </DashboardLayout>
       ) : (

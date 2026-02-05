@@ -217,14 +217,33 @@ App.tsx
 ### Layout Responsive
 ```
 Mobile (< 768px):
-  MobileHeader (56px sticky top)
-  Content (pb-28 pour tab bar + safe-area)
-  BottomTabBar (76px fixed bottom, safe-area)
+  MobileHeader (56px sticky top, + env(safe-area-inset-top))
+  Content (dashboard-bottom-safe gere le padding)
+  BottomTabBar (76px fixed bottom, + env(safe-area-inset-bottom))
 
 Desktop (>= 768px):
   Sidebar (256px fixed left)
   Content (pl-64)
 ```
+
+### DashboardLayout — Navbar stable (prop `navbar`)
+Le `DashboardLayout` accepte un prop optionnel `navbar?: ReactNode`. Ce prop est rendu EN DEHORS du wrapper `key={location.pathname}` qui gere la transition animee entre pages. Cela evite que le `MobileHeader` (logo, cloche, engrenage) soit remonte a chaque changement de route, eliminant le flash du logo.
+
+```tsx
+// App.tsx
+<DashboardLayout profileType={...} navbar={renderNavbar()}>
+  {routesContent}
+</DashboardLayout>
+
+// DashboardLayout.tsx — navbar est hors du key wrapper
+{navbar}
+<div key={location.pathname} className="page-enter">
+  {children}
+</div>
+```
+
+### Animation page-enter — `backwards` obligatoire (pas `forwards`)
+La classe `.page-enter` dans `index.css` utilise `animation-fill-mode: backwards` (PAS `forwards`). Avec `forwards`, le `transform: translateY(0)` du keyframe `to` persiste apres l'animation, creant un containing block qui casse `position: fixed` chez tous les descendants (ex: ConversationMailbox mobile). Avec `backwards`, le from-keyframe est applique avant l'animation mais aucun transform ne reste apres.
 
 ---
 
@@ -395,7 +414,7 @@ interface ExtendedProfileContextType {
 - Query key `["messages", userId]` : meme que l'ancien code, les `invalidateQueries` de `SendMessageDialog` et `SendRescuerMessageDialog` continuent de fonctionner
 - Real-time via canal Supabase `conversations-${userId}` (INSERT/UPDATE/DELETE)
 - `avatar_url` joint depuis les tables `*_profiles` selon `profile_type`
-- Mobile : navigation par etat (liste OU conversation), `bg-[#0a1628]`
+- Mobile : navigation par etat (liste OU conversation), `position: fixed` avec `top: calc(56px + env(safe-area-inset-top))` et `bottom: calc(86px + env(safe-area-inset-bottom))` pour remplir exactement l'espace entre MobileHeader et BottomTabBar. Les etats (loading/conversation/list) utilisent `absolute inset-0` avec z-index (z-30/z-20/z-10)
 - Desktop : split view (liste 320px + conversation) avec glassmorphism
 - Sauveteurs : reception + reponse uniquement (pas de bouton "nouveau message")
 - `Mailbox.tsx` (page) = re-export 1 ligne vers `ConversationMailbox`
@@ -596,6 +615,9 @@ Le Toast cree un portail DOM en dehors du Sheet. Le Sheet detecte l'interaction 
 
 ### Heritage CSS traverse position:fixed
 Un composant `position: fixed` reste enfant DOM de son parent. Si le parent a `text-white`, le fixed l'herite. **Solution**: forcer `text-gray-900` sur le conteneur blanc du modal.
+
+### `transform` casse `position: fixed` des descendants
+Meme `transform: translateY(0)` sur un ancetre cree un **containing block** qui transforme tout `position: fixed` descendant en `position: absolute` (relatif a cet ancetre). La classe `.page-enter` utilisait `animation-fill-mode: forwards` qui persistait le transform du keyframe `to` → `ConversationMailbox` (fixed) devenait positionne relativement au div anime (~0px de haut) au lieu du viewport. **Solution** : `animation-fill-mode: backwards` (pas `forwards`). **Regle** : JAMAIS de `forwards` sur une animation contenant un `transform` si des descendants utilisent `position: fixed`.
 
 ### Hooks React et return conditionnel
 TOUS les hooks doivent etre appeles AVANT tout `return` conditionnel. Sinon: "Rendered more hooks than during the previous render".
@@ -1571,6 +1593,44 @@ npx playwright test  # 39 E2E tests (~5min)
 ---
 
 ## REGLES ABSOLUES — A NE JAMAIS ENFREINDRE
+
+### 0. PENSER COMME UN DEVELOPPEUR SENIOR — S'applique a CHAQUE message, CHAQUE feature, CHAQUE fix
+
+**Cette regle est la PREMIERE a suivre, AUTOMATIQUEMENT, sans que l'utilisateur ait besoin de le demander.**
+
+#### A. Relire CLAUDE.md et comprendre le flux complet
+
+Avant tout changement (feature, fix, refactor), Claude DOIT :
+1. **Relire les sections pertinentes de CLAUDE.md** pour comprendre l'architecture, les patterns existants, les pieges documentes, et la hierarchie z-index
+2. **Lire TOUS les fichiers impactes** avant d'ecrire une seule ligne de code
+3. **Comprendre le flux complet** : comment le composant s'insere dans le layout (App.tsx → DashboardLayout → Page → Composant), quels parents l'enveloppent, quels styles sont herites
+4. **Verifier les regles 1 a 18** ci-dessous pour s'assurer qu'aucune regle absolue n'est violee par le changement envisage
+
+#### B. Analyser avant de coder
+
+Pour TOUT changement non-trivial, Claude DOIT ecrire dans sa reponse AVANT de coder :
+1. **Ce qu'il va faire** : explication claire de l'approche
+2. **Pourquoi** : la raison technique du choix
+3. **Les risques** : effets de bord potentiels sur d'autres composants/pages/profils
+4. **La verification** : comment verifier que le changement fonctionne et ne casse rien
+
+PAS de code d'abord et analyse apres. L'analyse PRECEDE toujours le code.
+
+#### C. Regles specifiques CSS/layout
+
+Avant d'ecrire ou modifier du CSS, layout, ou positionnement :
+1. **Tracer la chaine DOM complete** : du viewport jusqu'a l'element cible, lister chaque ancetre avec ses proprietes `position`, `transform`, `overflow`, `z-index`, `display`, et dimensions
+2. **Verifier les containing blocks** : tout ancetre avec `transform` (meme `translateY(0)`), `perspective`, `filter`, ou `will-change` cree un containing block qui casse `position: fixed` chez les descendants
+3. **Verifier les safe areas** : toute hauteur viewport doit prendre en compte `env(safe-area-inset-top)` ET `env(safe-area-inset-bottom)`. Le MobileHeader fait `56px + env(safe-area-inset-top)`, pas juste 56px
+4. **Tester mentalement sur 3 ecrans** : iPhone SE (375x667, pas de safe area), iPhone 14 (390x844, safe area 47+34), et desktop (1280x720)
+
+#### D. Qualite senior
+
+- **Un seul fix, bien fait** : pas 3 tentatives successives. Analyser en profondeur, coder une fois
+- **Pas de hacks** : si une solution necessite un hack (margin negatif, z-index arbitraire, !important), c'est qu'elle est mauvaise. Trouver la vraie cause
+- **Penser aux 3 profils** : sauveteur, formateur, etablissement. Chaque changement doit fonctionner pour les 3
+- **Penser mobile ET desktop** : chaque changement doit etre verifie sur les deux layouts
+- **Ne jamais introduire un bug pour en fixer un autre** : si un fix risque de casser autre chose, le signaler AVANT de coder
 
 ### 1. JAMAIS de scraper / GitHub Actions workflow dans ce repo
 

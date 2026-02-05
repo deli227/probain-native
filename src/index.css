@@ -378,7 +378,11 @@ img[loading="lazy"].loaded {
   animation: badgeScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-/* Page route transition — fade + subtle slide */
+/* Page route transition — fade + subtle slide
+   IMPORTANT: uses 'backwards' (not 'forwards') so that transform is removed
+   after the animation. 'forwards' would persist transform: translateY(0) which
+   creates a containing block and breaks position:fixed in descendants
+   (e.g. ConversationMailbox mobile layout). */
 @keyframes pageFadeIn {
   from {
     opacity: 0;
@@ -391,7 +395,7 @@ img[loading="lazy"].loaded {
 }
 
 .page-enter {
-  animation: pageFadeIn 0.2s ease-out forwards;
+  animation: pageFadeIn 0.2s ease-out backwards;
 }
 
 /* Conversation slide transitions (mobile) */

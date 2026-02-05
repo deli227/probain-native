@@ -81,49 +81,53 @@ export const ConversationMailbox = () => {
   // au LoadingScreen Suspense, evitant tout flash de couleur lors des transitions.
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-primary-dark">
-        <div className="h-[calc(100vh-56px-76px)] flex flex-col relative overflow-hidden">
-          {isLoading ? (
-            <div key="loading-state" className="absolute inset-0 z-30 bg-primary-dark flex flex-col">
-              {/* Header identique au header final pour eviter le flash */}
-              <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-br from-primary via-probain-blue to-primary-dark flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-xl border border-white/10">
-                    <Mail className="h-5 w-5 text-cyan-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-white tracking-tight">MESSAGERIE</h2>
-                    <p className="text-[11px] text-white/40">Chargement...</p>
-                  </div>
+      <div
+        className="fixed left-0 right-0 bg-primary-dark overflow-hidden"
+        style={{
+          top: 'calc(56px + env(safe-area-inset-top, 0px))',
+          bottom: 'calc(86px + env(safe-area-inset-bottom, 0px))',
+        }}
+      >
+        {isLoading ? (
+          <div key="loading-state" className="absolute inset-0 z-30 bg-primary-dark flex flex-col">
+            {/* Header identique au header final pour eviter le flash */}
+            <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-br from-primary via-probain-blue to-primary-dark flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-xl border border-white/10">
+                  <Mail className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-white tracking-tight">MESSAGERIE</h2>
+                  <p className="text-[11px] text-white/40">Chargement...</p>
                 </div>
               </div>
-              <ConversationSkeleton count={6} />
             </div>
-          ) : selectedContactId && selectedConversation && userId ? (
-            <div ref={conversationRef} key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark conversation-enter">
-              <ConversationView
-                conversation={selectedConversation}
-                currentUserId={userId}
-                onBack={handleBack}
-                onSendReply={handleSendReply}
-                onDeleteMessage={handleDeleteMessage}
-                onDeleteConversation={handleDeleteConversation}
-                isSending={isSending}
-                showBackButton={true}
-              />
-            </div>
-          ) : (
-            <div key="list-state" className="absolute inset-0 z-10 bg-primary-dark">
-              <ConversationList
-                conversations={conversations}
-                selectedContactId={null}
-                onSelectConversation={handleSelectConversation}
-                onDeleteConversation={handleDeleteConversation}
-                unreadTotal={unreadTotal}
-              />
-            </div>
-          )}
-        </div>
+            <ConversationSkeleton count={6} />
+          </div>
+        ) : selectedContactId && selectedConversation && userId ? (
+          <div ref={conversationRef} key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark conversation-enter">
+            <ConversationView
+              conversation={selectedConversation}
+              currentUserId={userId}
+              onBack={handleBack}
+              onSendReply={handleSendReply}
+              onDeleteMessage={handleDeleteMessage}
+              onDeleteConversation={handleDeleteConversation}
+              isSending={isSending}
+              showBackButton={true}
+            />
+          </div>
+        ) : (
+          <div key="list-state" className="absolute inset-0 z-10 bg-primary-dark">
+            <ConversationList
+              conversations={conversations}
+              selectedContactId={null}
+              onSelectConversation={handleSelectConversation}
+              onDeleteConversation={handleDeleteConversation}
+              unreadTotal={unreadTotal}
+            />
+          </div>
+        )}
       </div>
     );
   }

@@ -46,7 +46,7 @@ export const ConversationInput = ({ onSend, isSending, lastSubject }: Conversati
   };
 
   return (
-    <div className="border-t border-white/10 bg-white/5 backdrop-blur-xl p-3 safe-area-bottom">
+    <div className="border-t border-white/10 bg-white/5 backdrop-blur-xl p-3 flex-shrink-0">
       <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}
