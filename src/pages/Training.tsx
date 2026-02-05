@@ -17,6 +17,7 @@ import { useSSSFormations, SSSFormation } from "@/hooks/use-sss-formations";
 import { categorizeFormation, FORMATION_CATEGORIES, SUBCATEGORIES, FormationCategory } from "@/utils/formationCategories";
 import { getUniqueCantons, isCityInCanton } from "@/utils/swissCantons";
 import { CantonCombobox } from "@/components/shared/CantonCombobox";
+import { TrainingSkeleton } from "@/components/skeletons/TrainingSkeleton";
 
 // Clés pour le sessionStorage
 const TRAINING_SEARCH_STATE_KEY = 'training_search_state';
@@ -46,12 +47,7 @@ function SSSFormationsListLocal({ formations, isLoading }: { formations: SSSForm
   const paginatedFormations = formations?.slice(startIndex, endIndex);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground">Chargement des formations SSS...</p>
-      </div>
-    );
+    return <TrainingSkeleton count={6} />;
   }
 
   return (
@@ -59,7 +55,7 @@ function SSSFormationsListLocal({ formations, isLoading }: { formations: SSSForm
       {paginatedFormations && paginatedFormations.length > 0 ? (
         <>
           <div className="bg-primary/5 p-6 rounded-2xl">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 stagger-children">
               {paginatedFormations.map((formation) => (
                 <FormationCardLocal key={formation.id} formation={formation} />
               ))}

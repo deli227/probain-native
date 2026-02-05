@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useConversations } from "./useConversations";
 import { ConversationList } from "./ConversationList";
@@ -38,9 +38,22 @@ export const ConversationMailbox = () => {
     markConversationAsRead(contactId);
   };
 
-  const handleBack = () => {
-    setSelectedContactId(null);
-  };
+  const conversationRef = useRef<HTMLDivElement>(null);
+
+  const handleBack = useCallback(() => {
+    const el = conversationRef.current;
+    if (el) {
+      el.classList.remove("conversation-enter");
+      el.classList.add("conversation-exit");
+      const onEnd = () => {
+        el.removeEventListener("animationend", onEnd);
+        setSelectedContactId(null);
+      };
+      el.addEventListener("animationend", onEnd);
+    } else {
+      setSelectedContactId(null);
+    }
+  }, []);
 
   const handleSendReply = (content: string, subject: string) => {
     if (!selectedContactId) return;
@@ -87,7 +100,7 @@ export const ConversationMailbox = () => {
               <ConversationSkeleton count={6} />
             </div>
           ) : selectedContactId && selectedConversation && userId ? (
-            <div key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark conversation-enter">
+            <div ref={conversationRef} key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark conversation-enter">
               <ConversationView
                 conversation={selectedConversation}
                 currentUserId={userId}

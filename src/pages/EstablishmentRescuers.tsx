@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CANTONS_SUISSES } from "@/utils/swissCantons";
 import { CantonCombobox } from "@/components/shared/CantonCombobox";
+import { RescuerSkeleton } from "@/components/skeletons/RescuerSkeleton";
 
 // Types pour les données rescuer
 interface RescuerFormation {
@@ -558,9 +559,7 @@ const EstablishmentRescuers = () => {
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-white/60" />
-        </div>
+        <RescuerSkeleton count={10} />
       </div>
     );
   }

@@ -642,10 +642,7 @@ const Jobs = () => {
       /* Applications Tab */
       <div className="p-4 md:p-6">
         {applicationsLoading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-400 mb-4" />
-            <p className="text-white/70">Chargement de vos candidatures...</p>
-          </div>
+          <JobSkeleton count={2} />
         ) : applications.length === 0 ? (
           <div className="text-center py-16 px-4">
             <div className="p-4 bg-white/10 rounded-2xl inline-block mb-4">
