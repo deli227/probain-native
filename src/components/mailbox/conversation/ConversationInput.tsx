@@ -1,4 +1,4 @@
-import { Send } from "lucide-react";
+import { Send, Reply } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { hapticFeedback } from "@/lib/native";
@@ -7,28 +7,45 @@ interface ConversationInputProps {
   onSend: (content: string, subject: string) => void;
   isSending: boolean;
   lastSubject?: string;
+  replyingToJobTitle?: string;
+  onCancelReplyToJob?: () => void;
 }
 
-export const ConversationInput = ({ onSend, isSending, lastSubject }: ConversationInputProps) => {
+export const ConversationInput = ({
+  onSend,
+  isSending,
+  lastSubject,
+  replyingToJobTitle,
+  onCancelReplyToJob,
+}: ConversationInputProps) => {
   const [content, setContent] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = useCallback(() => {
     if (!content.trim() || isSending) return;
 
-    const subject = lastSubject
-      ? lastSubject.startsWith("Re:") ? lastSubject : `Re: ${lastSubject}`
-      : "Message";
+    let subject: string;
+    if (replyingToJobTitle) {
+      subject = `Re: Candidature: ${replyingToJobTitle}`;
+    } else if (lastSubject) {
+      subject = lastSubject.startsWith("Re:") ? lastSubject : `Re: ${lastSubject}`;
+    } else {
+      subject = "Message";
+    }
 
     onSend(content.trim(), subject);
     setContent("");
     hapticFeedback('light');
 
+    if (onCancelReplyToJob) {
+      onCancelReplyToJob();
+    }
+
     // Reset la hauteur du textarea
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [content, isSending, lastSubject, onSend]);
+  }, [content, isSending, lastSubject, replyingToJobTitle, onSend, onCancelReplyToJob]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -46,8 +63,28 @@ export const ConversationInput = ({ onSend, isSending, lastSubject }: Conversati
   };
 
   return (
-    <div className="border-t border-white/10 bg-white/5 backdrop-blur-xl p-3 flex-shrink-0">
-      <div className="flex items-end gap-2">
+    <div className="border-t border-white/10 bg-white/5 backdrop-blur-xl flex-shrink-0">
+      {/* Indicateur reply-to-candidature */}
+      {replyingToJobTitle && (
+        <div className="px-3 pt-2 flex items-center gap-2 text-xs text-white/50">
+          <Reply className="h-3 w-3 text-cyan-400 shrink-0" />
+          <span className="truncate">
+            Réponse à la candidature{" "}
+            <span className="font-medium text-cyan-400">{replyingToJobTitle}</span>
+          </span>
+          {onCancelReplyToJob && (
+            <button
+              type="button"
+              onClick={onCancelReplyToJob}
+              className="ml-auto text-white/40 hover:text-white/70 transition-colors shrink-0 focus:outline-none focus-visible:outline-none"
+              aria-label="Annuler la réponse"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+      <div className="p-3 flex items-end gap-2">
         <textarea
           ref={textareaRef}
           value={content}

@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useEffect, memo } from "react";
+import { parseDateLocal } from "@/utils/dateUtils";
 import { PDFViewerDialog } from "./PDFViewerDialog";
 import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
 import * as z from "zod";
@@ -47,15 +48,17 @@ export const ExperienceCard = memo(function ExperienceCard({ experience, onUpdat
     defaultValues: {
       title: experience.title,
       location: experience.location,
-      startDate: new Date(experience.start_date),
-      endDate: experience.end_date ? new Date(experience.end_date) : undefined,
+      startDate: parseDateLocal(experience.start_date) || new Date(),
+      endDate: parseDateLocal(experience.end_date),
       contractType: experience.contract_type as 'CDI' | 'CDD',
       documentUrl: experience.document_url || undefined,
     },
   });
 
   const formatDate = (date: string) => {
-    return format(new Date(date), isMobile ? 'MM/yy' : 'MMM yyyy', { locale: fr });
+    const parsed = parseDateLocal(date);
+    if (!parsed) return '';
+    return format(parsed, isMobile ? 'dd/MM/yy' : 'dd MMM yyyy', { locale: fr });
   };
 
   // Couleur selon le type de contrat

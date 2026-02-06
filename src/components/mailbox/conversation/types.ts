@@ -13,6 +13,8 @@ export interface Conversation {
   messages: Message[];
   lastMessage: Message;
   unreadCount: number;
+  conversationKey: string;
+  jobTitle?: string;
 }
 
 export function getProfileTypeLabel(type: string | null): string {
@@ -22,6 +24,24 @@ export function getProfileTypeLabel(type: string | null): string {
     case "etablissement": return "Établissement";
     default: return "Utilisateur";
   }
+}
+
+/** Strip tous les prefixes "Re: " d'un subject pour obtenir le sujet de base */
+export function getBaseSubject(subject: string): string {
+  let s = subject;
+  while (s.startsWith("Re: ")) s = s.slice(4);
+  return s;
+}
+
+/** Verifie si un subject est lie a une candidature (avec ou sans "Re: ") */
+export function isCandidatureSubject(subject: string): boolean {
+  return getBaseSubject(subject).startsWith("Candidature:");
+}
+
+/** Extrait le titre de l'offre d'emploi depuis un subject candidature */
+export function extractJobTitle(subject: string): string {
+  const base = getBaseSubject(subject);
+  return base.startsWith("Candidature: ") ? base.slice("Candidature: ".length).trim() : "";
 }
 
 export function getContactFromMessage(message: Message, currentUserId: string): ConversationContact {
@@ -37,29 +57,46 @@ export function getContactFromMessage(message: Message, currentUserId: string): 
   };
 }
 
+/**
+ * Groupe les messages en conversations.
+ * - Sauveteur (maitre_nageur) : conversations separees par candidature (subject)
+ * - Autres profils : conversations groupees par contact (comportement par defaut)
+ */
 export function groupMessagesIntoConversations(
   messages: Message[],
-  currentUserId: string
+  currentUserId: string,
+  userProfileType?: string | null
 ): Conversation[] {
   const conversationMap = new Map<string, { contact: ConversationContact; messages: Message[] }>();
 
   for (const message of messages) {
     const contact = getContactFromMessage(message, currentUserId);
 
-    if (!conversationMap.has(contact.id)) {
-      conversationMap.set(contact.id, { contact, messages: [] });
+    // Cle de groupement : sauveteur + candidature → contactId__candidature__BaseSubject
+    let key = contact.id;
+    if (userProfileType === "maitre_nageur" && message.subject) {
+      const base = getBaseSubject(message.subject);
+      if (base.startsWith("Candidature:")) {
+        key = `${contact.id}__candidature__${base}`;
+      }
     }
 
-    conversationMap.get(contact.id)!.messages.push(message);
+    if (!conversationMap.has(key)) {
+      conversationMap.set(key, { contact, messages: [] });
+    }
+
+    conversationMap.get(key)!.messages.push(message);
   }
 
   const conversations: Conversation[] = [];
 
-  for (const [, { contact, messages: msgs }] of conversationMap) {
+  for (const [key, { contact, messages: msgs }] of conversationMap) {
     // Trier par date ascendante (ancien → recent) pour l'affichage bulles
     const sorted = [...msgs].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
+
+    const isCandidatureConv = key.includes("__candidature__");
 
     conversations.push({
       contact,
@@ -68,6 +105,8 @@ export function groupMessagesIntoConversations(
       unreadCount: sorted.filter(
         (m) => m.recipient_id === currentUserId && !m.read
       ).length,
+      conversationKey: key,
+      jobTitle: isCandidatureConv ? extractJobTitle(sorted[0].subject) : undefined,
     });
   }
 

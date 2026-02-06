@@ -11,6 +11,7 @@ export const ConversationMailbox = () => {
   const isMobile = useIsMobile();
   const {
     userId,
+    userProfileType,
     conversations,
     isLoading,
     markConversationAsRead,
@@ -20,22 +21,22 @@ export const ConversationMailbox = () => {
     isSending,
   } = useConversations();
 
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedConversationKey, setSelectedConversationKey] = useState<string | null>(null);
 
   // Sur desktop, selectionner la premiere conversation par defaut
   useEffect(() => {
-    if (!isMobile && !selectedContactId && conversations.length > 0) {
-      setSelectedContactId(conversations[0].contact.id);
+    if (!isMobile && !selectedConversationKey && conversations.length > 0) {
+      setSelectedConversationKey(conversations[0].conversationKey);
     }
-  }, [isMobile, conversations, selectedContactId]);
+  }, [isMobile, conversations, selectedConversationKey]);
 
   const selectedConversation = conversations.find(
-    (c) => c.contact.id === selectedContactId
+    (c) => c.conversationKey === selectedConversationKey
   );
 
-  const handleSelectConversation = (contactId: string) => {
-    setSelectedContactId(contactId);
-    markConversationAsRead(contactId);
+  const handleSelectConversation = (conversationKey: string) => {
+    setSelectedConversationKey(conversationKey);
+    markConversationAsRead(conversationKey);
   };
 
   const conversationRef = useRef<HTMLDivElement>(null);
@@ -47,18 +48,18 @@ export const ConversationMailbox = () => {
       el.classList.add("conversation-exit");
       const onEnd = () => {
         el.removeEventListener("animationend", onEnd);
-        setSelectedContactId(null);
+        setSelectedConversationKey(null);
       };
       el.addEventListener("animationend", onEnd);
     } else {
-      setSelectedContactId(null);
+      setSelectedConversationKey(null);
     }
   }, []);
 
   const handleSendReply = (content: string, subject: string) => {
-    if (!selectedContactId) return;
+    if (!selectedConversation) return;
     sendReply({
-      recipientId: selectedContactId,
+      recipientId: selectedConversation.contact.id,
       subject,
       content,
     });
@@ -70,7 +71,7 @@ export const ConversationMailbox = () => {
 
   const handleDeleteConversation = (messageIds: string[]) => {
     deleteConversation(messageIds);
-    setSelectedContactId(null);
+    setSelectedConversationKey(null);
   };
 
   const unreadTotal = conversations.reduce((acc, c) => acc + c.unreadCount, 0);
@@ -104,11 +105,12 @@ export const ConversationMailbox = () => {
             </div>
             <ConversationSkeleton count={6} />
           </div>
-        ) : selectedContactId && selectedConversation && userId ? (
-          <div ref={conversationRef} key={`conversation-${selectedContactId}`} className="absolute inset-0 z-20 bg-primary-dark conversation-enter">
+        ) : selectedConversationKey && selectedConversation && userId ? (
+          <div ref={conversationRef} key={`conversation-${selectedConversationKey}`} className="absolute inset-0 z-20 bg-primary-dark conversation-enter">
             <ConversationView
               conversation={selectedConversation}
               currentUserId={userId}
+              userProfileType={userProfileType}
               onBack={handleBack}
               onSendReply={handleSendReply}
               onDeleteMessage={handleDeleteMessage}
@@ -121,7 +123,7 @@ export const ConversationMailbox = () => {
           <div key="list-state" className="absolute inset-0 z-10 bg-primary-dark">
             <ConversationList
               conversations={conversations}
-              selectedContactId={null}
+              selectedConversationKey={null}
               onSelectConversation={handleSelectConversation}
               onDeleteConversation={handleDeleteConversation}
               unreadTotal={unreadTotal}
@@ -156,7 +158,7 @@ export const ConversationMailbox = () => {
           ) : (
             <ConversationList
               conversations={conversations}
-              selectedContactId={selectedContactId}
+              selectedConversationKey={selectedConversationKey}
               onSelectConversation={handleSelectConversation}
               onDeleteConversation={handleDeleteConversation}
               unreadTotal={unreadTotal}
@@ -170,6 +172,7 @@ export const ConversationMailbox = () => {
             <ConversationView
               conversation={selectedConversation}
               currentUserId={userId}
+              userProfileType={userProfileType}
               onBack={handleBack}
               onSendReply={handleSendReply}
               onDeleteMessage={handleDeleteMessage}

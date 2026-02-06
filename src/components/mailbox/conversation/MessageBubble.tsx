@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Trash2, FileText, ExternalLink } from "lucide-react";
+import { Trash2, FileText, ExternalLink, Reply } from "lucide-react";
 import { useState } from "react";
 import type { Message } from "@/types/message";
 
@@ -8,6 +8,8 @@ interface MessageBubbleProps {
   message: Message;
   isSent: boolean;
   onDelete: (id: string) => void;
+  candidatureBadge?: string;
+  onReplyToJob?: () => void;
 }
 
 /** Detecte les URLs et le pattern "📎 CV joint: URL" pour les rendre cliquables */
@@ -96,7 +98,7 @@ const renderMessageContent = (content: string, isSent: boolean) => {
   );
 };
 
-export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps) => {
+export const MessageBubble = ({ message, isSent, onDelete, candidatureBadge, onReplyToJob }: MessageBubbleProps) => {
   const [showActions, setShowActions] = useState(false);
 
   return (
@@ -106,8 +108,14 @@ export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps)
       onMouseLeave={() => setShowActions(false)}
     >
       <div className={`relative max-w-[80%] sm:max-w-[70%]`}>
-        {/* Sujet si present et pas un "Re:" */}
-        {message.subject && !message.subject.startsWith("Re:") && (
+        {/* Badge candidature (cote etablissement) */}
+        {candidatureBadge ? (
+          <div className={`flex items-center gap-1.5 mb-1.5 px-1 ${isSent ? "justify-end" : "justify-start"}`}>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              Candidature : {candidatureBadge}
+            </span>
+          </div>
+        ) : message.subject && !message.subject.startsWith("Re:") && (
           <p
             className={`text-[10px] font-semibold mb-1 px-1 text-white/40 ${
               isSent ? "text-right" : "text-left"
@@ -142,13 +150,23 @@ export const MessageBubble = ({ message, isSent, onDelete }: MessageBubbleProps)
           )}
         </div>
 
-        <p
-          className={`text-[10px] mt-1 px-1 text-white/30 ${
-            isSent ? "text-right" : "text-left"
-          }`}
-        >
-          {format(new Date(message.created_at), "HH:mm", { locale: fr })}
-        </p>
+        <div className={`flex items-center gap-2 mt-1 px-1 ${isSent ? "justify-end" : "justify-start"}`}>
+          <p className="text-[10px] text-white/30">
+            {format(new Date(message.created_at), "HH:mm", { locale: fr })}
+          </p>
+          {onReplyToJob && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onReplyToJob();
+              }}
+              className="flex items-center gap-1 text-[10px] text-white/40 hover:text-cyan-400 transition-colors focus:outline-none focus-visible:outline-none"
+            >
+              <Reply className="h-3 w-3" />
+              <span>Répondre</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -9,22 +9,12 @@ export interface SSSFormation {
   lieu: string;
   organisateur: string;
   places: string;
-  placesColor?: 'red' | 'orange' | 'green' | 'gray';  // Indicateur de disponibilite
+  placesColor?: 'red' | 'orange' | 'green' | 'gray';
   prix: string;
   source?: string;
   url?: string;
   raw?: boolean;
   description?: string;
-}
-
-export interface SSSFormationsResponse {
-  success: boolean;
-  formations: SSSFormation[];
-  count: number;
-  source: string;
-  scrapedAt: string;
-  error?: string;
-  note?: string;
 }
 
 export interface SSSFormationDetails {
@@ -40,60 +30,57 @@ export interface SSSFormationDetails {
 }
 
 /**
- * Helper pour ajouter un timeout à une promesse
+ * Combine debut et fin en une seule chaîne de date lisible
  */
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout de la requête')), timeoutMs)
-    ),
-  ]);
+function formatDateRange(debut: string | null, fin: string | null): string {
+  if (debut && fin && debut !== fin) {
+    return `${debut} - ${fin}`;
+  }
+  return debut || fin || '';
 }
 
 /**
- * Hook pour récupérer les formations SSS via la Edge Function Supabase
- * React Query gère nativement la déduplication des requêtes et le cache
+ * Hook pour récupérer les formations SSS depuis la table sss_formations_cache
+ * Les données sont insérées par le scraper GitHub Actions (branche séparée)
+ * Le filtrage est fait côté client dans Training.tsx
  */
-export function useSSSFormations(filters?: { region?: string; type?: string }) {
+export function useSSSFormations() {
   return useQuery({
-    queryKey: ["sss-formations", filters],
+    queryKey: ["sss-formations"],
     queryFn: async (): Promise<SSSFormation[]> => {
-      logger.log("🔍 [Hook SSS] Appel Edge Function avec filtres:", filters);
+      logger.log("🔍 [Hook SSS] Query table sss_formations_cache...");
 
-      // Appeler la Edge Function Supabase avec timeout de 30 secondes
-      const { data, error } = await withTimeout(
-        supabase.functions.invoke("sss-scraper", {
-          body: { filters },
-        }),
-        30000
-      );
+      const { data, error } = await supabase
+        .from('sss_formations_cache')
+        .select('*')
+        .eq('active', true)
+        .order('debut', { ascending: true });
 
       if (error) {
-        logger.error("❌ [Hook SSS] Erreur Edge Function:", error);
-        throw new Error("Impossible de récupérer les formations SSS. Veuillez réessayer.");
+        logger.error("❌ [Hook SSS] Erreur query:", error);
+        throw new Error("Impossible de récupérer les formations SSS.");
       }
 
-      logger.log("✅ [Hook SSS] Réponse reçue:", data);
+      const formations: SSSFormation[] = (data || []).map(row => ({
+        id: String(row.id),
+        titre: row.titre,
+        date: formatDateRange(row.debut, row.fin),
+        lieu: row.lieu || '',
+        organisateur: row.organisateur || '',
+        places: row.places || '',
+        placesColor: (row.places_color as SSSFormation['placesColor']) || undefined,
+        prix: '',
+        url: row.url || '',
+      }));
 
-      const response = data as SSSFormationsResponse;
-
-      if (!response.success) {
-        logger.error("❌ [Hook SSS] Réponse en erreur:", response.error);
-        throw new Error(response.error || "Erreur lors de la récupération des formations");
-      }
-
-      logger.log(`📊 [Hook SSS] ${response.formations?.length || 0} formations reçues de l'API`);
-
-      const formations = response.formations || [];
-      logger.log(`✅ [Hook SSS] Retour de ${formations.length} formations au composant`);
+      logger.log(`✅ [Hook SSS] ${formations.length} formations chargées depuis la table`);
       return formations;
     },
-    staleTime: 1000 * 60 * 15, // 15 minutes - données considérées fraîches
-    gcTime: 1000 * 60 * 30, // 30 minutes - garder en cache plus longtemps
+    staleTime: 1000 * 60 * 15, // 15 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
     refetchOnWindowFocus: false,
-    retry: 1, // Réduit à 1 retry pour éviter les attentes longues
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Backoff exponentiel: 1s, 2s... max 10s
+    retry: 1,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 }
 
@@ -106,8 +93,6 @@ export function useSSSFormationDetails(id: string, formationUrl: string) {
   return useQuery({
     queryKey: ["sss-formation-details", id],
     queryFn: async (): Promise<SSSFormationDetails> => {
-      // Pour l'instant, on retourne un placeholder
-      // Une Edge Function dédiée pourrait être créée pour scraper les détails
       return {
         titre: "Formation SSS",
         description: "Détails disponibles sur le site SSS",
@@ -121,8 +106,6 @@ export function useSSSFormationDetails(id: string, formationUrl: string) {
       };
     },
     enabled: !!id && !!formationUrl,
-    staleTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 1000 * 60 * 30,
   });
 }
-
-

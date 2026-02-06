@@ -151,7 +151,7 @@ export function useConversations() {
   }, [userId, queryClient]);
 
   const conversations = userId
-    ? groupMessagesIntoConversations(messages || [], userId)
+    ? groupMessagesIntoConversations(messages || [], userId, userProfileType)
     : [];
 
   const markAsReadMutation = useMutation({
@@ -248,9 +248,9 @@ export function useConversations() {
   });
 
   const markConversationAsRead = useCallback(
-    (contactId: string) => {
+    (conversationKey: string) => {
       if (!userId) return;
-      const conversation = conversations.find((c) => c.contact.id === contactId);
+      const conversation = conversations.find((c) => c.conversationKey === conversationKey);
       if (!conversation) return;
 
       const unreadIds = conversation.messages

@@ -5,11 +5,13 @@ import { MessageBubble } from "./MessageBubble";
 import { ConversationHeader } from "./ConversationHeader";
 import { ConversationInput } from "./ConversationInput";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
+import { getBaseSubject, extractJobTitle } from "./types";
 import type { Conversation } from "./types";
 
 interface ConversationViewProps {
   conversation: Conversation;
   currentUserId: string;
+  userProfileType?: string | null;
   onBack: () => void;
   onSendReply: (content: string, subject: string) => void;
   onDeleteMessage: (id: string) => void;
@@ -21,6 +23,7 @@ interface ConversationViewProps {
 export const ConversationView = ({
   conversation,
   currentUserId,
+  userProfileType,
   onBack,
   onSendReply,
   onDeleteMessage,
@@ -32,11 +35,17 @@ export const ConversationView = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteType, setDeleteType] = useState<"message" | "conversation">("message");
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [replyingToJobTitle, setReplyingToJobTitle] = useState<string | null>(null);
 
   // Scroll vers le bas quand les messages changent
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation.messages.length]);
+
+  // Reset reply state quand on change de conversation
+  useEffect(() => {
+    setReplyingToJobTitle(null);
+  }, [conversation.conversationKey]);
 
   const handleDeleteMessage = (messageId: string) => {
     setMessageToDelete(messageId);
@@ -67,6 +76,8 @@ export const ConversationView = ({
   // Dernier sujet de la conversation
   const lastSubject = conversation.messages[conversation.messages.length - 1]?.subject;
 
+  const isEstablishment = userProfileType === "etablissement";
+
   // Grouper les messages par jour
   let lastDate: Date | null = null;
 
@@ -77,6 +88,7 @@ export const ConversationView = ({
         onBack={onBack}
         onDeleteConversation={handleDeleteConversation}
         showBackButton={showBackButton}
+        jobTitle={conversation.jobTitle}
       />
 
       {/* Zone de messages */}
@@ -85,6 +97,17 @@ export const ConversationView = ({
           const messageDate = new Date(message.created_at);
           const showDateSeparator = !lastDate || !isSameDay(lastDate, messageDate);
           lastDate = messageDate;
+
+          // Detecter les messages de candidature pour le badge et le bouton Repondre
+          const baseSubject = message.subject ? getBaseSubject(message.subject) : "";
+          const isCandidature = baseSubject.startsWith("Candidature:");
+          const jobTitleForBadge = isEstablishment && isCandidature
+            ? extractJobTitle(message.subject)
+            : undefined;
+          const isSent = message.sender_id === currentUserId;
+          const handleReplyToJob = isEstablishment && isCandidature && !isSent
+            ? () => setReplyingToJobTitle(extractJobTitle(message.subject))
+            : undefined;
 
           return (
             <div key={message.id}>
@@ -97,8 +120,10 @@ export const ConversationView = ({
               )}
               <MessageBubble
                 message={message}
-                isSent={message.sender_id === currentUserId}
+                isSent={isSent}
                 onDelete={handleDeleteMessage}
+                candidatureBadge={jobTitleForBadge}
+                onReplyToJob={handleReplyToJob}
               />
             </div>
           );
@@ -111,6 +136,8 @@ export const ConversationView = ({
         onSend={handleSend}
         isSending={isSending}
         lastSubject={lastSubject}
+        replyingToJobTitle={replyingToJobTitle ?? undefined}
+        onCancelReplyToJob={replyingToJobTitle ? () => setReplyingToJobTitle(null) : undefined}
       />
 
       <DeleteConfirmDialog

@@ -7,15 +7,15 @@ import type { Conversation } from "./types";
 
 interface ConversationListProps {
   conversations: Conversation[];
-  selectedContactId: string | null;
-  onSelectConversation: (contactId: string) => void;
+  selectedConversationKey: string | null;
+  onSelectConversation: (conversationKey: string) => void;
   onDeleteConversation?: (messageIds: string[]) => void;
   unreadTotal: number;
 }
 
 export const ConversationList = ({
   conversations,
-  selectedContactId,
+  selectedConversationKey,
   onSelectConversation,
   onDeleteConversation,
   unreadTotal,
@@ -63,10 +63,10 @@ export const ConversationList = ({
         ) : (
           conversations.map((conversation) => (
             <ConversationListItem
-              key={conversation.contact.id}
+              key={conversation.conversationKey}
               conversation={conversation}
-              isSelected={conversation.contact.id === selectedContactId}
-              onClick={() => onSelectConversation(conversation.contact.id)}
+              isSelected={conversation.conversationKey === selectedConversationKey}
+              onClick={() => onSelectConversation(conversation.conversationKey)}
               onDelete={onDeleteConversation ? () => setDeleteTarget(conversation) : undefined}
             />
           ))

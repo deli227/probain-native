@@ -1,5 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trash2 } from "lucide-react";
+import { Briefcase, Trash2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Conversation } from "./types";
@@ -82,6 +82,11 @@ export const ConversationListItem = ({
           >
             {contact.first_name} {contact.last_name}
           </span>
+          {conversation.jobTitle && (
+            <div className="flex items-center gap-1 ml-1">
+              <Briefcase className="h-3 w-3 text-cyan-400/60 shrink-0" />
+            </div>
+          )}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-[11px] text-white/40">
               {formatMessageDate(lastMessage.created_at)}
@@ -100,6 +105,11 @@ export const ConversationListItem = ({
             )}
           </div>
         </div>
+        {conversation.jobTitle && (
+          <p className="text-[11px] mt-0.5 text-cyan-400/60 truncate">
+            {conversation.jobTitle}
+          </p>
+        )}
         <p
           className={`text-xs mt-0.5 truncate ${
             unreadCount > 0

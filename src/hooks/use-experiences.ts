@@ -5,6 +5,7 @@ import * as z from "zod";
 import { experienceFormSchema } from "@/components/profile/forms/ExperienceForm";
 import { logger } from "@/utils/logger";
 import { safeGetUser } from "@/utils/asyncHelpers";
+import { formatDateLocal } from "@/utils/dateUtils";
 
 // Clé de requête pour les expériences
 const EXPERIENCES_QUERY_KEY = ['experiences'];
@@ -76,8 +77,8 @@ export const useExperiences = (userId?: string) => {
           user_id: user.id,
           title: values.title,
           location: values.location,
-          start_date: values.startDate.toISOString().split('T')[0],
-          end_date: values.contractType === 'CDD' ? values.endDate?.toISOString().split('T')[0] : null,
+          start_date: formatDateLocal(values.startDate),
+          end_date: values.contractType === 'CDD' ? formatDateLocal(values.endDate) : null,
           document_url: documentUrl || null,
           contract_type: values.contractType,
         }])
@@ -127,8 +128,8 @@ export const useExperiences = (userId?: string) => {
         user_id: user.id,
         title: values.title,
         location: values.location,
-        start_date: values.startDate.toISOString().split('T')[0],
-        end_date: values.contractType === 'CDD' ? values.endDate?.toISOString().split('T')[0] : null,
+        start_date: formatDateLocal(values.startDate),
+        end_date: values.contractType === 'CDD' ? formatDateLocal(values.endDate) : null,
         document_url: documentUrl || null,
         contract_type: values.contractType,
       };

@@ -21,7 +21,7 @@ interface SSSFormationsListProps {
 export function SSSFormationsList({ filters }: SSSFormationsListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
-  const { data: formations, isLoading, error } = useSSSFormations(filters);
+  const { data: formations, isLoading, error } = useSSSFormations();
 
   // Calculer la pagination
   const totalPages = Math.ceil((formations?.length || 0) / itemsPerPage);

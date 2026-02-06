@@ -9,6 +9,7 @@ interface ConversationHeaderProps {
   onBack: () => void;
   onDeleteConversation: () => void;
   showBackButton: boolean;
+  jobTitle?: string;
 }
 
 export const ConversationHeader = ({
@@ -16,6 +17,7 @@ export const ConversationHeader = ({
   onBack,
   onDeleteConversation,
   showBackButton,
+  jobTitle,
 }: ConversationHeaderProps) => {
   const initials = `${(contact.first_name || "U")[0]}${(contact.last_name || "")[0] || ""}`;
 
@@ -45,9 +47,15 @@ export const ConversationHeader = ({
         <h3 className="font-semibold text-white truncate text-sm">
           {contact.first_name} {contact.last_name}
         </h3>
-        <p className="text-xs text-white/40">
-          {getProfileTypeLabel(contact.profile_type)}
-        </p>
+        {jobTitle ? (
+          <p className="text-xs text-cyan-400/60 truncate">
+            Candidature : {jobTitle}
+          </p>
+        ) : (
+          <p className="text-xs text-white/40">
+            {getProfileTypeLabel(contact.profile_type)}
+          </p>
+        )}
       </div>
 
       <Button

@@ -3,6 +3,9 @@ import {
   getProfileTypeLabel,
   getContactFromMessage,
   groupMessagesIntoConversations,
+  getBaseSubject,
+  isCandidatureSubject,
+  extractJobTitle,
 } from '../types';
 import type { Message } from '@/types/message';
 
@@ -48,6 +51,92 @@ describe('getProfileTypeLabel', () => {
 });
 
 // ---------------------------------------------------------------------------
+// getBaseSubject
+// ---------------------------------------------------------------------------
+
+describe('getBaseSubject', () => {
+  it('returns subject as-is when no "Re: " prefix', () => {
+    expect(getBaseSubject('Candidature: Chef Nageur')).toBe('Candidature: Chef Nageur');
+  });
+
+  it('strips a single "Re: " prefix', () => {
+    expect(getBaseSubject('Re: Candidature: Chef Nageur')).toBe('Candidature: Chef Nageur');
+  });
+
+  it('strips multiple "Re: " prefixes', () => {
+    expect(getBaseSubject('Re: Re: Re: Candidature: Chef Nageur')).toBe('Candidature: Chef Nageur');
+  });
+
+  it('strips "Re: " from non-candidature subjects', () => {
+    expect(getBaseSubject('Re: Hello')).toBe('Hello');
+  });
+
+  it('returns empty string for empty string', () => {
+    expect(getBaseSubject('')).toBe('');
+  });
+
+  it('does not strip "Re:" without the space', () => {
+    expect(getBaseSubject('Re:NoSpace')).toBe('Re:NoSpace');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isCandidatureSubject
+// ---------------------------------------------------------------------------
+
+describe('isCandidatureSubject', () => {
+  it('returns true for direct candidature subject', () => {
+    expect(isCandidatureSubject('Candidature: Chef Nageur')).toBe(true);
+  });
+
+  it('returns true for reply to candidature', () => {
+    expect(isCandidatureSubject('Re: Candidature: Pool Manager')).toBe(true);
+  });
+
+  it('returns true for multiple Re: prefixes', () => {
+    expect(isCandidatureSubject('Re: Re: Candidature: Lifeguard')).toBe(true);
+  });
+
+  it('returns false for non-candidature subject', () => {
+    expect(isCandidatureSubject('Hello')).toBe(false);
+  });
+
+  it('returns false for reply to non-candidature', () => {
+    expect(isCandidatureSubject('Re: Hello')).toBe(false);
+  });
+
+  it('returns false for empty string', () => {
+    expect(isCandidatureSubject('')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractJobTitle
+// ---------------------------------------------------------------------------
+
+describe('extractJobTitle', () => {
+  it('extracts title from direct candidature subject', () => {
+    expect(extractJobTitle('Candidature: Chef Nageur')).toBe('Chef Nageur');
+  });
+
+  it('extracts title from reply to candidature', () => {
+    expect(extractJobTitle('Re: Candidature: Pool Manager')).toBe('Pool Manager');
+  });
+
+  it('extracts title from multiple Re: prefixes', () => {
+    expect(extractJobTitle('Re: Re: Re: Candidature: Lifeguard')).toBe('Lifeguard');
+  });
+
+  it('returns empty string for non-candidature subject', () => {
+    expect(extractJobTitle('Hello')).toBe('');
+  });
+
+  it('returns empty string for empty string', () => {
+    expect(extractJobTitle('')).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getContactFromMessage
 // ---------------------------------------------------------------------------
 
@@ -75,7 +164,7 @@ describe('getContactFromMessage', () => {
 });
 
 // ---------------------------------------------------------------------------
-// groupMessagesIntoConversations
+// groupMessagesIntoConversations — comportement par defaut (retrocompatibilite)
 // ---------------------------------------------------------------------------
 
 describe('groupMessagesIntoConversations', () => {
@@ -85,7 +174,7 @@ describe('groupMessagesIntoConversations', () => {
     expect(groupMessagesIntoConversations([], currentUserId)).toEqual([]);
   });
 
-  it('groups messages by contact', () => {
+  it('groups messages by contact (default behavior)', () => {
     const messages: Message[] = [
       makeMessage({ id: 'm1', sender_id: 'contact-1', recipient_id: currentUserId, created_at: '2026-01-30T10:00:00Z',
         sender: { id: 'contact-1', first_name: 'A', last_name: 'B', profile_type: null } }),
@@ -98,12 +187,13 @@ describe('groupMessagesIntoConversations', () => {
     const conversations = groupMessagesIntoConversations(messages, currentUserId);
 
     expect(conversations).toHaveLength(2);
-    // Conversation with contact-2 should come first (most recent)
     expect(conversations[0].contact.id).toBe('contact-2');
     expect(conversations[0].messages).toHaveLength(1);
-    // Conversation with contact-1 has 2 messages
+    expect(conversations[0].conversationKey).toBe('contact-2');
+    expect(conversations[0].jobTitle).toBeUndefined();
     expect(conversations[1].contact.id).toBe('contact-1');
     expect(conversations[1].messages).toHaveLength(2);
+    expect(conversations[1].conversationKey).toBe('contact-1');
   });
 
   it('sorts messages within a conversation by date ascending', () => {
@@ -139,7 +229,6 @@ describe('groupMessagesIntoConversations', () => {
         sender: { id: 'contact-1', first_name: 'A', last_name: 'B', profile_type: null } }),
       makeMessage({ id: 'm3', sender_id: 'contact-1', recipient_id: currentUserId, read: false, created_at: '2026-01-30T12:00:00Z',
         sender: { id: 'contact-1', first_name: 'A', last_name: 'B', profile_type: null } }),
-      // Sent by current user - should NOT count as unread
       makeMessage({ id: 'm4', sender_id: currentUserId, recipient_id: 'contact-1', read: false, created_at: '2026-01-30T13:00:00Z',
         recipient: { id: 'contact-1', first_name: 'A', last_name: 'B', profile_type: null } }),
     ];
@@ -159,5 +248,125 @@ describe('groupMessagesIntoConversations', () => {
     const conversations = groupMessagesIntoConversations(messages, currentUserId);
     expect(conversations[0].contact.id).toBe('new-contact');
     expect(conversations[1].contact.id).toBe('old-contact');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groupMessagesIntoConversations — grouping asymetrique par profil
+// ---------------------------------------------------------------------------
+
+describe('groupMessagesIntoConversations — asymmetric grouping', () => {
+  const currentUserId = 'rescuer-1';
+  const estProfile = { id: 'est-1', first_name: 'Piscine Geneve', last_name: '', profile_type: 'etablissement' };
+
+  const candidatureMessages: Message[] = [
+    makeMessage({
+      id: 'm1',
+      sender_id: currentUserId,
+      recipient_id: 'est-1',
+      subject: 'Candidature: Chef Nageur',
+      content: 'Je postule au poste de Chef Nageur',
+      created_at: '2026-01-30T10:00:00Z',
+      sender: { id: currentUserId, first_name: 'Jean', last_name: 'Dupont', profile_type: 'maitre_nageur' },
+      recipient: estProfile,
+    }),
+    makeMessage({
+      id: 'm2',
+      sender_id: 'est-1',
+      recipient_id: currentUserId,
+      subject: 'Re: Candidature: Chef Nageur',
+      content: 'Merci pour votre candidature',
+      created_at: '2026-01-30T11:00:00Z',
+      sender: estProfile,
+      recipient: { id: currentUserId, first_name: 'Jean', last_name: 'Dupont', profile_type: 'maitre_nageur' },
+    }),
+    makeMessage({
+      id: 'm3',
+      sender_id: currentUserId,
+      recipient_id: 'est-1',
+      subject: 'Candidature: Maitre Nageur',
+      content: 'Je postule au poste de Maitre Nageur',
+      created_at: '2026-01-30T12:00:00Z',
+      sender: { id: currentUserId, first_name: 'Jean', last_name: 'Dupont', profile_type: 'maitre_nageur' },
+      recipient: estProfile,
+    }),
+  ];
+
+  it('rescuer sees 2 separate conversations for 2 candidatures to same establishment', () => {
+    const conversations = groupMessagesIntoConversations(candidatureMessages, currentUserId, 'maitre_nageur');
+
+    expect(conversations).toHaveLength(2);
+
+    // Plus recent d'abord : Maitre Nageur (m3 a 12:00)
+    expect(conversations[0].jobTitle).toBe('Maitre Nageur');
+    expect(conversations[0].messages).toHaveLength(1);
+    expect(conversations[0].conversationKey).toBe('est-1__candidature__Candidature: Maitre Nageur');
+
+    // Chef Nageur (m2 a 11:00 est le dernier)
+    expect(conversations[1].jobTitle).toBe('Chef Nageur');
+    expect(conversations[1].messages).toHaveLength(2);
+    expect(conversations[1].conversationKey).toBe('est-1__candidature__Candidature: Chef Nageur');
+  });
+
+  it('establishment sees 1 unified conversation for same rescuer', () => {
+    const conversations = groupMessagesIntoConversations(candidatureMessages, 'est-1', 'etablissement');
+
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0].contact.id).toBe(currentUserId);
+    expect(conversations[0].messages).toHaveLength(3);
+    expect(conversations[0].jobTitle).toBeUndefined();
+    expect(conversations[0].conversationKey).toBe(currentUserId);
+  });
+
+  it('without profileType (backward compat), groups by contact only', () => {
+    const conversations = groupMessagesIntoConversations(candidatureMessages, currentUserId);
+
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0].contact.id).toBe('est-1');
+    expect(conversations[0].messages).toHaveLength(3);
+    expect(conversations[0].jobTitle).toBeUndefined();
+    expect(conversations[0].conversationKey).toBe('est-1');
+  });
+
+  it('rescuer with mixed candidature and non-candidature messages sees separate conversations', () => {
+    const mixedMessages: Message[] = [
+      ...candidatureMessages,
+      makeMessage({
+        id: 'm4',
+        sender_id: 'est-1',
+        recipient_id: currentUserId,
+        subject: 'Question sur votre profil',
+        content: 'Bonjour, une question...',
+        created_at: '2026-01-30T13:00:00Z',
+        sender: estProfile,
+        recipient: { id: currentUserId, first_name: 'Jean', last_name: 'Dupont', profile_type: 'maitre_nageur' },
+      }),
+    ];
+
+    const conversations = groupMessagesIntoConversations(mixedMessages, currentUserId, 'maitre_nageur');
+
+    // 3 conversations : 2 candidatures + 1 generale
+    expect(conversations).toHaveLength(3);
+
+    // La plus recente : message general (m4 a 13:00)
+    const general = conversations.find(c => !c.jobTitle);
+    expect(general).toBeDefined();
+    expect(general!.conversationKey).toBe('est-1');
+    expect(general!.messages).toHaveLength(1);
+
+    // Les 2 candidatures
+    const candidatures = conversations.filter(c => c.jobTitle);
+    expect(candidatures).toHaveLength(2);
+    expect(candidatures.map(c => c.jobTitle).sort()).toEqual(['Chef Nageur', 'Maitre Nageur']);
+  });
+
+  it('reply "Re: Candidature: X" goes to same conversation as "Candidature: X"', () => {
+    const conversations = groupMessagesIntoConversations(candidatureMessages, currentUserId, 'maitre_nageur');
+    const chefNageur = conversations.find(c => c.jobTitle === 'Chef Nageur');
+    expect(chefNageur).toBeDefined();
+    // m1 (Candidature: Chef Nageur) + m2 (Re: Candidature: Chef Nageur) are together
+    expect(chefNageur!.messages).toHaveLength(2);
+    expect(chefNageur!.messages[0].id).toBe('m1');
+    expect(chefNageur!.messages[1].id).toBe('m2');
   });
 });

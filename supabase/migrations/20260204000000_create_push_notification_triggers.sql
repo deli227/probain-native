@@ -107,7 +107,7 @@ BEGIN
   PERFORM send_push_notification(
     'new_formation',
     '00000000-0000-0000-0000-000000000000'::UUID,
-    jsonb_build_object('formation_id', NEW.id, 'title', NEW.title, 'broadcast', true)
+    jsonb_build_object('formation_id', NEW.id, 'title', NEW.titre, 'broadcast', true)
   );
   RETURN NEW;
 END;

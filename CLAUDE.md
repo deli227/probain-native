@@ -1810,3 +1810,32 @@ Les push notifications passent **exclusivement** par le bridge natif Despia (`de
 - API OneSignal : `include_aliases: { external_id: [...] }` + `target_channel: 'push'`
 - Deployer l'Edge Function avec `--no-verify-jwt`
 - Voir section "Push Notifications — Architecture OneSignal via Despia" pour la doc complete
+
+### 19. JAMAIS toucher au systeme de scraping SSS ni au hook useSSSFormations
+
+Le systeme de formations SSS est **INTERDIT de modification** sauf demande explicite de l'utilisateur. Il comprend :
+
+**Fichiers INTERDITS de modification :**
+- `src/hooks/use-sss-formations.ts` — Hook qui query `sss_formations_cache` directement. NE PAS remettre une Edge Function, NE PAS changer la query, NE PAS ajouter de filtres cote serveur.
+- `src/utils/formationCategories.ts` — 4 categories de formations + sous-categories + keywords de categorisation
+- `src/utils/swissCantons.ts` — 26 cantons suisses + mapping villes → cantons
+- `src/components/formations/SSSFormationsList.tsx` — Composant d'affichage des formations
+- `src/components/shared/CantonCombobox.tsx` — Dropdown de selection de canton
+
+**Scraper (repo separe `deli227/pro-bain`, branche `main`) :**
+- `.github/scripts/scrape_sss.py` — Script Playwright qui scrape le site SSS et insere dans `sss_formations_cache`
+- `.github/workflows/scrape-sss.yml` — Workflow GitHub Actions (cron quotidien + trigger manuel)
+- **NE JAMAIS supprimer, deplacer, ou "nettoyer" ces fichiers** — le scraper est complexe et a ete difficile a mettre en place
+
+**Architecture :**
+```
+GitHub Actions (pro-bain/main) → scrape SSS → INSERT dans sss_formations_cache
+                                                         ↓
+App (probain-native/master) → useSSSFormations() → SELECT FROM sss_formations_cache WHERE active = true
+```
+
+**Historique du bug (fevrier 2026) :**
+1. Commit `71a125c` a supprime l'Edge Function `sss-scraper` lors d'un "nettoyage" sans mettre a jour le hook
+2. Le trigger `trigger_push_new_formation()` referençait `NEW.title` au lieu de `NEW.titre`, faisant crasher le scraper a l'insertion
+3. Le scraper marquait tout comme `active = false` AVANT d'inserer → crash = table vide
+4. Fix : hook reecrit pour query directe, trigger corrige, scraper securise (desactivation APRES insertion)
