@@ -14,6 +14,7 @@ export const jobPostingsFormSchema = z.object({
   description: z.string().min(1, "La description est requise"),
   location: z.string().min(1, "Le lieu est requis"),
   contractType: z.enum(ContractTypes),
+  linkUrl: z.string().url("L'URL n'est pas valide").or(z.literal("")).optional(),
 });
 
 interface JobPostingsFormProps {
@@ -124,6 +125,26 @@ export const JobPostingsForm = ({ form, darkMode = false }: JobPostingsFormProps
                 </SelectContent>
               </Select>
             )}
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="linkUrl"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className={labelClasses}>Lien (optionnel)</FormLabel>
+            <FormControl>
+              <Input
+                type="url"
+                placeholder="https://exemple.com"
+                className={inputClasses}
+                {...field}
+                value={field.value || ""}
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}

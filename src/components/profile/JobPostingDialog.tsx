@@ -26,6 +26,7 @@ interface JobPostingDialogProps {
   description: string;
   location: string;
   contractType: string;
+  linkUrl?: string | null;
   createdAt: string;
 }
 
@@ -36,6 +37,7 @@ export const JobPostingDialog = ({
   description,
   location,
   contractType,
+  linkUrl,
   createdAt,
 }: JobPostingDialogProps) => {
   const [isFullContentShown, setIsFullContentShown] = useState(false);
@@ -112,6 +114,18 @@ export const JobPostingDialog = ({
             >
               {isFullContentShown ? "Afficher moins" : "Afficher plus"}
             </Button>
+          )}
+
+          {linkUrl && (
+            <a
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 transition-all duration-300"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Cliquez pour voir l'annonce
+            </a>
           )}
 
           <div className="mt-4 flex gap-2 justify-end">

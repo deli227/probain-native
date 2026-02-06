@@ -13,6 +13,7 @@ export interface JobPosting {
   description: string;
   location: string;
   contract_type: ContractType;
+  link_url: string | null;
   establishment_id: string;
   created_at: string;
 }
@@ -75,6 +76,7 @@ export const useJobPostings = (establishmentId?: string | null) => {
           description: values.description,
           location: values.location,
           contract_type: values.contractType as ContractType,
+          link_url: values.linkUrl || null,
         }])
         .select()
         .single();
@@ -103,6 +105,7 @@ export const useJobPostings = (establishmentId?: string | null) => {
           description: values.description,
           location: values.location,
           contract_type: values.contractType as ContractType,
+          link_url: values.linkUrl || null,
         })
         .eq("id", id)
         .select()

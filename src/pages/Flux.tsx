@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
-import { Heart, MessageCircle, Send, Loader2, Trash2, Reply, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, MessageCircle, Send, Loader2, Trash2, Reply, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { useFlux, FluxComment } from '@/hooks/useFlux';
@@ -458,6 +458,20 @@ const Flux = () => {
                     className="w-full rounded-lg object-contain max-h-96 bg-gray-50"
                     wrapperClassName="rounded-lg bg-gray-50 min-h-[100px]"
                   />
+                </div>
+              )}
+
+              {/* Link button */}
+              {post.link_url && (
+                <div className="px-4 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => window.open(post.link_url!, '_blank', 'noopener,noreferrer')}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-cyan-500/15 border border-cyan-400/20 text-cyan-600 md:text-cyan-400 text-sm font-medium hover:bg-cyan-500/25 active:scale-[0.98] transition-all"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Ouvrir le lien
+                  </button>
                 </div>
               )}
 

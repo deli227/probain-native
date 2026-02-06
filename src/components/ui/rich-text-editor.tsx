@@ -2,9 +2,8 @@
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
-import { Button } from './button';
 import { Toggle } from './toggle';
-import { Bold, Italic, List, ListOrdered, ExternalLink, Type, Heading2 } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Heading2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type RichTextEditorProps = {
@@ -81,40 +80,6 @@ const MenuBar = ({ editor, darkMode }: MenuBarProps) => {
         <ListOrdered className="h-4 w-4" />
       </Toggle>
 
-      {darkMode ? (
-        <button
-          type="button"
-          onClick={() => {
-            const url = window.prompt('URL du lien:');
-            if (url) {
-              editor.chain().focus().setLink({ href: url }).run();
-            }
-          }}
-          className={cn(
-            "inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-2.5",
-            "bg-white/10 border border-white/20 text-white/70 hover:bg-white/20 hover:text-white transition-colors",
-            editor.isActive('link') && 'bg-white/20 text-white'
-          )}
-        >
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Lien
-        </button>
-      ) : (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            const url = window.prompt('URL du lien:');
-            if (url) {
-              editor.chain().focus().setLink({ href: url }).run();
-            }
-          }}
-          className={cn(editor.isActive('link') && 'bg-accent')}
-        >
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Lien
-        </Button>
-      )}
     </div>
   );
 };

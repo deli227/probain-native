@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash, MapPin, Briefcase, Calendar } from "lucide-react";
+import { Pencil, Trash, MapPin, Briefcase, Calendar, Link2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { memo } from "react";
@@ -11,6 +11,7 @@ interface JobPostingCardProps {
   description: string;
   location: string;
   contractType: string;
+  linkUrl?: string | null;
   createdAt: string;
   onOpenDetails: () => void;
   onEdit: () => void;
@@ -44,6 +45,7 @@ export const JobPostingCard = memo(function JobPostingCard({
   title,
   location,
   contractType,
+  linkUrl,
   createdAt,
   onOpenDetails,
   onEdit,
@@ -110,6 +112,12 @@ export const JobPostingCard = memo(function JobPostingCard({
               <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
               {location}
             </p>
+            {linkUrl && (
+              <p className="text-sm text-blue-500 md:text-cyan-400/70 font-medium line-clamp-1 flex items-center gap-1 mt-1">
+                <Link2 className="h-3.5 w-3.5 flex-shrink-0" />
+                Lien externe
+              </p>
+            )}
           </div>
 
           {/* Footer avec date */}

@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => ({
     headers: {
       'Cache-Control': 'no-store',
     },
+    watch: {
+      usePolling: true,
+    },
   },
   cacheDir: mode === 'development' ? '.vite-dev' : '.vite',
   plugins: [

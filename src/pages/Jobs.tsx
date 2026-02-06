@@ -41,6 +41,7 @@ interface JobPosting {
   description: string;
   location: string;
   contract_type: string;
+  link_url: string | null;
   establishment_id: string | null;
   created_at: string;
   establishment_name?: string;
@@ -715,6 +716,7 @@ const Jobs = () => {
                             description: app.job_description || "",
                             location: app.job_location || "",
                             contract_type: app.job_contract_type || "",
+                            link_url: null,
                             establishment_id: app.establishment_id || null,
                             created_at: app.job_created_at || app.created_at,
                             establishment_name: app.establishment_name,
@@ -779,6 +781,19 @@ const Jobs = () => {
                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedJob.description) }}
                 />
               </div>
+
+              {/* Lien externe */}
+              {selectedJob.link_url && (
+                <a
+                  href={selectedJob.link_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 rounded-lg hover:bg-cyan-500/25 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Cliquez pour voir l'annonce
+                </a>
+              )}
 
               {/* Action buttons */}
               <div className="mt-6 flex flex-col gap-3">

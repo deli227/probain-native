@@ -8,6 +8,7 @@ export interface FluxPost {
   title: string | null;
   content: string;
   image_url: string | null;
+  link_url: string | null;
   author_name: string;
   author_avatar_url: string | null;
   visibility: 'all' | 'rescuer' | 'trainer' | 'establishment';
@@ -71,6 +72,7 @@ async function fetchPostsViaRpc(
       ...p,
       // Ensure non-null defaults that the interface expects
       author_name: p.author_name || 'Probain',
+      link_url: p.link_url || null,
       visibility: (p.visibility || 'all') as FluxPost['visibility'],
       created_at: p.created_at ?? '',
       likes_count: Number(p.likes_count) || 0,
@@ -124,6 +126,7 @@ async function fetchPostsViaRpc(
         title: post.title,
         content: post.content,
         image_url: post.image_url,
+        link_url: (post as Record<string, unknown>).link_url as string | null ?? null,
         author_name: post.author_name || 'Probain',
         author_avatar_url: post.author_avatar_url || null,
         visibility: (post.visibility || 'all') as FluxPost['visibility'],

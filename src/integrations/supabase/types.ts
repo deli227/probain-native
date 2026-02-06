@@ -684,6 +684,7 @@ export type Database = {
           description: string
           establishment_id: string | null
           id: string
+          link_url: string | null
           location: string
           title: string
           updated_at: string
@@ -694,6 +695,7 @@ export type Database = {
           description: string
           establishment_id?: string | null
           id?: string
+          link_url?: string | null
           location: string
           title: string
           updated_at?: string
@@ -704,6 +706,7 @@ export type Database = {
           description?: string
           establishment_id?: string | null
           id?: string
+          link_url?: string | null
           location?: string
           title?: string
           updated_at?: string

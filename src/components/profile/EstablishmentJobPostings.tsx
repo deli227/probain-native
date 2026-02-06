@@ -35,6 +35,7 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
       description: "",
       location: "",
       contractType: "CDI",
+      linkUrl: "",
     },
   });
 
@@ -79,6 +80,7 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
       description: posting.description,
       location: posting.location,
       contractType: posting.contract_type,
+      linkUrl: posting.link_url || "",
     });
     setEditingId(posting.id);
     setIsSheetOpen(true);
@@ -145,6 +147,7 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
       description: "",
       location: "",
       contractType: "CDI",
+      linkUrl: "",
     });
     setIsSheetOpen(true);
   };
@@ -242,6 +245,7 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
                       description={jobPosting.description}
                       location={jobPosting.location}
                       contractType={jobPosting.contract_type}
+                      linkUrl={jobPosting.link_url}
                       createdAt={jobPosting.created_at}
                       onOpenDetails={() => openPostingDetails(jobPosting)}
                       onEdit={() => openEditForm(jobPosting)}
@@ -281,6 +285,7 @@ export const JobPostings = ({ establishmentId }: { establishmentId: string | nul
           description={selectedPosting.description}
           location={selectedPosting.location}
           contractType={selectedPosting.contract_type}
+          linkUrl={selectedPosting.link_url}
           createdAt={selectedPosting.created_at}
         />
       )}
