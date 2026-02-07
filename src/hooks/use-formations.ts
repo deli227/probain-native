@@ -5,6 +5,7 @@ import * as z from "zod";
 import { formationFormSchema } from "@/components/profile/forms/FormationForm";
 import { logger } from "@/utils/logger";
 import { safeGetUser } from "@/utils/asyncHelpers";
+import { formatDateLocal } from "@/utils/dateUtils";
 import { findTrainerIdByOrganizationName } from "@/hooks/use-organizations";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -162,13 +163,13 @@ export const useFormations = (userId?: string) => {
         : values.certificationType;
 
       const recyclingOrg = resolveRecyclingOrg(values.recyclingOrganization, values.customRecyclingOrganization);
-      const endDateStr = values.endDate ? values.endDate.toISOString().split('T')[0] : null;
+      const endDateStr = formatDateLocal(values.endDate);
 
       const insertData = {
         user_id: user.id,
         title: title,
         organization: values.organization,
-        start_date: values.startDate.toISOString().split('T')[0],
+        start_date: formatDateLocal(values.startDate)!,
         end_date: endDateStr,
         document_url: documentUrl,
         recycling_organization: recyclingOrg,
@@ -185,7 +186,7 @@ export const useFormations = (userId?: string) => {
 
       // Synchroniser le lien trainer_students pour l'organisme initial
       if (values.organization) {
-        const startDateStr = values.startDate.toISOString().split('T')[0];
+        const startDateStr = formatDateLocal(values.startDate)!;
         await syncTrainerStudentLink(user.id, title, startDateStr, values.organization);
       }
 
@@ -239,13 +240,13 @@ export const useFormations = (userId?: string) => {
         : values.certificationType;
 
       const recyclingOrg = resolveRecyclingOrg(values.recyclingOrganization, values.customRecyclingOrganization);
-      const endDateStr = values.endDate ? values.endDate.toISOString().split('T')[0] : null;
+      const endDateStr = formatDateLocal(values.endDate);
 
       const updateData: Database['public']['Tables']['formations']['Update'] = {
         user_id: user.id,
         title: title,
         organization: values.organization,
-        start_date: values.startDate.toISOString().split('T')[0],
+        start_date: formatDateLocal(values.startDate)!,
         end_date: endDateStr,
         recycling_organization: recyclingOrg,
       };
@@ -265,7 +266,7 @@ export const useFormations = (userId?: string) => {
 
       // Synchroniser le lien trainer_students pour l'organisme initial
       if (values.organization) {
-        const startDateStr = values.startDate.toISOString().split('T')[0];
+        const startDateStr = formatDateLocal(values.startDate)!;
         await syncTrainerStudentLink(user.id, title, startDateStr, values.organization);
       }
 
