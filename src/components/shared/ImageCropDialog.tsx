@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
 import { Button } from '@/components/ui/button';
 import { Loader2, Check, X, ZoomIn } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface ImageCropDialogProps {
   imageSrc: string | null;
@@ -65,6 +66,49 @@ export const ImageCropDialog = ({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [processing, setProcessing] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { toast } = useToast();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imageLoadedRef = useRef(false);
+
+  // Garder la ref en sync avec le state
+  useEffect(() => {
+    imageLoadedRef.current = imageLoaded;
+  }, [imageLoaded]);
+
+  // Reset le state et demarrer le timeout de securite quand une nouvelle image arrive
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (imageSrc && open) {
+      setImageLoaded(false);
+      imageLoadedRef.current = false;
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+
+      // Timeout de securite : si l'image ne charge pas en 15s, fermer le dialog
+      timeoutRef.current = setTimeout(() => {
+        if (!imageLoadedRef.current) {
+          toast({
+            title: "Image non lisible",
+            description: "L'image n'a pas pu être chargée. Essayez avec un autre fichier.",
+            variant: "destructive",
+          });
+          onClose();
+        }
+      }, 15000);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [imageSrc, open]);
 
   const onCropChange = useCallback((location: { x: number; y: number }) => {
     setCrop(location);
@@ -97,6 +141,10 @@ export const ImageCropDialog = ({
     setZoom(1);
     setCroppedAreaPixels(null);
     setImageLoaded(false);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     onClose();
   }, [onClose]);
 
@@ -137,7 +185,27 @@ export const ImageCropDialog = ({
           onCropChange={onCropChange}
           onZoomChange={onZoomChange}
           onCropComplete={handleCropComplete}
-          onMediaLoaded={() => setImageLoaded(true)}
+          onMediaLoaded={() => {
+            setImageLoaded(true);
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+              timeoutRef.current = null;
+            }
+          }}
+          mediaProps={{
+            onError: () => {
+              if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+              }
+              toast({
+                title: "Image non lisible",
+                description: "Ce format d'image n'est pas supporté. Essayez avec un fichier JPEG ou PNG.",
+                variant: "destructive",
+              });
+              onClose();
+            }
+          }}
         />
       </div>
 

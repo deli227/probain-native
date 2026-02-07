@@ -127,6 +127,17 @@ export const RescuerProfileHeader = ({
 
     const file = event.target.files[0];
 
+    // Rejeter les fichiers video (motion photos Samsung/Android retournent video/mp4)
+    if (file.type && file.type.startsWith('video/')) {
+      toast({
+        title: "Format non supporté",
+        description: "Les photos animées (motion photo) ne sont pas prises en charge. Veuillez sélectionner une photo normale.",
+        variant: "destructive",
+      });
+      event.target.value = '';
+      return;
+    }
+
     // Validation taille avant meme le crop
     const MAX_FILE_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
@@ -139,31 +150,52 @@ export const RescuerProfileHeader = ({
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setCropImageSrc(objectUrl);
-    setCropOpen(true);
-    setPickerOpen(false);
+    // Reset input immediatement (permet de re-selectionner le meme fichier)
     event.target.value = '';
+
+    // Lire en data URL (plus fiable que blob URL dans la WebView Despia Android)
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+
+      // Pre-valider : charger dans un Image test pour confirmer que le format est affichable
+      const testImg = new Image();
+      testImg.onload = () => {
+        setCropImageSrc(dataUrl);
+        setCropOpen(true);
+        setPickerOpen(false);
+      };
+      testImg.onerror = () => {
+        toast({
+          title: "Image non lisible",
+          description: "Ce format d'image n'est pas supporté. Essayez avec un fichier JPEG ou PNG.",
+          variant: "destructive",
+        });
+      };
+      testImg.src = dataUrl;
+    };
+    reader.onerror = () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de lire le fichier sélectionné.",
+        variant: "destructive",
+      });
+    };
+    reader.readAsDataURL(file);
   }, [toast]);
 
   // Callback du crop : upload le blob recadre
   const handleCropComplete = useCallback((croppedBlob: Blob) => {
     setCropOpen(false);
-    if (cropImageSrc) {
-      URL.revokeObjectURL(cropImageSrc);
-      setCropImageSrc(null);
-    }
+    setCropImageSrc(null);
     uploadFile(croppedBlob);
-  }, [cropImageSrc, uploadFile]);
+  }, [uploadFile]);
 
   // Fermeture du crop sans valider
   const handleCropClose = useCallback(() => {
     setCropOpen(false);
-    if (cropImageSrc) {
-      URL.revokeObjectURL(cropImageSrc);
-      setCropImageSrc(null);
-    }
-  }, [cropImageSrc]);
+    setCropImageSrc(null);
+  }, []);
 
   const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
     onFileSelected: handleFileForCrop,
