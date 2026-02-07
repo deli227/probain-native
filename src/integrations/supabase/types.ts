@@ -781,6 +781,7 @@ export type Database = {
           notify_job_offers: boolean | null
           notify_messages: boolean | null
           notify_recycling: boolean | null
+          notify_flux: boolean | null
           updated_at: string | null
           user_id: string
         }
@@ -791,6 +792,7 @@ export type Database = {
           notify_job_offers?: boolean | null
           notify_messages?: boolean | null
           notify_recycling?: boolean | null
+          notify_flux?: boolean | null
           updated_at?: string | null
           user_id: string
         }
@@ -801,6 +803,7 @@ export type Database = {
           notify_job_offers?: boolean | null
           notify_messages?: boolean | null
           notify_recycling?: boolean | null
+          notify_flux?: boolean | null
           updated_at?: string | null
           user_id?: string
         }

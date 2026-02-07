@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Mail, Briefcase, GraduationCap, Trash2, Loader2 } from 'lucide-react';
+import { Bell, Mail, Briefcase, GraduationCap, Newspaper, AlertTriangle, Trash2, Loader2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | undefined>(undefined);
+  const [profileType, setProfileType] = useState<string | null>(null);
   const { preferences, loading, updatePreference } = useNotificationPreferences(userId);
   const [deleting, setDeleting] = useState(false);
 
@@ -30,18 +31,26 @@ const Settings = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUserId(session.user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('profile_type')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) setProfileType(profile.profile_type);
       }
     };
     getUser();
   }, []);
+
+  const isSauveteur = profileType === 'maitre_nageur';
+  const isFormateur = profileType === 'formateur';
+  const isEtablissement = profileType === 'etablissement';
 
   const handleDeleteAccount = async () => {
     if (!userId) return;
 
     setDeleting(true);
     try {
-      // Appeler l'Edge Function pour supprimer le compte complètement
-      // (supprime de profiles ET de auth.users)
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
@@ -58,10 +67,8 @@ const Settings = () => {
         throw new Error(response.data?.error || 'Failed to delete account');
       }
 
-      // Déconnecter l'utilisateur
       await supabase.auth.signOut();
 
-      // Nettoyer le localStorage
       localStorage.clear();
       sessionStorage.clear();
 
@@ -70,7 +77,6 @@ const Settings = () => {
         description: 'Votre compte a été supprimé avec succès.',
       });
 
-      // Rediriger vers la page d'accueil
       navigate('/');
     } catch {
       toast({
@@ -110,13 +116,15 @@ const Settings = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Messages */}
+              {/* Messages — tous les profils */}
               <div className="flex items-center justify-between py-3 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-blue-400" />
                   <div>
                     <p className="text-white font-medium">Messages</p>
-                    <p className="text-gray-400 text-sm">Nouveaux messages reçus</p>
+                    <p className="text-gray-400 text-sm">
+                      {isEtablissement ? 'Nouveaux messages et candidatures reçues' : 'Nouveaux messages reçus'}
+                    </p>
                   </div>
                 </div>
                 <Switch
@@ -125,35 +133,73 @@ const Settings = () => {
                 />
               </div>
 
-              {/* Formations */}
+              {/* Formations — sauveteurs + formateurs */}
+              {(isSauveteur || isFormateur) && (
+                <div className="flex items-center justify-between py-3 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <GraduationCap className="h-5 w-5 text-green-400" />
+                    <div>
+                      <p className="text-white font-medium">Formations</p>
+                      <p className="text-gray-400 text-sm">
+                        {isFormateur ? 'Formations et inscriptions à vos cours' : 'Nouvelles formations disponibles'}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={preferences?.notify_formations ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_formations', checked)}
+                  />
+                </div>
+              )}
+
+              {/* Offres d'emploi — sauveteurs uniquement */}
+              {isSauveteur && (
+                <div className="flex items-center justify-between py-3 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <Briefcase className="h-5 w-5 text-orange-400" />
+                    <div>
+                      <p className="text-white font-medium">Offres d'emploi</p>
+                      <p className="text-gray-400 text-sm">Nouvelles offres d'emploi</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={preferences?.notify_job_offers ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_job_offers', checked)}
+                  />
+                </div>
+              )}
+
+              {/* Publications — tous les profils */}
               <div className="flex items-center justify-between py-3 border-b border-white/10">
                 <div className="flex items-center gap-3">
-                  <GraduationCap className="h-5 w-5 text-green-400" />
+                  <Newspaper className="h-5 w-5 text-cyan-400" />
                   <div>
-                    <p className="text-white font-medium">Formations</p>
-                    <p className="text-gray-400 text-sm">Nouvelles formations disponibles</p>
+                    <p className="text-white font-medium">Publications</p>
+                    <p className="text-gray-400 text-sm">Nouvelles publications dans le flux</p>
                   </div>
                 </div>
                 <Switch
-                  checked={preferences?.notify_formations ?? true}
-                  onCheckedChange={(checked) => updatePreference('notify_formations', checked)}
+                  checked={preferences?.notify_flux ?? true}
+                  onCheckedChange={(checked) => updatePreference('notify_flux', checked)}
                 />
               </div>
 
-              {/* Offres d'emploi */}
-              <div className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <Briefcase className="h-5 w-5 text-orange-400" />
-                  <div>
-                    <p className="text-white font-medium">Offres d'emploi</p>
-                    <p className="text-gray-400 text-sm">Nouvelles offres d'emploi</p>
+              {/* Recyclage — sauveteurs uniquement */}
+              {isSauveteur && (
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-400" />
+                    <div>
+                      <p className="text-white font-medium">Recyclage</p>
+                      <p className="text-gray-400 text-sm">Rappels de renouvellement des brevets</p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={preferences?.notify_recycling ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_recycling', checked)}
+                  />
                 </div>
-                <Switch
-                  checked={preferences?.notify_job_offers ?? true}
-                  onCheckedChange={(checked) => updatePreference('notify_job_offers', checked)}
-                />
-              </div>
+              )}
             </div>
           )}
         </div>

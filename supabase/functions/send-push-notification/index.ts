@@ -27,7 +27,7 @@ const NOTIFICATION_CONFIG: Record<string, {
     },
   },
   new_flux_post: {
-    preferenceKey: 'notify_formations',
+    preferenceKey: 'notify_flux',
     title: 'Nouvelle publication',
     bodyTemplate: 'Une nouvelle publication dans le flux',
     urlByProfile: {
@@ -47,7 +47,7 @@ const NOTIFICATION_CONFIG: Record<string, {
     },
   },
   new_job_posting: {
-    preferenceKey: 'notify_formations',
+    preferenceKey: 'notify_job_offers',
     title: "Nouvelle offre d'emploi",
     bodyTemplate: "Une nouvelle offre d'emploi est disponible",
     urlByProfile: {
@@ -142,11 +142,28 @@ serve(async (req) => {
 
       const userIds = profiles?.map((p: { id: string }) => p.id).filter(Boolean) || []
 
-      console.log(`[Push] Broadcast to ${userIds.length} users (filter: ${broadcastProfileType || 'all'})`)
-
       if (userIds.length === 0) {
         return new Response(
           JSON.stringify({ message: 'No users for broadcast', event_type }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        )
+      }
+
+      // Filtrer par preferences : exclure les users ayant desactive la preference correspondante
+      const { data: disabledPrefs } = await supabase
+        .from('notification_preferences')
+        .select('user_id')
+        .in('user_id', userIds)
+        .eq(config.preferenceKey, false)
+
+      const disabledSet = new Set(disabledPrefs?.map((p: { user_id: string }) => p.user_id) || [])
+      const filteredUserIds = userIds.filter((id: string) => !disabledSet.has(id))
+
+      console.log(`[Push] Broadcast: ${userIds.length} total, ${disabledSet.size} disabled, ${filteredUserIds.length} recipients (filter: ${broadcastProfileType || 'all'}, pref: ${config.preferenceKey})`)
+
+      if (filteredUserIds.length === 0) {
+        return new Response(
+          JSON.stringify({ message: 'All target users have disabled this notification', event_type }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         )
       }
@@ -155,7 +172,7 @@ serve(async (req) => {
 
       const onesignalPayload = {
         app_id: ONESIGNAL_APP_ID,
-        include_aliases: { external_id: userIds },
+        include_aliases: { external_id: filteredUserIds },
         target_channel: 'push',
         contents: { fr: body, en: body },
         headings: { fr: config.title, en: config.title },
@@ -165,7 +182,7 @@ serve(async (req) => {
       const result = await callOneSignalAPI(onesignalPayload, ONESIGNAL_REST_API_KEY)
 
       return new Response(
-        JSON.stringify({ success: true, broadcast: true, userCount: userIds.length, result }),
+        JSON.stringify({ success: true, broadcast: true, userCount: filteredUserIds.length, result }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }

@@ -10,6 +10,7 @@ export interface NotificationPreferences {
   notify_formations: boolean;
   notify_job_offers: boolean;
   notify_recycling: boolean;
+  notify_flux: boolean;
 }
 
 export const useNotificationPreferences = (userId: string | undefined) => {
@@ -57,7 +58,7 @@ export const useNotificationPreferences = (userId: string | undefined) => {
   };
 
   const updatePreference = async (
-    key: 'notify_messages' | 'notify_formations' | 'notify_job_offers' | 'notify_recycling',
+    key: 'notify_messages' | 'notify_formations' | 'notify_job_offers' | 'notify_recycling' | 'notify_flux',
     value: boolean
   ) => {
     if (!userId || !preferences) return;

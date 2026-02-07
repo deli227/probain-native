@@ -1,5 +1,5 @@
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Bell, Mail, GraduationCap, Briefcase, AlertTriangle } from "lucide-react";
+import { Loader2, Bell, Mail, GraduationCap, Briefcase, AlertTriangle, Newspaper } from "lucide-react";
 import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
 
 interface NotificationPreferencesSectionProps {
@@ -69,6 +69,21 @@ export const NotificationPreferencesSection = ({ userId }: NotificationPreferenc
             <Switch
               checked={preferences?.notify_job_offers ?? true}
               onCheckedChange={(checked) => updatePreference('notify_job_offers', checked)}
+            />
+          </div>
+
+          {/* Publications */}
+          <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/5 border border-white/10">
+            <div className="flex items-center gap-3">
+              <Newspaper className="h-5 w-5 text-cyan-400" />
+              <div>
+                <p className="text-white font-medium text-sm">Publications</p>
+                <p className="text-white/50 text-xs">Nouvelles publications dans le flux</p>
+              </div>
+            </div>
+            <Switch
+              checked={preferences?.notify_flux ?? true}
+              onCheckedChange={(checked) => updatePreference('notify_flux', checked)}
             />
           </div>
 

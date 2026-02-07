@@ -5,9 +5,12 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, MapPin, Building2, Globe, Lock, Save } from "lucide-react";
-import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, MapPin, Building2, Globe, Lock, Save, Bell, Mail, GraduationCap, Newspaper } from "lucide-react";
+import { useState, useEffect } from "react";
 import { ChangePasswordSection } from "./ChangePasswordSection";
+import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
+import { supabase } from "@/integrations/supabase/client";
 import { DecorativeOrbs } from "@/components/shared/DecorativeOrbs";
 import { CantonCombobox } from "@/components/shared/CantonCombobox";
 
@@ -39,6 +42,16 @@ interface TrainerProfileFormProps {
 
 export const TrainerProfileForm = ({ defaultValues, onSubmit }: TrainerProfileFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch userId pour les preferences de notifications
+  const [userId, setUserId] = useState<string | undefined>();
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUserId(session.user.id);
+    });
+  }, []);
+  const { preferences, loading: prefsLoading, updatePreference } = useNotificationPreferences(userId);
+
   const form = useForm<z.infer<typeof trainerFormSchema>>({
     resolver: zodResolver(trainerFormSchema),
     defaultValues,
@@ -236,6 +249,64 @@ export const TrainerProfileForm = ({ defaultValues, onSubmit }: TrainerProfileFo
                 </FormItem>
               )}
             />
+          </div>
+
+          {/* Section Notifications */}
+          <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-5 border border-white/10 shadow-xl space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-yellow-500/30 flex items-center justify-center">
+                <Bell className="h-4 w-4 text-yellow-400" />
+              </div>
+              <span className="font-semibold text-white">Notifications</span>
+            </div>
+
+            {prefsLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 text-white/50 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Toggle messages */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white font-medium">Messages</p>
+                    <p className="text-xs text-white/40">Nouveaux messages et élèves</p>
+                  </div>
+                  <Switch
+                    checked={preferences?.notify_messages ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_messages', checked)}
+                  />
+                </div>
+
+                <div className="border-t border-white/10" />
+
+                {/* Toggle formations */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white font-medium">Formations</p>
+                    <p className="text-xs text-white/40">Formations et inscriptions à vos cours</p>
+                  </div>
+                  <Switch
+                    checked={preferences?.notify_formations ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_formations', checked)}
+                  />
+                </div>
+
+                <div className="border-t border-white/10" />
+
+                {/* Toggle publications */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white font-medium">Publications</p>
+                    <p className="text-xs text-white/40">Nouvelles publications dans le flux</p>
+                  </div>
+                  <Switch
+                    checked={preferences?.notify_flux ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_flux', checked)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section Mot de passe */}

@@ -257,7 +257,7 @@ export const EstablishmentProfileForm = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-white font-medium">Messages</p>
-                    <p className="text-xs text-white/40">Notifications pour les nouveaux messages</p>
+                    <p className="text-xs text-white/40">Nouveaux messages et candidatures reçues</p>
                   </div>
                   <Switch
                     checked={preferences?.notify_messages ?? true}
@@ -267,15 +267,15 @@ export const EstablishmentProfileForm = ({
 
                 <div className="border-t border-white/10" />
 
-                {/* Toggle flux */}
+                {/* Toggle publications */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-white font-medium">Flux</p>
-                    <p className="text-xs text-white/40">Notifications pour les nouveaux posts du flux</p>
+                    <p className="text-sm text-white font-medium">Publications</p>
+                    <p className="text-xs text-white/40">Nouvelles publications dans le flux</p>
                   </div>
                   <Switch
-                    checked={preferences?.notify_formations ?? true}
-                    onCheckedChange={(checked) => updatePreference('notify_formations', checked)}
+                    checked={preferences?.notify_flux ?? true}
+                    onCheckedChange={(checked) => updatePreference('notify_flux', checked)}
                   />
                 </div>
               </div>
