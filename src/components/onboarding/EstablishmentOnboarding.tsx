@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CANTONS_SUISSES, OnboardingFormData } from "./OnboardingWizard";
-import { usePhotoPicker } from "@/hooks/usePhotoPicker";
+import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
+import { useToast } from "@/hooks/use-toast";
 
 import {
   Select,
@@ -23,17 +24,31 @@ interface EstablishmentOnboardingProps {
   uploading: boolean;
 }
 
-export const EstablishmentOnboarding = ({ 
-  formData, 
-  setFormData, 
+export const EstablishmentOnboarding = ({
+  formData,
+  setFormData,
   handleAvatarUpload,
-  uploading 
+  uploading
 }: EstablishmentOnboardingProps) => {
   const [step, setStep] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { toast } = useToast();
 
-  const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
-    onFileSelected: handleAvatarUpload,
-  });
+  // Refs pour les inputs file — places a la racine du composant (hors du Portal Radix)
+  // pour que l'onChange fonctionne sur Android WebView (Despia)
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      handleAvatarUpload(e);
+      setPickerOpen(false);
+    } else {
+      console.warn('[Upload] No file selected in EstablishmentOnboarding');
+      toast({ title: "Erreur", description: "Aucune image sélectionnée", variant: "destructive" });
+    }
+    e.target.value = '';
+  }, [handleAvatarUpload, toast]);
 
   const isStepValid = () => {
     switch (step) {
@@ -91,23 +106,18 @@ export const EstablishmentOnboarding = ({
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={openPicker}
-                  onKeyDown={(e) => e.key === 'Enter' && openPicker()}
+                  onClick={() => setPickerOpen(true)}
+                  onKeyDown={(e) => e.key === 'Enter' && setPickerOpen(true)}
                   className={`absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg
                            cursor-pointer transition-opacity
                            ${formData.avatarUrl ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
                 >
-                  <Upload className="w-6 h-6 text-white" />
+                  {uploading ? (
+                    <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  ) : (
+                    <Upload className="w-6 h-6 text-white" />
+                  )}
                 </div>
-                {/* Desktop fallback input */}
-                <input
-                  ref={desktopInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelected}
-                  disabled={uploading}
-                  className="hidden"
-                />
               </div>
               <p className="text-sm text-gray-500">
                 Cliquez sur l'image pour télécharger une photo
@@ -205,7 +215,7 @@ export const EstablishmentOnboarding = ({
           </Button>
         )}
         {step < 5 ? (
-          <Button 
+          <Button
             onClick={() => isStepValid() && setStep(step + 1)}
             className="ml-auto"
           >
@@ -213,6 +223,39 @@ export const EstablishmentOnboarding = ({
           </Button>
         ) : null}
       </div>
+
+      {/* PhotoPickerSheet - UI boutons camera/galerie */}
+      <PhotoPickerSheet
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onFileSelected={handleAvatarUpload}
+        uploading={uploading}
+        title="Ajouter une photo"
+        externalCameraRef={cameraRef}
+        externalGalleryRef={galleryRef}
+      />
+
+      {/* Inputs file a la racine du composant (hors du Portal Radix)
+          pour compatibilite Android WebView */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        onChange={handleFileChange}
+        disabled={uploading}
+        className="hidden"
+        aria-hidden="true"
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        disabled={uploading}
+        className="hidden"
+        aria-hidden="true"
+      />
     </div>
   );
 };

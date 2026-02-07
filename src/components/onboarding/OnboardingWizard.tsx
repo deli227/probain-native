@@ -150,10 +150,11 @@ export const OnboardingWizard = () => {
         description: "Votre photo de profil a été mise à jour",
       });
 
-    } catch {
+    } catch (error) {
+      console.error('[Upload] Establishment avatar error:', error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de l'upload de l'image",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'upload de l'image",
         variant: "destructive",
       });
     } finally {

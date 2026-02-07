@@ -153,9 +153,10 @@ export const RescuerOnboardingFlow = () => {
         description: "Photo téléchargée avec succès",
       });
     } catch (error) {
+      console.error('[Upload] Rescuer avatar error:', error);
       toast({
         title: "Erreur",
-        description: "Erreur lors du téléchargement",
+        description: error instanceof Error ? error.message : "Erreur lors du téléchargement",
         variant: "destructive",
       });
     } finally {

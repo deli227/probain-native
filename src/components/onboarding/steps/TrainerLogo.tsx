@@ -1,12 +1,14 @@
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ImagePlus, ChevronLeft, Upload } from "lucide-react";
-import { usePhotoPicker } from "@/hooks/usePhotoPicker";
+import { ImagePlus, ChevronLeft, Upload, Loader2 } from "lucide-react";
+import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
+import { useToast } from "@/hooks/use-toast";
 
 interface TrainerLogoProps {
   logoUrl: string;
   organizationName: string;
   uploading: boolean;
-  onLogoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onLogoUpload: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   onNext: () => void;
   onBack: () => void;
 }
@@ -19,9 +21,24 @@ export const TrainerLogo = ({
   onNext,
   onBack,
 }: TrainerLogoProps) => {
-  const { openPicker, desktopInputRef, handleFileSelected } = usePhotoPicker({
-    onFileSelected: onLogoUpload,
-  });
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Refs pour les inputs file — places a la racine du composant (hors du Portal Radix)
+  // pour que l'onChange fonctionne sur Android WebView (Despia)
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      onLogoUpload(e);
+      setPickerOpen(false);
+    } else {
+      console.warn('[Upload] No file selected in TrainerLogo');
+      toast({ title: "Erreur", description: "Aucune image sélectionnée", variant: "destructive" });
+    }
+    e.target.value = '';
+  }, [onLogoUpload, toast]);
 
   return (
     <div className="flex-1 flex flex-col px-6 pt-4 animate-slide-up">
@@ -72,28 +89,23 @@ export const TrainerLogo = ({
           <div
             role="button"
             tabIndex={0}
-            onClick={openPicker}
-            onKeyDown={(e) => e.key === 'Enter' && openPicker()}
+            onClick={() => setPickerOpen(true)}
+            onKeyDown={(e) => e.key === 'Enter' && setPickerOpen(true)}
             className={`absolute inset-0 flex items-center justify-center bg-black/50 rounded-2xl
                      cursor-pointer transition-all duration-300
                      ${logoUrl ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
           >
             <div className="text-center">
-              <Upload className="w-8 h-8 text-white mx-auto mb-2" />
+              {uploading ? (
+                <Loader2 className="w-8 h-8 text-white mx-auto mb-2 animate-spin" />
+              ) : (
+                <Upload className="w-8 h-8 text-white mx-auto mb-2" />
+              )}
               <span className="text-white text-sm">
-                {uploading ? "Chargement..." : "Choisir un logo"}
+                {uploading ? "Chargement..." : logoUrl ? "Changer" : "Choisir un logo"}
               </span>
             </div>
           </div>
-          {/* Desktop fallback input */}
-          <input
-            ref={desktopInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelected}
-            disabled={uploading}
-            className="hidden"
-          />
         </div>
 
         <p className="text-white/40 text-sm mt-4 text-center">
@@ -112,6 +124,38 @@ export const TrainerLogo = ({
         </Button>
       </div>
 
+      {/* PhotoPickerSheet - UI boutons camera/galerie */}
+      <PhotoPickerSheet
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onFileSelected={onLogoUpload}
+        uploading={uploading}
+        title="Ajouter un logo"
+        externalCameraRef={cameraRef}
+        externalGalleryRef={galleryRef}
+      />
+
+      {/* Inputs file a la racine du composant (hors du Portal Radix)
+          pour compatibilite Android WebView — meme pattern que RescuerPhoto */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        onChange={handleFileChange}
+        disabled={uploading}
+        className="hidden"
+        aria-hidden="true"
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        disabled={uploading}
+        className="hidden"
+        aria-hidden="true"
+      />
     </div>
   );
 };

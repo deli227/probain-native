@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, ChevronLeft, Loader2 } from "lucide-react";
 import { PhotoPickerSheet } from "@/components/shared/PhotoPickerSheet";
+import { useToast } from "@/hooks/use-toast";
 
 interface RescuerPhotoProps {
   avatarUrl: string;
@@ -24,6 +25,7 @@ export const RescuerPhoto = ({
   onBack,
 }: RescuerPhotoProps) => {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { toast } = useToast();
 
   // Refs pour les inputs file — places a la racine du composant (hors du Portal Radix)
   // pour que l'onChange fonctionne sur Android WebView (Despia)
@@ -34,9 +36,12 @@ export const RescuerPhoto = ({
     if (e.target.files?.length) {
       onAvatarUpload(e);
       setPickerOpen(false);
+    } else {
+      console.warn('[Upload] No file selected in RescuerPhoto');
+      toast({ title: "Erreur", description: "Aucune image sélectionnée", variant: "destructive" });
     }
     e.target.value = '';
-  }, [onAvatarUpload]);
+  }, [onAvatarUpload, toast]);
 
   return (
     <div className="flex-1 flex flex-col px-6 pt-4 animate-slide-up">

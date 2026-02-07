@@ -175,9 +175,10 @@ export const TrainerOnboardingFlow = () => {
         description: "Logo téléchargé avec succès",
       });
     } catch (error) {
+      console.error('[Upload] Trainer logo error:', error);
       toast({
         title: "Erreur",
-        description: "Erreur lors du téléchargement",
+        description: error instanceof Error ? error.message : "Erreur lors du téléchargement",
         variant: "destructive",
       });
     } finally {
